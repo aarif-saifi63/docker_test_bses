@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+.pac-container {
+	z-index: 99999 !important;
+	transform: translate(-50%, -50%) !important;
+	top: auto !important;
+	left: auto !important;
+	min-width: 230px !important;
+	right: 20px !important;
+	bottom: 1px !important;
+}
+
+.loader-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+@keyframes wave {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-30px); /* High bounce */
+  }
+  50% {
+    transform: translateY(0);
+  }
+  75% {
+    transform: translateY(10px);  /* Subtle dip */
+  }
+}
+
+.animate-wave {
+  animation: wave 1.2s ease-in-out infinite;
+}
+
+.gradientBtn:disabled {
+  background: #9CA3AF !important;
+  cursor: not-allowed;
+  opacity: 0.6;
+}

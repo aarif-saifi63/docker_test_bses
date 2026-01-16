@@ -1,0 +1,4 @@
+"id","name","response","submenu_id"
+1,"utter_ask_ca_number","Please enter your CA number.",NULL
+2,"utter_ask_otp","Kindly enter to proceed.",NULL
+3,"utter_ask_otp_hindi","कृपया 6-अंकों का ओटीपी दर्ज करें।",NULL

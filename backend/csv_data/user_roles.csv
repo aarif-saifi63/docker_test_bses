@@ -1,0 +1,6 @@
+"id","role_name","description","created_at","updated_at"
+1,"Super Admin","Full access","2025-10-10 12:56:20.718801","2025-10-10 12:56:20.718801"
+2,"Admin","Portal admin","2025-10-10 12:56:21.486369","2025-10-10 12:56:21.486369"
+3,"Supervisor","Handles polls and ads","2025-10-10 12:56:22.127566","2025-10-10 12:56:22.127566"
+4,"Developer","Manages intents and APIs","2025-10-10 12:56:22.497858","2025-10-10 12:56:22.497858"
+5,"Analyst","Dashboard and reports","2025-10-10 12:56:23.26241","2025-10-10 12:56:23.26241"

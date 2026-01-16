@@ -1,0 +1,80 @@
+
+version: "3.1"
+
+intents:
+
+
+entities:
+  - ca_number
+
+slots:
+
+  retry_count:
+    type: float
+    initial_value: 0
+    influence_conversation: true
+    mappings:
+      - type: custom
+
+  language:
+    type: text
+    mappings:
+      - type: custom
+    influence_conversation: true
+  subsidiary:
+    type: text
+    mappings:
+      - type: custom
+    influence_conversation: true
+  customer_type:
+    type: text
+    mappings:
+      - type: custom
+    influence_conversation: true
+
+  ca_number:
+    type: text
+    mappings:
+      - type: custom
+    influence_conversation: true
+
+  otp:
+    type: text
+    mappings:
+      - type: custom
+    influence_conversation: true
+
+  mobile_number:
+    type: text
+    mappings:
+      - type: custom
+    influence_conversation: true
+
+  order_id:
+    type: text
+    mappings:
+      - type: custom
+    influence_conversation: true
+
+  document_required:
+    type: bool
+    mappings:
+      - type: custom
+    influence_conversation: true
+
+
+actions:
+  ## fallback mechanism
+  - action_custom_fallback
+  - action_thank_you_message_english
+  - action_thank_you_message_hindi
+
+responses:
+  # utter_final_confirmation:
+  #   - text: "Thank you. Your new connection request is being processed."
+
+
+session_config:
+  session_expiration_time: 60  # in minutes
+  carry_over_slots_to_new_session: true
+

@@ -1,0 +1,9 @@
+requests==2.32.4
+python-dotenv
+rasa-sdk==3.6.2
+xmltodict==0.15.1
+sqlalchemy
+psycopg2-binary
+pytz
+PyJWT
+redis

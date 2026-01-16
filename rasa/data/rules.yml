@@ -1,0 +1,34 @@
+version: "3.1"
+
+rules:
+
+# - rule: Document upload flow in new status connection rajdhani
+#   steps:
+#   - intent: upload_document_rajdhani
+#   - action: action_upload_document
+
+# - rule: Document upload flow in new status connection hindi rajdhani
+#   steps:
+#   - intent: upload_document_hindi_rajdhani
+#   - action: action_upload_document_hindi
+
+# - rule: Document upload flow in new status connection yamuna
+#   steps:
+#   - intent: upload_document_yamuna
+#   - action: action_upload_document
+
+# - rule: Document upload flow in new status connection hindi yamuna
+#   steps:
+#   - intent: upload_document_hindi_yamuna
+#   - action: action_upload_document_hindi
+
+
+- rule: NLU Fallback Rule
+  steps:
+    - intent: nlu_fallback
+    - action: action_custom_fallback
+
+# - rule: Say 'I am a bot' anytime the user challenges
+#   steps:
+#   - intent: bot_challenge
+#   - action: utter_iamabot

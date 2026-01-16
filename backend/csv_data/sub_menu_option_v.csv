@@ -1,0 +1,57 @@
+"id","menu_id","user_id","name","lang","is_visible","icon_path","submenu_sequence"
+1,1,2,"Meter Reading Schedule","en",True,"/Media/BSES_ICONS/meter-reading-schedule.svg",5
+2,1,2,"New Connection Application","en",True,"/Media/BSES_ICONS/new-connection-application.svg",3
+3,1,2,"New Connection Status","en",True,"/Media/BSES_ICONS/new-connection-status.svg",1
+4,1,2,"Prepaid Meter - Check Balance / Recharge","en",True,"/Media/BSES_ICONS/prepaid-meter-check%E2%80%A8-balance-recharge.svg",2
+5,1,2,"Consumption History","en",True,"/Media/BSES_ICONS/consumption-history.svg",4
+6,2,2,"Duplicate Bill","en",True,"/Media/BSES_ICONS/duplicate-bill.svg",1
+7,2,2,"Payment Status","en",True,"/Media/BSES_ICONS/payment-status.svg",5
+8,2,2,"Payment History","en",True,"/Media/BSES_ICONS/payment-his.svg",2
+9,2,2,"Bill History","en",True,"/Media/BSES_ICONS/payment-history.svg",3
+10,2,2,"Opt for e-bill","en",True,"/Media/BSES_ICONS/opt-in-for-paperless-bill.svg",4
+11,3,2,"Register Complaint","en",True,"/Media/BSES_ICONS/register-complaint.svg",1
+12,3,2,"No Supply Complaint Status","en",True,"/Media/BSES_ICONS/complaint-status-(NCC).svg",2
+13,3,2,"Streetlight Complaint","en",True,"/Media/BSES_ICONS/streetlight-complaint.svg",3
+14,3,2,"Connect Virtually","en",True,"/Media/BSES_ICONS/virtual-help-desk.svg",4
+15,4,2,"Visually Impaired","en",True,"/Media/BSES_ICONS/visually-impaired.svg",3
+16,4,2,"Select Another CA number","en",True,"/Media/BSES_ICONS/check-for-another-CA-number.svg",1
+17,4,2,"Change Language","en",True,"/Media/BSES_ICONS/change-language.svg",2
+18,5,2,"FAQs","en",True,"/Media/BSES_ICONS/faqs.svg",1
+19,5,2,"Branches Nearby","en",True,"/Media/BSES_ICONS/branches-nearby.svg",2
+20,6,6,"New Connection Application","en",True,"/Media/BSES_ICONS/new-connection-application.svg",1
+21,6,6,"New Connection Status","en",True,"/Media/BSES_ICONS/new-connection-status.svg",2
+22,7,6,"Streetlight Complaint","en",True,"/Media/BSES_ICONS/streetlight-complaint.svg",2
+23,7,6,"Connect Virtually","en",True,"/Media/BSES_ICONS/virtual-help-desk.svg",1
+24,8,6,"Visually Impaired","en",True,"/Media/BSES_ICONS/visually-impaired.svg",2
+25,8,6,"Select Another CA number","en",False,"/Media/BSES_ICONS/check-for-another-CA-number.svg",1
+26,8,6,"Change Language","en",True,"/Media/BSES_ICONS/change-language.svg",3
+27,9,6,"FAQs","en",True,"/Media/BSES_ICONS/faqs.svg",2
+28,9,6,"Branches Nearby","en",True,"/Media/BSES_ICONS/branches-nearby.svg",1
+29,15,8,"नया कनेक्शन आवेदन","hi",True,"/Media/BSES_ICONS/new-connection-application.svg",1
+30,15,8,"नए कनेक्शन की स्थिति","hi",True,"/Media/BSES_ICONS/new-connection-status.svg",2
+31,16,8,"वर्चुअली कनेक्ट करें","hi",True,"/Media/BSES_ICONS/virtual-help-desk.svg",1
+32,16,8,"स्ट्रीटलाइट शिकायत","hi",True,"/Media/BSES_ICONS/streetlight-complaint.svg",2
+33,18,8,"सामान्य प्रश्न (FAQs)","hi",True,"/Media/BSES_ICONS/faqs.svg",1
+34,18,8,"नज़दीकी शाखाएँ","hi",True,"/Media/BSES_ICONS/branches-nearby.svg",2
+35,17,8,"दृष्टिबाधित सहायता","hi",True,"/Media/BSES_ICONS/visually-impaired.svg",1
+36,17,8,"कोई और सीए नंबर चुनें","hi",True,"/Media/BSES_ICONS/check-for-another-CA-number.svg",2
+37,17,8,"भाषा बदलें","hi",True,"/Media/BSES_ICONS/change-language.svg",3
+38,10,4,"मीटर रीडिंग शेड्यूल","hi",True,"/Media/BSES_ICONS/meter-reading-schedule.svg",1
+39,10,4,"नया कनेक्शन आवेदन","hi",True,"/Media/BSES_ICONS/new-connection-application.svg",2
+40,10,4,"नए कनेक्शन की स्थिति","hi",True,"/Media/BSES_ICONS/new-connection-status.svg",3
+41,10,4,"प्रीपेड मीटर - बैलेंस जांचें / रिचार्ज करें","hi",True,"/Media/BSES_ICONS/prepaid-meter-check%E2%80%A8-balance-recharge.svg",4
+42,10,4,"खपत का इतिहास","hi",True,"/Media/BSES_ICONS/consumption-history.svg",5
+43,11,4,"डुप्लिकेट बिल","hi",True,"/Media/BSES_ICONS/duplicate-bill.svg",1
+44,11,4,"भुगतान की स्थिति","hi",True,"/Media/BSES_ICONS/payment-status.svg",2
+45,11,4,"भुगतान इतिहास","hi",True,"/Media/BSES_ICONS/payment-his.svg",3
+46,11,4,"बिल इतिहास","hi",True,"/Media/BSES_ICONS/payment-history.svg",4
+47,11,4,"ई-बिल के लिए ऑप्ट-इन करें","hi",True,"/Media/BSES_ICONS/opt-in-for-paperless-bill.svg",5
+48,12,4,"शिकायत दर्ज करें","hi",True,"/Media/BSES_ICONS/register-complaint.svg",1
+49,12,4,"नो सप्लाई शिकायत की स्थिति","hi",True,"/Media/BSES_ICONS/complaint-status-(NCC).svg",2
+50,12,4,"स्ट्रीटलाइट शिकायत","hi",True,"/Media/BSES_ICONS/streetlight-complaint.svg",3
+51,12,4,"वर्चुअली कनेक्ट करें","hi",True,"/Media/BSES_ICONS/virtual-help-desk.svg",4
+52,13,4,"दृष्टिबाधित सहायता","hi",True,"/Media/BSES_ICONS/visually-impaired.svg",1
+53,13,4,"कोई और सीए नंबर चुनें","hi",False,"/Media/BSES_ICONS/check-for-another-CA-number.svg",2
+54,13,4,"भाषा बदलें","hi",True,"/Media/BSES_ICONS/change-language.svg",3
+55,14,4,"सामान्य प्रश्न (FAQs)","hi",True,"/Media/BSES_ICONS/faqs.svg",1
+56,14,4,"नज़दीकी शाखाएँ","hi",True,"/Media/BSES_ICONS/branches-nearby.svg",2

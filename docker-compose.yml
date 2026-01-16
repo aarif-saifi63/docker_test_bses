@@ -1,0 +1,124 @@
+x-common-env: &common-env
+  env_file: [ .env ]
+ 
+x-common-opts: &common-opts
+  restart: unless-stopped
+  <<: *common-env
+ 
+services:
+  admin-ui:
+    build:
+      context: ./admin-ui/                  
+      dockerfile: Dockerfile
+      args:
+        VITE_BASE_URL: ${ADMIN_BASE_URL}
+        VITE_API_BASE_URL: ${ADMIN_BASE_URL}
+        VITE_RASA_TRAINING_BASE_URL: ${ADMIN_BASE_URL}/train
+    ports:
+      - "5878:80"
+    <<: *common-opts
+    networks: [ internal_net ]                 
+    restart: unless-stopped
+ 
+  bot-ui:
+    build:
+      context: ./bot-ui/                  
+      dockerfile: Dockerfile
+      args:
+        VITE_BASE_URL: ${BOT_BASE_URL}
+        VITE_API_BASE_URL: ${BOT_BASE_URL}
+        VITE_GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY}
+    ports:
+      - "5737:80" 
+    <<: *common-opts
+    networks: [ internal_net ]                
+    restart: unless-stopped
+ 
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      RASA_CORE_URL: "http://rasa_core:5005"
+      BACKEND_URL: "http://backend:3000"
+      DATABASE_CONNECTION_STRING: ${DATABASE_CONNECTION_STRING}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - rasa_core
+      - redis
+    volumes:
+      - ./backend/Media:/index/Media
+    <<: *common-opts
+    networks: [ internal_net ]
+ 
+  rasa_core:
+    build:
+      context: ./rasa
+      dockerfile: Dockerfile_Core
+    ports:
+      - "5005:5005"
+    environment:
+      RASA_ACTIONS_URL: "http://rasa_actions:5055"
+      BACKEND_URL: "http://backend:3000"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - rasa_actions
+      - redis
+    volumes:
+      - ./rasa/models:/app/models
+    <<: *common-opts
+    networks: [ internal_net ]
+ 
+  rasa_actions:
+    build:
+      context: ./rasa
+      dockerfile: Dockerfile_Actions
+    ports:
+      - "5055:5055"
+    depends_on:
+      - redis      
+    environment:
+      BACKEND_URL: "http://backend:3000"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379      
+    <<: *common-opts
+    networks: [ internal_net ]
+ 
+  rasa_training:
+    build:
+      context: ./rasa
+      dockerfile: Dockerfile_Training
+    ports:
+      - "8000:8000"
+    environment:
+      BACKEND_URL: "http://backend:3000"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379      
+    volumes:
+      - ./rasa/models:/app/models
+    depends_on:
+      - redis      
+    <<: *common-opts
+    networks: [ internal_net ]
+    
+  redis:
+    image: redis:7
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks: [ internal_net ]    
+ 
+networks:
+  internal_net:
+    internal: false
+    
+volumes:
+  redis_data:
+ 

@@ -1,0 +1,161 @@
+"id","story_name","user_id","submenu_id"
+1,"english registered user new connection application yamuna flow",1,NULL
+2,"english registered user new connection application rajdhani flow",2,NULL
+3,"hindi registered user new connection application yamuna flow",3,NULL
+4,"hindi registered user new connection application rajdhani flow",4,NULL
+5,"english new user new connection application yamuna flow",5,NULL
+6,"english new user new connection application rajdhani flow",6,NULL
+7,"hindi new user new connection application yamuna flow",7,NULL
+8,"hindi new user new connection application rajdhani flow",8,NULL
+9,"english registered user virtual customer care yamuna flow",1,NULL
+10,"english registered user virtual customer care rajdhani flow",2,NULL
+11,"hindi registered user virtual customer care yamuna flow",3,NULL
+12,"hindi registered user virtual customer care rajdhani flow",4,NULL
+13,"english new user virtual customer care yamuna flow",5,NULL
+14,"english new user virtual customer care rajdhani flow",6,NULL
+15,"hindi new user virtual customer care yamuna flow",7,NULL
+16,"hindi new user virtual customer care rajdhani flow",8,NULL
+17,"english registered user prepaid meter recharge flow rajdhani",2,NULL
+18,"english registered user prepaid meter recharge flow yamuna",1,NULL
+19,"hindi registered user prepaid meter recharge flow rajdhani",4,NULL
+20,"hindi registered user prepaid meter recharge flow yamuna",3,NULL
+21,"english new user new connection status rajdhani",6,NULL
+22,"english new user new connection status yamuna",5,NULL
+23,"hindi new user new connection status rajdhani",8,NULL
+24,"hindi new user new connection status yamuna",7,NULL
+25,"english registered user new connection status rajdhani",2,NULL
+26,"english registered user new connection status yamuna",1,NULL
+27,"hindi registered user new connection status rajdhani",4,NULL
+28,"hindi registered user new connection status yamuna",3,NULL
+29,"english new user FAQ'S rajdhani flow",6,NULL
+30,"hindi new user FAQ'S rajdhani flow",8,NULL
+31,"english new user FAQ'S yamuna flow",5,NULL
+32,"hindi new user FAQ'S yamuna flow",7,NULL
+33,"english registered user FAQ'S rajdhani flow",2,NULL
+34,"hindi registered user FAQ'S rajdhani flow",4,NULL
+35,"english registered user FAQ'S yamuna flow",1,NULL
+36,"hindi registered user FAQ'S yamuna flow",3,NULL
+37,"english new user change language flow rajdhani",6,NULL
+38,"hindi new user change language flow rajdhani",8,NULL
+39,"english new user change language flow yamuna",5,NULL
+40,"hindi new user change language flow yamuna",7,NULL
+41,"english registered user change language flow rajdhani",2,NULL
+42,"hindi registered user change language flow rajdhani",4,NULL
+43,"english registered user change language flow yamuna",1,NULL
+44,"hindi registered user change language flow yamuna",3,NULL
+45,"english new user visually impaired flow rajdhani",6,NULL
+46,"hindi new user visually impaired flow rajdhani",8,NULL
+47,"english new user visually impaired flow yamuna",5,NULL
+48,"hindi new user visually impaired flow yamuna",7,NULL
+49,"english registered user visually impaired flow rajdhani",2,NULL
+50,"hindi registered user visually impaired flow rajdhani",4,NULL
+51,"english registered user visually impaired flow yamuna",1,NULL
+52,"hindi registered user visually impaired flow yamuna",3,NULL
+53,"english registered user Meter Reading Schedule flow rajdhani",2,NULL
+54,"hindi registered user Meter Reading Schedule flow rajdhani",4,NULL
+55,"english registered user Meter Reading Schedule flow yamuna",1,NULL
+56,"hindi registered user Meter Reading Schedule flow yamuna",3,NULL
+57,"english registered user check for another ca number flow rajdhani",2,NULL
+58,"english new user check for another ca number rajdhani flow",6,NULL
+59,"english registered user check for another ca number flow yamuna",1,NULL
+60,"english new user check for another ca number yamuna flow",5,NULL
+61,"hindi registered user check for another ca number flow rajdhani",4,NULL
+62,"hindi new user check for another ca number rajdhani flow",8,NULL
+63,"hindi registered user check for another ca number flow yamuna",3,NULL
+64,"hindi new user check for another ca number yamuna flow",7,NULL
+65,"english registered user payment history flow rajdhani",2,NULL
+66,"english registered user payment history flow yamuna",1,NULL
+67,"hindi registered user payment history flow rajdhani",4,NULL
+68,"hindi registered user payment history flow yamuna",3,NULL
+69,"english registered user bill history flow rajdhani",2,NULL
+70,"english registered user bill history flow yamuna",1,NULL
+71,"hindi registered user bill history flow rajdhani",4,NULL
+72,"hindi registered user bill history flow yamuna",3,NULL
+73,"english registered user payment status flow rajdhani",2,NULL
+74,"english registered user payment status flow yamuna",1,NULL
+75,"hindi registered user payment status flow rajdhani",4,NULL
+76,"hindi registered user payment status yamuna",3,NULL
+77,"english registered user Consumption history rajdhani flow",2,NULL
+78,"english registered user Consumption history yamuna flow",1,NULL
+79,"hindi registered user Consumption history rajdhani flow",4,NULL
+80,"hindi registered user Consumption history yamuna flow",3,NULL
+81,"english registered user Streetlight Complaint rajdhani flow",2,NULL
+82,"english registered user Streetlight Complaint yamuna flow",1,NULL
+83,"hindi registered user Streetlight Complaint rajdhani flow",4,NULL
+84,"hindi registered user Streetlight Complaint yamuna flow",3,NULL
+85,"english new user Streetlight Complaint yamuna flow",5,NULL
+86,"english new user Streetlight Complaint rajdhani flow",6,NULL
+87,"hindi new user Streetlight Complaint yamuna flow",7,NULL
+88,"hindi new user Streetlight Complaint rajdhani flow",8,NULL
+89,"english registered user branches nearby payment rajdhani flow",2,NULL
+90,"english new user new branches nearby rajdhani flow",6,NULL
+91,"english registered user branches nearby payment yamuna flow",1,NULL
+92,"english new user branches nearby yamuna flow",5,NULL
+93,"hindi registered user branches nearby payment rajdhani flow",4,NULL
+94,"hindi new user branches nearby rajdhani flow",8,NULL
+95,"hindi registered user branches nearby payment yamuna flow",3,NULL
+96,"hindi new user branches nearby yamuna flow",7,NULL
+97,"english registered user branches nearby complaint rajdhani flow",2,NULL
+98,"english new user branches nearby complaint rajdhani flow",6,NULL
+99,"english registered user branches nearby complaint yamuna flow",1,NULL
+100,"english new user branches nearby complaint yamuna flow",5,NULL
+101,"hindi registered user branches nearby complaint rajdhani flow",4,NULL
+102,"hindi new user branches nearby complaint rajdhani flow",8,NULL
+103,"hindi registered user branches nearby complaint yamuna flow",3,NULL
+104,"hindi new user branches nearby complaint yamuna flow",7,NULL
+105,"english registered user opt for ebill no email rajdhani flow",2,NULL
+106,"hindi registered user opt for ebill no email rajdhani flow",4,NULL
+107,"english registered user opt for ebill no email yamuna flow",1,NULL
+108,"hindi registered user opt for ebill no email yamuna flow",3,NULL
+109,"english registered user opt for ebill existing email yes rajdhani flow",2,NULL
+110,"hindi registered user opt for ebill existing email yes rajdhani flow",4,NULL
+111,"english registered user opt for ebill existing email yes yamuna flow",1,NULL
+112,"hindi registered user opt for ebill existing email yes yamuna flow",3,NULL
+113,"english registered user opt for ebill existing email no rajdhani flow",2,NULL
+114,"hindi registered user opt for ebill existing email no rajdhani flow",4,NULL
+115,"english registered user opt for ebill existing email no yamuna flow",1,NULL
+116,"hindi registered user opt for ebill existing email no yamuna flow",3,NULL
+117,"english registered user opt for ebill no email rajdhani flow no mechinism",2,NULL
+118,"hindi registered user opt for ebill no email rajdhani flow no mechinism",4,NULL
+119,"english registered user opt for ebill no email yamuna flow no mechinism",1,NULL
+120,"hindi registered user opt for ebill no email yamuna flow no mechinism",3,NULL
+121,"english registered user opt for ebill existing email yes rajdhani flow no mechinism",2,NULL
+122,"hindi registered user opt for ebill existing email yes rajdhani flow no mechinism",4,NULL
+123,"english registered user opt for ebill existing email yes yamuna flow no mechinism",1,NULL
+124,"hindi registered user opt for ebill existing email yes yamuna flow no mechinism",3,NULL
+125,"english registered user opt for ebill existing email no rajdhani flow no mechinism",2,NULL
+126,"hindi registered user opt for ebill existing email no rajdhani flow no mechinism",4,NULL
+127,"english registered user opt for ebill existing email no yamuna flow no mechinism",1,NULL
+128,"hindi registered user opt for ebill existing email no yamuna flow no mechinism",3,NULL
+129,"english registered user complaint status rajdhani flow",2,NULL
+130,"hindi registered user complaint status rajdhani flow",4,NULL
+131,"english registered user complaint status yamuna flow",1,NULL
+132,"hindi registered user complaint status yamuna flow",3,NULL
+133,"english registered user register complaint no current complaint rajdhani flow",2,NULL
+134,"hindi registered user register complaint no current complaint rajdhani flow",4,NULL
+135,"english registered user don't register complaint no current complaint rajdhani flow",2,NULL
+136,"hindi registered user don't register complaint no current complaint rajdhani flow",4,NULL
+137,"english registered user register complaint no current complaint yamuna flow",1,NULL
+138,"hindi registered user register complaint no current complaint yamuna flow",3,NULL
+139,"english registered user don't register complaint no current complaint yamuna flow",1,NULL
+140,"hindi registered user don't register complaint no current complaint yamuna flow",3,NULL
+141,"english registered user register complaint fire complaint rajdhani flow",2,NULL
+142,"english registered user register complaint fire complaint yamuna flow",1,NULL
+143,"hindi registered user register complaint fire complaint rajdhani flow",4,NULL
+144,"hindi registered user register complaint fire complaint yamuna flow",3,NULL
+145,"english registered user register complaint current leakage rajdhani flow",2,NULL
+146,"english registered user register complaint current leakage yamuna flow",1,NULL
+147,"hindi registered user register complaint current leakage rajdhani flow",4,NULL
+148,"hindi registered user register complaint current leakage yamuna flow",3,NULL
+149,"english registered user register complaint low voltage rajdhani flow",2,NULL
+150,"english registered user register complaint low voltage yamuna flow",1,NULL
+151,"hindi registered user register complaint low voltage rajdhani flow",4,NULL
+152,"hindi registered user register complaint low voltage yamuna flow",3,NULL
+153,"english registered user register complaint voltage fluctuation rajdhani flow",2,NULL
+154,"english registered user register complaint voltage fluctuation yamuna flow",1,NULL
+155,"hindi registered user register complaint voltage fluctuation rajdhani flow",4,NULL
+156,"hindi registered user register complaint voltage fluctuation yamuna flow",3,NULL
+157,"english registered user Duplicate Bill rajdhani flow",2,NULL
+158,"english registered user Duplicate Bill yamuna flow",1,NULL
+159,"hindi registered user Duplicate Bill rajdhani flow",4,NULL
+160,"hindi registered user Duplicate Bill yamuna flow",3,NULL

@@ -1,0 +1,246 @@
+version: "3.1"
+intents:
+  - bill_history_rajdhani
+  - bill_history_rajdhani_hindi
+  - branches_nearby_rajdhani
+  - branches_nearby_rajdhani_hindi
+  - change_lang_english_rajdhani
+  - change_lang_hindi_rajdhani
+  - check_for_another_ca_number_english_rajdhani
+  - check_for_another_ca_number_hindi_rajdhani
+  - complaint_centres_rajdhani
+  - complaint_centres_rajdhani_hindi
+  - complaint_status_english_rajdhani
+  - complaint_status_hindi_rajdhani
+  - consumption_history_rajdhani
+  - consumption_history_rajdhani_hindi
+  - current_leakage_complaint_english_rajdhani
+  - current_leakage_complaint_hindi_rajdhani
+  - duplicate_bill_rajdhani
+  - duplicate_bill_rajdhani_hindi
+  - faqs_brpl_english
+  - faqs_brpl_hindi
+  - fire_complaint_english_rajdhani
+  - fire_complaint_hindi_rajdhani
+  - lang_long_rajdhani
+  - language_english_rajdhani
+  - language_hindi_rajdhani
+  - low_voltage_complaint_english_rajdhani
+  - low_voltage_complaint_hindi_rajdhani
+  - meter_reading_schedule_english_rajdhani
+  - meter_reading_schedule_hindi_rajdhani
+  - new_connection_application_brpl_english
+  - new_connection_application_brpl_hindi
+  - new_connection_status_english_rajdhani
+  - new_connection_status_hindi_rajdhani
+  - new_consumer_english_rajdhani
+  - no_current_complaint_english_rajdhani
+  - no_current_complaint_hindi_rajdhani
+  - opt_for_ebill_email_rajdhani
+  - opt_for_ebill_no_rajdhani
+  - opt_for_ebill_no_rajdhani_hindi
+  - opt_for_ebill_no_update_email_rajdhani
+  - opt_for_ebill_no_update_email_rajdhani_hindi
+  - opt_for_ebill_rajdhani
+  - opt_for_ebill_rajdhani_hindi
+  - opt_for_ebill_yes_rajdhani
+  - opt_for_ebill_yes_rajdhani_hindi
+  - payment_centres_rajdhani
+  - payment_centres_rajdhani_hindi
+  - payment_history_rajdhani
+  - payment_history_rajdhani_hindi
+  - payment_status_rajdhani
+  - payment_status_rajdhani_hindi
+  - prepaid_meter_recharge_english_rajdhani
+  - prepaid_meter_recharge_hindi_rajdhani
+  - provide_ca_number_rajdhani
+  - provide_mobile_number_rajdhani
+  - provide_order_id_rajdhani
+  - provide_otp_rajdhani
+  - register_complaint_english_rajdhani
+  - register_complaint_hindi_rajdhani
+  - register_complaint_no_hindi_rajdhani
+  - register_complaint_no_rajdhani
+  - register_complaint_yes_hindi_rajdhani
+  - register_complaint_yes_rajdhani
+  - registered_consumer_english_rajdhani
+  - restart
+  - streetlight_complaint_rajdhani
+  - streetlight_complaint_rajdhani_hindi
+  - subsidiary_rajdhani
+  - upload_document_hindi_rajdhani
+  - upload_document_rajdhani
+  - virtual_customer_care_brpl_english
+  - virtual_customer_care_brpl_hindi
+  - visually_impaired_english_rajdhani
+  - visually_impaired_hindi_rajdhani
+  - voltage_fluctuation_complaint_english_rajdhani
+  - voltage_fluctuation_complaint_hindi_rajdhani
+entities:
+  - ca_number
+slots:
+  retry_count:
+    type: float
+    initial_value: 0
+    influence_conversation: true
+    mappings:
+      - type: custom
+  language:
+    type: text
+    mappings:
+      - type: custom
+    influence_conversation: true
+  subsidiary:
+    type: text
+    mappings:
+      - type: custom
+    influence_conversation: true
+  customer_type:
+    type: text
+    mappings:
+      - type: custom
+    influence_conversation: true
+  ca_number:
+    type: text
+    mappings:
+      - type: custom
+    influence_conversation: true
+  otp:
+    type: text
+    mappings:
+      - type: custom
+    influence_conversation: true
+  mobile_number:
+    type: text
+    mappings:
+      - type: custom
+    influence_conversation: true
+  order_id:
+    type: text
+    mappings:
+      - type: custom
+    influence_conversation: true
+  document_required:
+    type: bool
+    mappings:
+      - type: custom
+    influence_conversation: true
+actions:
+  - action_bill_history_english
+  - action_bill_history_hindi
+  - action_branches_lang_long
+  - action_branches_lang_long_hindi
+  - action_branches_nearby_english
+  - action_branches_nearby_hindi
+  - action_branches_payment_centres_english
+  - action_branches_payment_centres_hindi
+  - action_change_language
+  - action_check_for_ca_number_english
+  - action_check_for_ca_number_hindi
+  - action_check_for_payment_status_english
+  - action_check_for_payment_status_hindi
+  - action_complaint_status_english
+  - action_complaint_status_hindi
+  - action_consumption_history_english
+  - action_consumption_history_hindi
+  - action_current_leakage_complaint_register_english
+  - action_current_leakage_complaint_register_hindi
+  - action_custom_fallback
+  - action_customer_type_english
+  - action_customer_type_hindi
+  - action_do_not_register_no_current_complaint_register_english
+  - action_do_not_register_no_current_complaint_register_hindi
+  - action_duplicate_bill_english
+  - action_duplicate_bill_hindi
+  - action_fire_complaint_register_english
+  - action_fire_complaint_register_hindi
+  - action_get_connection_status
+  - action_get_connection_status_hindi
+  - action_handle_otp_expired
+  - action_language
+  - action_low_voltage_complaint_register_english
+  - action_low_voltage_complaint_register_hindi
+  - action_meter_reading_schedule_english
+  - action_meter_reading_schedule_hindi
+  - action_new_connection_application_brpl_english
+  - action_new_connection_application_brpl_hindi
+  - action_new_connection_application_bypl_english
+  - action_new_connection_application_bypl_hindi
+  - action_new_connection_status_english
+  - action_new_connection_status_hindi
+  - action_new_consumer_faqs_brpl_english
+  - action_new_consumer_faqs_brpl_hindi
+  - action_new_consumer_faqs_bypl_english
+  - action_new_consumer_faqs_bypl_hindi
+  - action_new_consumer_options_english
+  - action_new_consumer_options_hindi
+  - action_no_current_complaint_english
+  - action_no_current_complaint_hindi
+  - action_no_current_complaint_register_english
+  - action_no_current_complaint_register_hindi
+  - action_opt_for_ebill_ask_new_email_english
+  - action_opt_for_ebill_ask_new_email_hindi
+  - action_opt_for_ebill_email_english
+  - action_opt_for_ebill_email_hindi
+  - action_opt_for_ebill_english
+  - action_opt_for_ebill_existing_email_english
+  - action_opt_for_ebill_existing_email_hindi
+  - action_opt_for_ebill_hindi
+  - action_opt_for_ebill_registration_no_english
+  - action_opt_for_ebill_registration_no_hindi
+  - action_opt_for_ebill_registration_yes_english
+  - action_opt_for_ebill_registration_yes_hindi
+  - action_otp_resend_limit
+  - action_payment_history_english
+  - action_payment_history_hindi
+  - action_prepaid_meter_recharge_english
+  - action_prepaid_meter_recharge_hindi
+  - action_prompt_for_document_upload
+  - action_register_complaint_english
+  - action_register_complaint_hindi
+  - action_register_consumer_options_english
+  - action_register_consumer_options_hindi
+  - action_reset_authentication
+  - action_restart_conversation
+  - action_select_another_ca_number_validate_hindi
+  - action_send_otp
+  - action_set_language
+  - action_set_new_user
+  - action_set_subsidiary
+  - action_set_user
+  - action_streetlight_complaint_english
+  - action_streetlight_complaint_hindi
+  - action_subsidiary
+  - action_thank_you_message_english
+  - action_thank_you_message_hindi
+  - action_upload_document
+  - action_upload_document_hindi
+  - action_validate_ca_number
+  - action_validate_ca_number_otp
+  - action_validate_ca_number_otp_hindi
+  - action_validate_mobile_number_english
+  - action_validate_mobile_number_hindi
+  - action_validate_order_id
+  - action_validate_order_id_hindi
+  - action_validate_otp
+  - action_validate_otp_hindi
+  - action_virtual_customer_care_brpl_english
+  - action_virtual_customer_care_brpl_hindi
+  - action_virtual_customer_care_bypl_english
+  - action_virtual_customer_care_bypl_hindi
+  - action_visually_impaired_english
+  - action_visually_impaired_final_english
+  - action_visually_impaired_final_hindi
+  - action_visually_impaired_hindi
+  - action_voltage_fluctuation_complaint_register_english
+  - action_voltage_fluctuation_complaint_register_hindi
+responses:
+  utter_ask_ca_number:
+    - text: Please enter your CA number.
+  utter_ask_otp:
+    - text: Kindly enter to proceed.
+  utter_ask_otp_hindi:
+    - text: कृपया 6-अंकों का ओटीपी दर्ज करें।
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true

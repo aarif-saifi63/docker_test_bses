@@ -1,0 +1,10 @@
+FROM python:3.10.12-bullseye
+WORKDIR /app
+COPY .  /app
+USER root
+RUN pip install --upgrade pip \
+    && pip3 install -r rasa_training_requirements.txt \
+    && pip3 install gunicorn gevent
+EXPOSE 8001
+#CMD python3 ./rasa_model_training.py
+CMD ["gunicorn", "-k", "gevent", "-b", "0.0.0.0:8000", "rasa_model_training:app", "--workers", "1", "--timeout", "7200"]

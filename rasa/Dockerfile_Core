@@ -1,0 +1,9 @@
+FROM rasa/rasa:3.6.21
+WORKDIR /app
+COPY . /app
+USER root
+RUN pip install --upgrade pip
+RUN pip3 install -r requirements.txt
+#RUN rasa train
+EXPOSE 5005
+CMD ["run", "--enable-api", "--debug", "--port", "5005"]

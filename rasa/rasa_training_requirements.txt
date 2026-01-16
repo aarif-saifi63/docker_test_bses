@@ -1,0 +1,9 @@
+Flask==3.0.3
+flask-cors==4.0.1
+requests==2.32.3
+python-dotenv==1.0.1
+rasa==3.6.21
+rasa-sdk==3.6.2
+transformers==4.52.4
+SQLAlchemy==1.4.54
+redis
