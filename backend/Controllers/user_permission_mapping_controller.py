@@ -3,6 +3,7 @@ from flask import request, jsonify
 from Models.user_permission_mapping_model import UserPermissionMapping
 from Models.user_role_model import UserRole
 from Models.permission_matrix_model import PermissionMatrix
+from utils.input_validator import InputValidator
 from database import SessionLocal
 
 def create_mapping():
@@ -104,22 +105,49 @@ def get_mapping_by_id(mapping_id):
         return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
 
 def update_mapping(mapping_id):
+    db = None
     try:
         data = request.get_json()
         user_role_id = data.get("user_role_id")
+        user_role_name = data.get("user_role_name")
         permissions = data.get("permissions", [])
 
         # Validate input
         if not user_role_id or not isinstance(permissions, list):
             return jsonify(status=False, message="Invalid data format"), 400
+        
+        is_valid, msg = InputValidator.validate_name(user_role_name, "role name")
+        if not is_valid:
+            return jsonify({"status": False, "message": msg}), 400
 
         db = SessionLocal()
 
-        # Step 1: Delete all existing permissions for this role
+        # Step 1: Update role name in user_roles table if provided
+        if user_role_name:
+            role = db.query(UserRole).filter_by(id=user_role_id).first()
+            if not role:
+                return jsonify(status=False, message="User role not found"), 404
+
+            # Check if role name already exists (excluding current role)
+            existing_role = db.query(UserRole).filter(
+                UserRole.role_name == user_role_name.strip(),
+                UserRole.id != user_role_id
+            ).first()
+
+            if existing_role:
+                return jsonify(
+                    status=False,
+                    message=f"Role name '{user_role_name}' already exists"
+                ), 400
+
+            role.role_name = user_role_name.strip()
+            db.commit()
+
+        # Step 2: Delete all existing permissions for this role
         db.query(UserPermissionMapping).filter_by(user_role_id=user_role_id).delete()
         db.commit()
 
-        # Step 2: Add only those permissions with has_permission = True
+        # Step 3: Add only those permissions with has_permission = True
         for perm in permissions:
             if perm.get("has_permission"):
                 new_mapping = UserPermissionMapping(
@@ -129,16 +157,21 @@ def update_mapping(mapping_id):
                 db.add(new_mapping)
 
         db.commit()
-        db.close()
 
         return jsonify(
             status=True,
-            message="Permissions updated successfully for the role",
-            updated_role_id=user_role_id
+            message="Permissions and role name updated successfully",
+            updated_role_id=user_role_id,
+            updated_role_name=user_role_name if user_role_name else None
         ), 200
 
     except Exception as e:
+        if db:
+            db.rollback()
         return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+    finally:
+        if db:
+            db.close()
 
 def update_mapping_users():
     try:

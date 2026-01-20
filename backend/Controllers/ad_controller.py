@@ -1073,15 +1073,43 @@ def chatbot_intro_ad():
 def get_all_ads():
     try:
         db = SessionLocal()
-        ads = db.query(Advertisement).all()
-        db.close()
- 
-        if not ads:
-            return jsonify({"status": False, "message": "No advertisements found", "data": []}), 200
- 
+
+        # Get pagination parameters from query string
+        page = request.args.get("page", default=1, type=int)
+        page_size = request.args.get("page_size", default=5, type=int)
+
+        # Validate pagination parameters
+        if page < 1:
+            page = 1
+        if page_size < 1 or page_size > 100:
+            page_size = 5
+
+        # Get total count of ads
+        total_ads = db.query(Advertisement).count()
+
+        if total_ads == 0:
+            return jsonify({
+                "status": False,
+                "message": "No advertisements found",
+                "data": [],
+                "pagination": {
+                    "page": page,
+                    "page_size": page_size,
+                    "total_pages": 0,
+                    "total_records": 0
+                }
+            }), 200
+
+        # Calculate pagination
+        total_pages = (total_ads + page_size - 1) // page_size
+        offset = (page - 1) * page_size
+
+        # Fetch paginated ads
+        ads = db.query(Advertisement).offset(offset).limit(page_size).all()
+
         response = []
         for ad in ads:
-            # Deserialize divisions_list if it’s a string
+            # Deserialize divisions_list if it's a string
             divisions_list = ad.divisions_list
             if isinstance(divisions_list, str):
                 divisions_list = json.loads(divisions_list) if divisions_list else []
@@ -1105,13 +1133,19 @@ def get_all_ads():
                 "created_at": ad.created_at.isoformat() if ad.created_at else None,
                 "updated_at": ad.updated_at.isoformat() if ad.updated_at else None
             })
- 
+
         return jsonify({
             "status": True,
             "count": len(response),
-            "data": response
+            "data": response,
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total_pages": total_pages,
+                "total_records": total_ads
+            }
         }), 200
- 
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:

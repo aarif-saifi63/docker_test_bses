@@ -6,7 +6,7 @@ class InputValidator:
 
     # Allowed characters: English letters, numbers, space, hyphen, underscore, dot
     # AND Unicode characters for Hindi/Devanagari (\u0900-\u097F) and other languages
-    SAFE_NAME_REGEX = r"^[A-Za-z0-9\u0900-\u097F _\.-]{1,100}$"
+    SAFE_NAME_REGEX = r"^[A-Za-z0-9\u0900-\u097F _\.-\?]{1,100}$"
     SAFE_NAME_REGEX_FALL = r"^[A-Za-z0-9\u0900-\u097F _\.-]{1,1000}$"
 
 

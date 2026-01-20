@@ -20,6 +20,7 @@ RASA_API_URL = os.getenv('RASA_CORE_URL')
 # RASA_API_URL = f"{os.getenv('BASE_URL')}:{os.getenv('RASA_CORE_PORT')}"
 
 def add_feedback_question():
+    db = None
     try:
         data = request.json
         question = data.get("question")
@@ -30,13 +31,26 @@ def add_feedback_question():
         is_valid, msg = InputValidator.validate_name(question, "question")
         if not is_valid:
             return jsonify({"status": False, "message": msg}), 400
-        
+
         is_valid_options, msg_options = InputValidator.validate_name(question, "options")
         if not is_valid_options:
             return jsonify({"status": False, "message": msg_options}), 400
 
         if not question:
             return jsonify({"status": "error", "message": "Question is required"}), 400
+
+        # Check for duplicate question based on question text and question_type
+        db = SessionLocal()
+        existing_question = db.query(FeedbackQuestion).filter(
+            func.lower(FeedbackQuestion.question) == question.lower().strip(),
+            func.lower(FeedbackQuestion.question_type) == question_type.lower().strip()
+        ).first()
+
+        if existing_question:
+            return jsonify({
+                "status": "error",
+                "message": f"Question already exists for question_type '{question_type}'"
+            }), 400
 
         # Store options only if provided
         options_str = json.dumps(options) if options else None
@@ -57,14 +71,50 @@ def add_feedback_question():
         }), 201
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        if db:
+            db.close()
 
 
 
 def update_feedback_question(question_id):
+    db = None
     try:
         data = request.json
         question = data.get("question")
         options = data.get("options")  # Can be list or None
+
+        is_valid, msg = InputValidator.validate_name(question, "question")
+        if not is_valid:
+            return jsonify({"status": False, "message": msg}), 400
+
+        is_valid_options, msg_options = InputValidator.validate_name(question, "options")
+        if not is_valid_options:
+            return jsonify({"status": False, "message": msg_options}), 400
+
+        db = SessionLocal()
+
+        # Fetch the current feedback question
+        current_question = db.query(FeedbackQuestion).filter(FeedbackQuestion.id == question_id).first()
+
+        if not current_question:
+            return jsonify({"status": "error", "message": "Feedback question not found"}), 404
+
+        # If question text is being updated, check for duplicates
+        if question:
+            # Check for duplicate question based on question text and question_type
+            # Exclude the current question from the duplicate check
+            existing_question = db.query(FeedbackQuestion).filter(
+                func.lower(FeedbackQuestion.question) == question.lower().strip(),
+                func.lower(FeedbackQuestion.question_type) == current_question.question_type.lower().strip(),
+                FeedbackQuestion.id != question_id
+            ).first()
+
+            if existing_question:
+                return jsonify({
+                    "status": "error",
+                    "message": f"Question already exists for question_type '{current_question.question_type}'"
+                }), 400
 
         update_data = {}
         if question:
@@ -92,6 +142,9 @@ def update_feedback_question(question_id):
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        if db:
+            db.close()
     
 def delete_feedback_question(question_id):
     db = None

@@ -3,6 +3,7 @@ import threading
 from flask import Flask, jsonify, send_file, request, make_response
 from flask_cors import CORS
 from Controllers.rsa_controller import get_public_key
+from Controllers.submenu_fallback_controller import create_submenu_fallback, delete_submenu_fallback, get_all_submenu_categories, get_all_submenu_fallbacks, get_submenu_fallback_by_category, update_submenu_fallback
 from middlewares.auth_chatbot_middleware import chatbot_token_required
 from middlewares.auth_middleware import optional_token, token_required, permission_required
 # Controller Imports
@@ -26,7 +27,7 @@ from Controllers.meter_connection_controller import get_order_status
 from Controllers.mis_report_controller import mis_avg_interaction_duration, mis_chat_completion_status, mis_interaction_breakdown, mis_pay_bill, mis_peak_hours, visually_impaired_analysis
 from Controllers.poll_analytics_controller import get_poll_summary_and_analytics, get_poll_analytics
 from Controllers.poll_controller import create_poll, delete_poll, get_active_poll, get_all_polls, submit_poll_response, update_poll
-from Controllers.rasa_webhook_controller import ca_number_register_run_flow, handle_fallback, register_run_flow, reset_fallback, run_flow, webhook
+from Controllers.rasa_webhook_controller import ca_number_register_run_flow, handle_fallback, register_run_flow, register_run_flow_submenu_fallback, reset_fallback, run_flow, run_flow_submenu_fallback, webhook
 from Controllers.speech_to_text_controller import speech_to_text
 from Controllers.user_controller import login_user, register_user
 from Controllers.register_user_authentication_controller import get_ca, get_session_data, validate_ca
@@ -145,10 +146,22 @@ def protected_webhook():
 def protected_register_run_flow():
     return register_run_flow()
 
+
+@app.route('/register_menu_run_flow_submenu_fallback', methods=['POST'])
+@chatbot_token_required
+def protected_register_run_flow_submenu_fallback():
+    return register_run_flow_submenu_fallback()
+
+
 @app.route('/menu_run_flow', methods=['POST'])
 @chatbot_token_required
 def protected_menu_run_flow():
     return run_flow()
+
+@app.route('/menu_run_flow_submenu_fallback', methods=['POST'])
+@chatbot_token_required
+def protected_run_flow_submenu_fallback():
+    return run_flow_submenu_fallback()
 
 
 @app.route('/validate-language', methods=['POST'])
@@ -704,6 +717,7 @@ def protected_get_mapping_by_id(mapping_id):
     return get_mapping_by_id(mapping_id)
 
 @app.route("/update/mappings/<int:mapping_id>", methods=["PUT"])
+# @permission_required(module_name="roles", crud_action="update")
 @token_required
 def protected_update_mapping(mapping_id):
     return update_mapping(mapping_id)
@@ -956,6 +970,45 @@ def protected_get_all_fallbacks():
 @permission_required(module_name="fallback", crud_action="update")
 def protected_update_fallback(fallback_id):
     return update_fallback(fallback_id)
+
+
+## Submenu Fallback CRUD (Protected) - Using "fallback" module
+
+@app.route("/create/submenu-fallback", methods=["POST"])
+@token_required
+@permission_required(module_name="fallback", crud_action="create")
+def protected_create_submenu_fallback():
+    return create_submenu_fallback()
+
+@app.route("/get-all/submenu-fallback", methods=["GET"])
+@token_required
+@permission_required(module_name="fallback", crud_action="read")
+def protected_get_all_submenu_fallbacks():
+    return get_all_submenu_fallbacks()
+
+@app.route("/get-all/submenu-fallback/categories", methods=["GET"])
+@token_required
+@permission_required(module_name="fallback", crud_action="read")
+def protected_get_all_submenu_categories():
+    return get_all_submenu_categories()
+
+@app.route("/get/submenu-fallback/<string:category>", methods=["GET"])
+@token_required
+@permission_required(module_name="fallback", crud_action="read")
+def protected_get_submenu_fallback_by_category(category):
+    return get_submenu_fallback_by_category(category)
+
+@app.route("/update/submenu-fallback/<string:category>", methods=["PUT"])
+@token_required
+@permission_required(module_name="fallback", crud_action="update")
+def protected_update_submenu_fallback(category):
+    return update_submenu_fallback(category)
+
+@app.route("/delete/submenu-fallback/<string:category>", methods=["DELETE"])
+@token_required
+@permission_required(module_name="fallback", crud_action="delete")
+def protected_delete_submenu_fallback(category):
+    return delete_submenu_fallback(category)
 
 
 # ==========================================

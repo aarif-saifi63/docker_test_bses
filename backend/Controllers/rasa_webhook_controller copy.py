@@ -3,6 +3,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 import os
 import requests
+import redis
 from sqlalchemy import Integer, func, or_
 from Models.ad_model import Advertisement
 from Models.fallback_model import FallbackV
@@ -16,7 +17,7 @@ from database import SessionLocal
 load_dotenv()
 
 # RASA_API_URL = "http://localhost:5005/webhooks/rest/webhook"  # Update if different
-RASA_API_URL = os.getenv('RASA_CORE_URL') 
+RASA_API_URL = os.getenv('RASA_CORE_URL')
 # RASA_API_URL = f"{os.getenv('BASE_URL')}:{os.getenv('RASA_CORE_PORT')}"
 
 from flask import jsonify, request
@@ -24,8 +25,13 @@ import pytz
 
 IST = pytz.timezone("Asia/Kolkata")
 
-# Dictionary to store fallback count per sender_id
-fallback_counts = {}
+# Redis client for fallback count persistence
+redis_client = redis.Redis(
+    host=os.getenv('REDIS_HOST'),
+    port=os.getenv('REDIS_PORT'),
+    db=0,
+    decode_responses=True
+)
 
 def get_ist_time():
     return datetime.now(IST)
@@ -51,9 +57,6 @@ def webhook():
 
         print(rasa_response_json and rasa_response_json[0].get("text", "").strip(), "=============== fallback")
 
-        # if sender_id not in fallback_counts:
-        #     fallback_counts[sender_id] = fallback_counts.get(sender_id, 0)
-
         # Fetch record with ID = 1
         fallback = FallbackV.find_one(id=1)
 
@@ -67,12 +70,12 @@ def webhook():
         #     is_fallback = True
         # else:
         #     fallback_counts[sender_id] = 0
-
         if (rasa_response_json and rasa_response_json[0].get("text", "").strip() == initial) or rasa_response_json and rasa_response_json[0].get("text", "").strip().startswith(final):
             is_fallback = True
         else:
-            fallback_counts[sender_id] = 0
-            
+            # Reset fallback count in Redis on successful response
+            redis_key = f"fallback_count:{sender_id}"
+            redis_client.delete(redis_key)
 
         heading = []
         buttons = []
@@ -526,6 +529,9 @@ def ca_number_register_run_flow():
 
 ## Fallback mechanism
 
+FALLBACK_LIMIT = 2  # Show final message after 2 consecutive fallbacks (when count > 2)
+FALLBACK_WINDOW_SECONDS = 3600  # Reset count after 1 hour of inactivity
+
 def handle_fallback():
     data = request.json
     sender_id = data.get("sender_id")
@@ -535,37 +541,39 @@ def handle_fallback():
 
     db = None
     try:
-        # Increment count for the sender
-        fallback_counts[sender_id] = fallback_counts.get(sender_id, 0) + 1
+        # Redis key for this sender's fallback count
+        redis_key = f"fallback_count:{sender_id}"
 
-        # Fetch record with ID = 1
+        # Get current count from Redis
+        attempts = redis_client.get(redis_key)
+        attempts = int(attempts) if attempts else 0
+
+        # Increment count in Redis
+        pipe = redis_client.pipeline()
+        pipe.incr(redis_key)
+        if attempts == 0:  # Set TTL when first attempt starts
+            pipe.expire(redis_key, FALLBACK_WINDOW_SECONDS)
+        pipe.execute()
+
+        # Update attempts to reflect the increment
+        attempts += 1
+
+        # Fetch fallback messages from database
         fallback = FallbackV.find_one(id=1)
 
         if fallback:
             initial = fallback.initial_msg
             final = fallback.final_msg
 
-        # If count exceeds 3, reset and send link
-        if fallback_counts[sender_id] > 2:
-            fallback_counts[sender_id] = 0
-            print(fallback_counts, "======================= fallback exceeded")
-        #     return jsonify({
-        # "action": (
-        #     "Thanks for reaching out! I’m having trouble understanding your request. Our team is ready to assist:\n"
-        #     "Call: 19123 (24x7 Toll-Free)\n"
-        #     "WhatsApp: 8800919123\n"
-        #     "Email: brpl.customercare@reliancegroupindia.com\n"
-        #     "Website: https://www.bsesdelhi.com/web/brpl/home"
-        # )
+        # If count exceeds 2 (i.e., 3rd consecutive fallback), send final message
+        if attempts > FALLBACK_LIMIT:
+            redis_client.delete(redis_key)  # Reset count
+            print(f"Fallback count for {sender_id}: {attempts} - EXCEEDED LIMIT, showing final message")
             return jsonify({
-                "action": (
-                    final
-                )
+                "action": final
             })
-
         else:
-            print(fallback_counts, "======================= fallback not exceeded")
-            # return jsonify({"action": "Sorry, I didn’t understand that. Can you rephrase?"})
+            print(f"Fallback count for {sender_id}: {attempts} - showing initial message")
             return jsonify({"action": initial})
     except Exception as e:
         raise e
@@ -583,5 +591,7 @@ def reset_fallback():
     if not sender_id:
         return jsonify({"error": "sender_id is required"}), 400
 
-    fallback_counts[sender_id] = 0
+    # Reset fallback count in Redis
+    redis_key = f"fallback_count:{sender_id}"
+    redis_client.delete(redis_key)
     return jsonify({"message": f"Fallback count reset for {sender_id}"})

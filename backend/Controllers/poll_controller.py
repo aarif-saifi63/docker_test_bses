@@ -33,6 +33,12 @@ def create_poll():
         if not is_valid:
             return jsonify({"status": False, "message": msg}), 400
         
+        if not poll.start_time or not poll.end_time:
+            return jsonify({"status": False, "message": "start_time and end_time are required"}), 400
+        
+        if poll.start_time >= poll.end_time:
+            return jsonify({"status": False, "message": "start_time must be before end_time"}), 400
+        
         # ✅ Validate each question
         for idx, question in enumerate(poll.questions):
             question_text = question.get("question")
@@ -81,6 +87,8 @@ def update_poll(poll_id):
         if not is_valid:
             return jsonify({"status": False, "message": msg}), 400
         
+        if poll.start_time >= poll.end_time:
+            return jsonify({"status": False, "message": "start_time must be before end_time"}), 400
 
         # ✅ Validate each question
         for idx, question in enumerate(questions):
@@ -254,7 +262,39 @@ def get_all_polls():
     db_session = None
     try:
         db_session = SessionLocal()
-        polls = db_session.query(Poll).order_by(Poll.created_at.desc()).all()
+
+        # Get pagination parameters from query string
+        page = request.args.get("page", default=1, type=int)
+        page_size = request.args.get("page_size", default=5, type=int)
+
+        # Validate pagination parameters
+        if page < 1:
+            page = 1
+        if page_size < 1 or page_size > 100:
+            page_size = 5
+
+        # Get total count of polls
+        total_polls = db_session.query(Poll).count()
+
+        if total_polls == 0:
+            return jsonify({
+                "status": "success",
+                "count": 0,
+                "polls": [],
+                "pagination": {
+                    "page": page,
+                    "page_size": page_size,
+                    "total_pages": 0,
+                    "total_records": 0
+                }
+            }), 200
+
+        # Calculate pagination
+        total_pages = (total_polls + page_size - 1) // page_size
+        offset = (page - 1) * page_size
+
+        # Fetch paginated polls
+        polls = db_session.query(Poll).order_by(Poll.created_at.desc()).offset(offset).limit(page_size).all()
         polls_list = []
 
         for poll in polls:
@@ -280,7 +320,13 @@ def get_all_polls():
         return jsonify({
             "status": "success",
             "count": len(polls_list),
-            "polls": polls_list
+            "polls": polls_list,
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total_pages": total_pages,
+                "total_records": total_polls
+            }
         }), 200
 
     except Exception as e:
