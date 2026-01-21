@@ -81,7 +81,7 @@ export default function MenuManagementPage() {
         submenus: (menu.submenus || []).map((s) => ({
           ...s,
           icon_path: s.icon_path
-          ? import.meta.env.VITE_API_BASE_URL + "/" + s.icon_path
+            ? import.meta.env.VITE_API_BASE_URL + "/" + s.icon_path
             : null,
         })),
         icon_path:
@@ -242,18 +242,18 @@ export default function MenuManagementPage() {
       setShowModal(false);
       fetchUserMenuData();
       resetForm();
-      
-    }catch (err) {
-          if (err.response?.status === 413) {
-            toast.error("Entity too large. Please upload another one.");
-           
-          } else {
-            const message =
-              err.response?.data?.message || "Failed to save menu";
-          
-            toast.error(message);
-          }
-        }finally {
+
+    } catch (err) {
+      if (err.response?.status === 413) {
+        toast.error("Entity too large. Please upload another one.");
+
+      } else {
+        const message =
+          err.response?.data?.message || "Failed to save menu";
+
+        toast.error(message);
+      }
+    } finally {
       setLoadingMenu(false);
     }
   };
@@ -377,39 +377,39 @@ export default function MenuManagementPage() {
 
 
   const handleUpdateOrder = async () => {
-  if (!user_id) {
-    toast.error("Please select a user first!");
-    return;
-  }
+    if (!user_id) {
+      toast.error("Please select a user first!");
+      return;
+    }
 
-  try {
-    setUpdatingOrder(true);
+    try {
+      setUpdatingOrder(true);
 
-    const payload = {
-      user_id,
-      menu_order: menus.map((m, i) => ({
-        id: m.menu_id,
-        menu_sequence: i + 1,
-      })),
-      submenu_order: menus.map((m) => ({
-        menu_id: m.menu_id,
-        submenu_items: (m.submenus || []).map((s, idx) => ({
-          id: s.sub_menu_id,
-          submenu_sequence: idx + 1,
+      const payload = {
+        user_id,
+        menu_order: menus.map((m, i) => ({
+          id: m.menu_id,
+          menu_sequence: i + 1,
         })),
-      })),
-    };
+        submenu_order: menus.map((m) => ({
+          menu_id: m.menu_id,
+          submenu_items: (m.submenus || []).map((s, idx) => ({
+            id: s.sub_menu_id,
+            submenu_sequence: idx + 1,
+          })),
+        })),
+      };
 
-    await apiClient.post("/menu/update-sequence", payload);
-    toast.success("Menu and submenu order updated successfully!");
-    setOrderChanged(false);
-  } catch (err) {
-    console.error(err);
-    toast.error("Failed to update order!");
-  } finally {
-    setUpdatingOrder(false);
-  }
-};
+      await apiClient.post("/menu/update-sequence", payload);
+      toast.success("Menu and submenu order updated successfully!");
+      setOrderChanged(false);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update order!");
+    } finally {
+      setUpdatingOrder(false);
+    }
+  };
 
 
   return (
@@ -468,11 +468,10 @@ export default function MenuManagementPage() {
           <button
             onClick={handleUpdateOrder}
             disabled={updatingOrder}
-            className={`px-5 py-2 rounded-lg font-medium ${
-              updatingOrder
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-green-600 hover:bg-green-700 text-white"
-            }`}
+            className={`px-5 py-2 rounded-lg font-medium ${updatingOrder
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-green-600 hover:bg-green-700 text-white"
+              }`}
           >
             {updatingOrder ? "Updating..." : "Update Sequence"}
           </button>

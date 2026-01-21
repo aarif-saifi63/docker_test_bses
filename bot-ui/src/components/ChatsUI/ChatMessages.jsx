@@ -65,7 +65,7 @@ export default function ChatMessages({
               }`}
             >
               {/* {renderMessageWithLinks(msg.text, sender_id)} */}
-               {renderMessageWithLinks(msg.text, sender_id, idx < messages.length - 1)}
+               {renderMessageWithLinks(msg.text, sender_id, msg.isHistoryMessage)}
               {/* <div>
                 {msg.ad && (
                   <div className="ad-option mb-2">

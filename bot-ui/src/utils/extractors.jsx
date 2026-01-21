@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import React, { useState } from "react";
 import apiClient from "../services/apiClient";
+import { MESSAGE_IDS, hasMessageId } from "../constants/messageIds";
 
 export const STATIC_WELCOME = `Hello ! I'm e-MITRA , yours BSES Rajdhani assistant .To get started , click the Home icon or Main Menu 
 
@@ -125,17 +126,28 @@ const RevealLink = ({ link, sender_id, isHistoryMessage = false }) => {
 };
 
 export function isSpecialMenuResponse(response) {
-  return (
-    response &&
-    Array.isArray(response.buttons) &&
-    response.buttons.some((b) => /^\d+\.\s/.test(b)) &&
-    response.heading &&
-    response.heading.some(
-      (h) =>
-        h.includes("Language updated successfully") ||
-        h.includes("भाषा सफलतापूर्वक बदल दी गई है")
-    )
-  );
+  // Use ID-based check if utter_message_id is available
+  if (response?.utter_message_id && Array.isArray(response.utter_message_id)) {
+    return (
+      response &&
+      Array.isArray(response.buttons) &&
+      response.buttons.some((b) => /^\d+\.\s/.test(b)) &&
+      hasMessageId(response.utter_message_id, MESSAGE_IDS.LANGUAGE_UPDATED_EN, MESSAGE_IDS.LANGUAGE_UPDATED_HI)
+    );
+  }
+
+  // Fallback to text matching for backward compatibility
+  // return (
+  //   response &&
+  //   Array.isArray(response.buttons) &&
+  //   response.buttons.some((b) => /^\d+\.\s/.test(b)) &&
+  //   response.heading &&
+  //   response.heading.some(
+  //     (h) =>
+  //       h.includes("Language updated successfully") ||
+  //       h.includes("भाषा सफलतापूर्वक बदल दी गई है")
+  //   )
+  // );
 }
 
 export function groupButtons(buttons) {

@@ -9,26 +9,6 @@ import Loader from "../components/Common/Loader";
 import apiClient from "../services/apiClient";
 import Select from "react-select";
 
-// const MENU_OPTIONS = [
-//   "New Connection Application",
-//   "New Connection Status",
-//   "Virtual Customer Care Centre (BYPL) / Connect Virtually",
-//   "Streetlight Complaint",
-//   "FAQs",
-//   "Branches Nearby",
-//   "Visually Impaired",
-//   "Select Another CA number",
-//   "Change Language",
-//   "Meter Reading Schedule",
-//   "Prepaid Meter - Check Balance / Recharge",
-//   "Consumption History",
-//   "Duplicate Bill",
-//   "Payment Status",
-//   "Payment History",
-//   "Opt for e-bill",
-//   "Register Complaint",
-//   "Complaint Status (NCC)",
-// ];
 
 export default function Menu() {
   const [activeTab, setActiveTab] = useState("Daily");
@@ -361,23 +341,67 @@ export default function Menu() {
       )}
 
       {/* Pagination Controls */}
-      <div className="flex justify-center items-center gap-2 mt-6">
+      <div className="flex justify-center items-center space-x-2 mt-6">
         <button
-          className="px-3 py-1 border rounded bg-gray-100"
+          onClick={() => setPage(1)}
           disabled={page === 1}
-          onClick={() => setPage(page - 1)}
+          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300 transition-colors"
         >
-          Prev
+          First
         </button>
-        <span className="font-semibold">
-          {page} / {totalPages}
-        </span>
+
         <button
-          className="px-3 py-1 border rounded bg-gray-100"
-          disabled={page === totalPages}
+          onClick={() => setPage(page - 1)}
+          disabled={page === 1}
+          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300 transition-colors"
+        >
+          Previous
+        </button>
+
+        {Array.from({ length: totalPages }, (_, i) => i + 1)
+          .filter((num) => {
+            if (num === 1 || num === totalPages) return true;
+            if (num >= page - 2 && num <= page + 2) return true;
+            return false;
+          })
+          .map((num, idx, arr) => {
+            const prev = arr[idx - 1];
+            if (prev && num - prev > 1) {
+              return (
+                <span key={`dots-${num}`} className="px-2">
+                  ...
+                </span>
+              );
+            }
+            return (
+              <button
+                key={num}
+                onClick={() => setPage(num)}
+                className={`px-3 py-1 rounded transition-colors ${
+                  num === page
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 text-black hover:bg-gray-300"
+                }`}
+              >
+                {num}
+              </button>
+            );
+          })}
+
+        <button
           onClick={() => setPage(page + 1)}
+          disabled={page === totalPages}
+          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300 transition-colors"
         >
           Next
+        </button>
+
+        <button
+          onClick={() => setPage(totalPages)}
+          disabled={page === totalPages}
+          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300 transition-colors"
+        >
+          Last
         </button>
       </div>
 

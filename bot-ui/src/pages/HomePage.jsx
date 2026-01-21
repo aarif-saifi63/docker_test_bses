@@ -10,6 +10,7 @@ import {
   getMainComplaintButtons,
   getSubComplaintButtons,
 } from "../utils/extractors";
+import { MESSAGE_IDS, hasMessageId } from "../constants/messageIds";
 import ChatHeader from "../components/Header/ChatHeader";
 import ChatMessages from "../components/ChatsUI/ChatMessages";
 import SpecialMenuGroups from "../components/SpecialMenus/SpecialMenuGroups";
@@ -40,6 +41,7 @@ export default function HomePage() {
   const [selectedProvider, setSelectedProvider] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState("");
   const [selectedUserType, setSelectedUserType] = useState("");
+  const [typeOfUser, setTypeOfUser] = useState("");
   const [faqGroups, setFaqGroups] = useState([]);
   const [faqActiveIndex, setFaqActiveIndex] = useState(null);
   const [buttonIcons, setButtonIcons] = useState([]);
@@ -58,6 +60,7 @@ export default function HomePage() {
   const [pendingLocation, setPendingLocation] = useState(false);
   const [lastSelectedType, setLastSelectedType] = useState("");
   const [lastBotMessage, setLastBotMessage] = useState("");
+  const [lastBotMessageIds, setLastBotMessageIds] = useState([]);
   const [locationModeKey, setLocationModeKey] = useState("");
   const [locationConfirmationData, setLocationConfirmationData] = useState(null);
   const [mainMenuHeading, setMainMenuHeading] = useState(null);
@@ -108,9 +111,11 @@ export default function HomePage() {
 
   const [otpResendCount, setOtpResendCount] = useState(2);
   const [disableAllInputs, setDisableAllInputs] = useState(false);
+  const [pendingIntentExample, setPendingIntentExample] = useState(null);
+  const [pendingFallbackLanguage, setPendingFallbackLanguage] = useState(null);
   const [emailCountDown, setEmailCountDown] = useState(2);
 
-
+console.log("awaitingOtp",awaitingOtp);
   const {
     branchData,
     selectedDistance,
@@ -191,6 +196,7 @@ export default function HomePage() {
     setSelectedProvider("");
     setSelectedLanguage("");
     setSelectedUserType("");
+    setTypeOfUser("");
     setFaqGroups([]);
     setFaqActiveIndex(null);
     setAwaitingCaNumber(false);
@@ -202,12 +208,15 @@ export default function HomePage() {
     setEmailValidation(false);
     setButtonIcons([]);
     setLastBotMessage("");
+    setLastBotMessageIds([]);
     resetBranchAccordion();
     setMainMenuButtons(null);
     setMainMenuHeading(null);
     setOtpResendCount(2);
     setDisableAllInputs(false);
     setEmailCountDown(2);
+    setPendingIntentExample(null);
+    setPendingFallbackLanguage(null);
     setIsBotLoading(false)
     setIsLoadingTimeout(false)
     setIsOrderIdPrefixActive(false)
@@ -507,20 +516,8 @@ export default function HomePage() {
 
 
   useEffect(() => {
-    if (
-      lastBotMessage?.includes(
-        "Please enter your Order ID. The Order ID starts with ‘008’, ‘AN’, or ‘ON’"
-      ) ||
-      lastBotMessage?.includes(
-        "Please enter your Order ID. The Order ID starts with ‘008’, '8', ‘AN’, or ‘ON’"
-      ) ||
-      lastBotMessage?.includes(
-        "कृपया अपना ऑर्डर आईडी दर्ज करें। आपका ऑर्डर आईडी '008', '8', 'AN' या 'ON' से शुरू होता है"
-      ) ||
-      lastBotMessage?.includes(
-        "कृपया अपना ऑर्डर आईडी दर्ज करें। आपका ऑर्डर आईडी '008','AN' या 'ON' से शुरू होता है।"
-      )
-    ) {
+    // Set Order ID prefix active when bot asks for Order ID (using ID-based check)
+    if (hasMessageId(lastBotMessageIds, MESSAGE_IDS.ORDER_ID_PROMPT_EN, MESSAGE_IDS.ORDER_ID_PROMPT_HI)) {
       setIsOrderIdPrefixActive(true);
     } else if (
       lastBotMessage?.includes("New connection request") ||
@@ -528,7 +525,7 @@ export default function HomePage() {
     ) {
       setIsOrderIdPrefixActive(false);
     }
-  }, [lastBotMessage]);
+  }, [lastBotMessageIds, lastBotMessage]);
 
   useEffect(() => {
     if (feedbackQuestions.length > 0) {
@@ -612,10 +609,17 @@ export default function HomePage() {
     setIsBotLoading(true);
     try {
       // Send only the message to backend
-      const data = await apiClient.post("/webhook", {
+      const webhookPayload = {
         sender_id: userId,
         message,
-      }, { signal: getAbortSignal() });
+      };
+
+      // Add is_menu_visible if language is set
+      if (selectedLanguage) {
+        webhookPayload.is_menu_visible = "true";
+      }
+
+      const data = await apiClient.post("/webhook", webhookPayload, { signal: getAbortSignal() });
 
       // Handle bot response
       if (data?.response && data.response.heading?.length > 0) {
@@ -877,11 +881,14 @@ export default function HomePage() {
       } else {
         setIsInputDisabled(false);
       }
+
+      // Return the status from the API response
+      return res?.status;
     } catch (err) {
       // Ignore cancelled requests
       if (err.name === 'AbortError' || err.name === 'CanceledError') {
         console.log("Poll initialization request cancelled");
-        return;
+        return false;
       }
       if (err?.response?.status === 404 || err?.response?.data?.status === "fail") {
         showMainMenu(mainMenuHeadingTempRef.current, mainMenuButtonsTempRef.current);
@@ -897,6 +904,8 @@ export default function HomePage() {
       setCurrentPollIndex(0);
       setPollAnswers({});
       setIsInputDisabled(false);
+
+      return false;
     }
   };
 
@@ -1028,11 +1037,8 @@ export default function HomePage() {
       awaitingLanguageValidationRef.current = true;
     }
 
-    // Reset flags when language change is successful
-    if (
-      lastBotMessage?.includes("Language updated successfully") ||
-      lastBotMessage?.includes("भाषा सफलतापूर्वक बदल दी गई है")
-    ) {
+    // Reset flags when language change is successful (using ID-based check)
+    if (hasMessageId(lastBotMessageIds, MESSAGE_IDS.LANGUAGE_UPDATED_EN, MESSAGE_IDS.LANGUAGE_UPDATED_HI)) {
       setAwaitingLanguageValidation(false);
       awaitingLanguageValidationRef.current = false;
     }
@@ -1167,18 +1173,11 @@ export default function HomePage() {
       }
     }
 
+    // Set flag when bot asks for Order ID (using ID-based check)
+    // Only set true if not already in awaiting state (to prevent re-setting after validation)
     if (
-      lastBotMessage?.includes(
-        "Please enter your Order ID. The Order ID starts with ‘008’, ‘AN’, or ‘ON’"
-      ) ||
-       lastBotMessage?.includes(
-        "Please enter your Order ID. The Order ID starts with ‘008’, '8', ‘AN’, or ‘ON’"
-      ) ||
-      lastBotMessage?.includes(
-        "कृपया अपना ऑर्डर आईडी दर्ज करें। आपका ऑर्डर आईडी '008', 'AN' या 'ON' से शुरू होता है।"
-      ) ||
-        lastBotMessage?.includes("कृपया अपना ऑर्डर आईडी दर्ज करें। आपका ऑर्डर आईडी '008','AN' या 'ON' से शुरू होता है।"
-      )
+      !awaitingOrderIdRef.current &&
+      hasMessageId(lastBotMessageIds, MESSAGE_IDS.ORDER_ID_PROMPT_EN, MESSAGE_IDS.ORDER_ID_PROMPT_HI)
     ) {
       setAwaitingOrderId(true);
       awaitingOrderIdRef.current = true;
@@ -1186,18 +1185,7 @@ export default function HomePage() {
 
     if (
       awaitingOrderIdRef.current ||
-      lastBotMessage?.includes(
-        "Please enter your Order ID. The Order ID starts with ‘008’, ‘AN’, or ‘ON’"
-      ) ||
-      lastBotMessage?.includes(
-        "Please enter your Order ID. The Order ID starts with ‘008’, '8', ‘AN’, or ‘ON’"
-      ) ||
-      lastBotMessage?.includes(
-        "कृपया अपना ऑर्डर आईडी दर्ज करें। आपका ऑर्डर आईडी '008', '8', 'AN' या 'ON' से शुरू होता है।"
-      ) || 
-       lastBotMessage?.includes(
-        "कृपया अपना ऑर्डर आईडी दर्ज करें। आपका ऑर्डर आईडी '008','AN' या 'ON' से शुरू होता है।"
-      )
+      hasMessageId(lastBotMessageIds, MESSAGE_IDS.ORDER_ID_PROMPT_EN, MESSAGE_IDS.ORDER_ID_PROMPT_HI)
     ) {
       try {
         const order = msg.trim();
@@ -1215,24 +1203,13 @@ export default function HomePage() {
         const resp = await apiClient.post("/get_order_status", {
           order_id: order,
           sender_id: sender_id,
-
         }, { signal: getAbortSignal() });
         const isValid = resp?.valid === true;
 
-        // Determine message based on language
-        let message = "";
-        if (
-          lastBotMessage?.includes(
-            "कृपया अपना ऑर्डर आईडी दर्ज करें। आपका ऑर्डर आईडी '008', 'AN' या 'ON' से शुरू होता है।"
-          ) ||
-          lastBotMessage?.includes(
-            "आपने जो ऑर्डर आईडी दर्ज की है वह मान्य नहीं है। कृपया दोबारा जांचें और फिर प्रयास करें।"
-          )
-        ) {
-          message = resp?.message_hindi;
-        } else {
-          message = resp?.message || "";
-        }
+        // Determine message based on language (use ID-based check)
+        const message = hasMessageId(lastBotMessageIds, MESSAGE_IDS.ORDER_ID_PROMPT_HI)
+          ? resp?.message_hindi
+          : (resp?.message || "");
 
         // Check if INVALID - show error and handle accordingly
         if (!isValid) {
@@ -1252,6 +1229,8 @@ export default function HomePage() {
             showMainMenu(resp.response.main_menu_heading, resp.response.main_menu_buttons);
             setAwaitingOrderId(false);
             awaitingOrderIdRef.current = false;
+            // Clear lastBotMessageIds to prevent re-triggering the Order ID prompt check
+            setLastBotMessageIds([]);
           }
           // else: flags stay TRUE for unlimited retry
 
@@ -1285,13 +1264,12 @@ export default function HomePage() {
 
     // --- Validate CA Number with backend API ---
 
+    // Set flag when bot asks for CA OTP (using ID-based check + text fallback)
     if (
       lastBotMessage?.includes("CA number is being processed") ||
       lastBotMessage?.includes("कृपया 6-अंकों का ओटीपी दर्ज करें") ||
       lastBotMessage?.includes("कृपया आगे बढ़ने के लिए इसे दर्ज करें।") ||
-      lastBotMessage?.includes(
-        "A 6-digit One-Time Password (OTP) has been sent to the provided mobile number."
-      )
+      hasMessageId(lastBotMessageIds, MESSAGE_IDS.OTP_PROMPT_EN, MESSAGE_IDS.OTP_PROMPT_HI)
     ) {
       setAwaitingOtp(true);
       awaitingOtpRef.current = true;
@@ -1302,9 +1280,7 @@ export default function HomePage() {
       lastBotMessage?.includes("CA number is being processed") ||
       lastBotMessage?.includes("कृपया 6-अंकों का ओटीपी दर्ज करें") ||
       lastBotMessage?.includes("कृपया आगे बढ़ने के लिए इसे दर्ज करें।") ||
-      lastBotMessage?.includes(
-        "A 6-digit One-Time Password (OTP) has been sent to the provided mobile number."
-      )
+      hasMessageId(lastBotMessageIds, MESSAGE_IDS.OTP_PROMPT_EN, MESSAGE_IDS.OTP_PROMPT_HI)
     ) {
       try {
         let otp = msg.trim();
@@ -1325,9 +1301,11 @@ export default function HomePage() {
         });
 
         const isValid = resp?.valid === true;
+        // Use ID-based check to determine language (check if Hindi OTP prompt was sent)
+        const isHindi = hasMessageId(lastBotMessageIds, MESSAGE_IDS.OTP_PROMPT_HI) || languageToUse.includes("हिंदी");
         const message = isValid
           ? "OTP verified successfully."
-          : (languageToUse.includes("हिंदी")
+          : (isHindi
             ? "कृपया एक मान्य 6 अंकों का OTP दर्ज करें। शेष प्रयास: "
             : "Please enter a valid 6-digit OTP. Retries left: ") + otpResendCount;
 
@@ -1343,7 +1321,7 @@ export default function HomePage() {
               text:
                 otpResendCount > 0
                   ? message
-                  : languageToUse.includes("हिंदी")
+                  : isHindi
                     ? "बहुत अधिक प्रयास हो गए हैं। कृपया होम बटन पर क्लिक करके पुनः शुरू करें।"
                     : "Too many attempts. Let's start over. Click home button to start over",
               timestamp: new Date(),
@@ -1370,21 +1348,14 @@ export default function HomePage() {
     }
 
 
-    if (
-      lastBotMessage?.includes("Please enter your 10-digit valid mobile") ||
-      lastBotMessage?.includes(
-        "कॉलबैक प्राप्त करने और आगे की सहायता के लिए कृपया अपना वैध 10 अंकों"
-      )
-    ) {
+    // Set flag when bot asks for mobile number (using ID-based check)
+    if (hasMessageId(lastBotMessageIds, MESSAGE_IDS.MOBILE_PROMPT_EN, MESSAGE_IDS.MOBILE_PROMPT_HI)) {
       setAwaitingVisuall(true);
     }
 
     if (
       awaitingVisuall ||
-      lastBotMessage?.includes("Please enter your 10-digit valid mobile") ||
-      lastBotMessage?.includes(
-        "कॉलबैक प्राप्त करने और आगे की सहायता के लिए कृपया अपना वैध 10 अंकों"
-      )
+      hasMessageId(lastBotMessageIds, MESSAGE_IDS.MOBILE_PROMPT_EN, MESSAGE_IDS.MOBILE_PROMPT_HI)
     ) {
       try {
         let mobileNumberToSend = msg.trim();
@@ -1405,7 +1376,8 @@ export default function HomePage() {
         }, { signal: getAbortSignal() });
 
         const isValid = resp?.valid === true;
-        const message = languageToUse.includes("हिंदी")
+        // Use ID-based check to determine error message language
+        const message = hasMessageId(lastBotMessageIds, MESSAGE_IDS.MOBILE_PROMPT_HI)
           ? "कृपया एक मान्य 10 अंकों का मोबाइल नंबर दर्ज करें।"
           : resp?.message;
 
@@ -1438,12 +1410,8 @@ export default function HomePage() {
       }
     }
 
-    if (
-      lastBotMessage?.includes(
-        "A 6-digit One-Time Password (OTP) has been sent to the provided mobile number."
-      ) ||
-      lastBotMessage?.includes("आपके द्वारा दर्ज किए गए मोबाइल नंबर पर एक ओटीपी भेजा गया है।")
-    ) {
+    // Set flag when bot sends OTP to mobile (using ID-based check)
+    if (hasMessageId(lastBotMessageIds, MESSAGE_IDS.OTP_PROMPT_EN, MESSAGE_IDS.OTP_PROMPT_HI)) {
       setAwaitingVisuallOtp(true);
     }
 
@@ -1598,13 +1566,24 @@ export default function HomePage() {
 
     setIsBotLoading(true);
     try {
-      const data = await apiClient.post("/webhook", {
+      const webhookPayload = {
         sender_id,
         message: `${finalMessage} ${"BRPL"}`,
         lastSelectedOption: effectiveLastOption,
         source: source || "web",
+      };
 
-      }, { signal: getAbortSignal() });
+      // Add is_menu_visible if language is set
+      if (selectedLanguage) {
+        webhookPayload.is_menu_visible = "true";
+      }
+
+      // Add type_of_user if available
+      if (typeOfUser) {
+        webhookPayload.type_of_user = typeOfUser;
+      }
+
+      const data = await apiClient.post("/webhook", webhookPayload, { signal: getAbortSignal() });
 
       let newBotMessages = [];
 
@@ -1616,7 +1595,7 @@ export default function HomePage() {
 
       // 1. Store cleaned previous_message into states
       if (data?.response) {
-        let { subsidiary, user_type, language } = data.response;
+        let { subsidiary, user_type, language, type_of_user } = data.response;
 
         if (subsidiary) {
           subsidiary = subsidiary.replace(/\bBRPL\b/gi, "").trim();
@@ -1631,6 +1610,10 @@ export default function HomePage() {
         if (language) {
           language = language.replace(/\bBRPL\b/gi, "").trim();
           setSelectedLanguage(language);
+        }
+
+        if (type_of_user) {
+          setTypeOfUser(type_of_user);
         }
       }
 
@@ -1655,11 +1638,19 @@ export default function HomePage() {
       }
 
       let botText = "";
+      let messageIds = [];
 
       if (typeof data.response === "string") {
         botText = data.response;
-      } else if (Array.isArray(data.response?.heading)) {
-        botText = data.response.heading.join("\n\n");
+      } else {
+        if (Array.isArray(data.response?.heading)) {
+          botText = data.response.heading.join("\n\n");
+        }
+        // Extract utter_message_id from webhook response
+        if (Array.isArray(data.response?.utter_message_id)) {
+          messageIds = data.response.utter_message_id;
+          setLastBotMessageIds(messageIds);
+        }
       }
 
       // STEP 4: Reset Flags If Validated
@@ -1682,10 +1673,10 @@ export default function HomePage() {
         setAwaitingOtp(false);
       }
 
+      // Reset mobile waiting flag when OTP is sent (using ID-based check + text fallback)
       if (
-        botText.includes("A 6-digit One-Time Password (OTP)") ||
+        hasMessageId(messageIds, MESSAGE_IDS.OTP_PROMPT_EN, MESSAGE_IDS.OTP_PROMPT_HI) ||
         botText.includes("Too many attempts. Let's start over. Click home button to start over") ||
-        botText.includes("आपके द्वारा दर्ज किए गए मोबाइल नंबर पर एक ओटीपी भेजा गया है।") ||
         botText.includes("ओटीपी सफलतापूर्वक")
       ) {
         setAwaitingVisuall(false);
@@ -1700,6 +1691,11 @@ export default function HomePage() {
       ) {
         setAwaitingOrderId(false);
       }
+
+      // Reset flag when OTP is validated (using ID-based check)
+      // if (hasMessageId(messageIds, MESSAGE_IDS.OTP_VALIDATED_EN, MESSAGE_IDS.OTP_VALIDATED_HI)) {
+      //   setAwaitingVisuallOtp(false);
+      // }
 
       if (
         botText.includes("OTP validated successfully") ||
@@ -1748,32 +1744,18 @@ export default function HomePage() {
         setDisableAllInputs(true);
       }
 
-      const isOtpValidated =
-        (typeof data.response === "string" &&
-          (data.response
-            .trim()
-            .toLowerCase()
-            .includes("otp validated for new ca number successfully") ||
-            data.response
-              .trim()
-              .includes("नए सीए नंबर के लिए ओटीपी सफलतापूर्वक सत्यापित किया गया।"))) ||
-        (Array.isArray(data.response?.heading) &&
-          data.response.heading.some(
-            (line) =>
-              line.toLowerCase().includes("otp validated for new ca number successfully") ||
-              line.includes("नए सीए नंबर के लिए ओटीपी सफलतापूर्वक सत्यापित किया गया।")
-          ));
+      // Check if CA OTP is validated (using ID-based check)
+      const isOtpValidated = hasMessageId(messageIds, MESSAGE_IDS.CA_OTP_VALIDATED_EN, MESSAGE_IDS.CA_OTP_VALIDATED_HI);
 
       // If user was "New Consumer", change to "Registered Consumer"
       const usertype = "Registered Consumer / पंजीकृत उपभोक्ता";
 
       if (isOtpValidated && selectedUserType) {
-        const otpMessage = selectedLanguage.includes("हिंदी")
-          ? "नए सीए नंबर के लिए ओटीपी सफलतापूर्वक सत्यापित किया गया।"
-          : "OTP validated for new CA number successfully.";
+        // Use backend message directly (from botText) instead of hardcoded message
+        // This ensures admin changes from backend are reflected
+        const otpMessage = botText;
 
         newBotMessages.push({
-          // id: uuidv4(),
           id: uuidv4(),
           sender: "bot",
           text: otpMessage,
@@ -1781,19 +1763,11 @@ export default function HomePage() {
         });
         setLastBotMessage(otpMessage);
 
-        const otpSuccessPhrases = [
-          "नए सीए नंबर के लिए ओटीपी सफलतापूर्वक सत्यापित किया गया।",
-          "OTP validated for new CA number successfully.",
-        ];
-
-        let updatedUserType = selectedUserType;
-        if (otpSuccessPhrases.some((msg) => otpMessage.includes(msg))) {
-          if (selectedUserType) {
-            updatedUserType = "Registered Consumer / पंजीकृत उपभोक्ता";
-            setUserType(updatedUserType);
-            setSelectedUserType(updatedUserType);
-          }
-        }
+        // Since isOtpValidated is true (ID-based check), directly update user type
+        // No need to check message text - ID confirms it's CA OTP validated
+        let updatedUserType = "Registered Consumer / पंजीकृत उपभोक्ता";
+        setUserType(updatedUserType);
+        setSelectedUserType(updatedUserType);
 
         // --- AD MESSAGE: Always push at the end ---
         if (
@@ -2397,6 +2371,29 @@ export default function HomePage() {
       if (newBotMessages.length > 0) {
         setMessages((prev) => [...prev, ...newBotMessages]);
       }
+
+      // Handle intent_example fallback if present - show Yes/No confirmation
+      if (data?.response?.intent_example) {
+        setPendingIntentExample(data.response.intent_example);
+
+        // Store fallback_language if present
+        let fallbackLang = null;
+        if (data?.response?.fallback_language) {
+          fallbackLang = data.response.fallback_language;
+          setPendingFallbackLanguage(fallbackLang);
+        }
+
+        // Determine language for Yes/No buttons based on fallback_language
+        const isHindi = fallbackLang?.includes("हिंदी") || fallbackLang?.toLowerCase()?.includes("hindi");
+
+        const yesNoButtons = isHindi ? ["हां", "नहीं"] : ["Yes", "No"];
+
+        setButtons(yesNoButtons);
+        setGroupedButtons(null);
+        setSpecialMenuGroups([]);
+        setSpecialMenuActiveIdx(null);
+        setDisableAllInputs(true);  // Disable input when Yes/No buttons are shown
+      }
     } catch {
       // Only show error if this wasn't an intentional abort (e.g., from resetChat)
       if (!isIntentionalAbortRef.current) {
@@ -2421,6 +2418,108 @@ export default function HomePage() {
 
   const handleButton = async (btn) => {
     resetInactivityTimer();
+
+    // Mark all previous messages as history to disable their Open Link buttons
+    setMessages(prev => prev.map(msg => ({ ...msg, isHistoryMessage: true })));
+
+    // Handle Yes/No for intent_example confirmation
+    if (pendingIntentExample) {
+      if (btn === "Yes" || btn === "हां") {
+        setButtons([]);
+        setGroupedButtons(null);
+        setSpecialMenuGroups([]);
+        setSpecialMenuActiveIdx(null);
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: uuidv4(),
+            sender: "user",
+            text: btn,
+            timestamp: new Date(),
+          },
+        ]);
+
+        // If fallback_language is set, update selectedLanguage
+        const languageToSend = pendingFallbackLanguage || selectedLanguage;
+        if (pendingFallbackLanguage) {
+          setSelectedLanguage(pendingFallbackLanguage);
+        }
+
+        setIsBotLoading(true);
+        setDisableAllInputs(false);  // Re-enable input
+        await handleIntentExampleFallback(pendingIntentExample, languageToSend);
+        setPendingIntentExample(null);
+        setPendingFallbackLanguage(null);
+        setIsBotLoading(false);
+        return;
+      } else if (btn === "No" || btn === "नहीं") {
+        setButtons([]);
+        setGroupedButtons(null);
+        setSpecialMenuGroups([]);
+        setSpecialMenuActiveIdx(null);
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: uuidv4(),
+            sender: "user",
+            text: btn,
+            timestamp: new Date(),
+          },
+        ]);
+
+        setPendingIntentExample(null);
+        setPendingFallbackLanguage(null);
+        setIsBotLoading(true);
+
+        try {
+          const res = await apiClient.get("/get-global-fallback", {}, { signal: getAbortSignal() });
+          const data = res?.data || res;
+
+          if (Array.isArray(data) && data.length > 0) {
+            const fallbackData = data[0];
+
+            // Show initial message first
+            if (fallbackData.initial_msg) {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: uuidv4(),
+                  sender: "bot",
+                  text: fallbackData.initial_msg,
+                  timestamp: new Date(),
+                },
+              ]);
+            }
+
+            // Show final message
+            // if (fallbackData.final_msg) {
+            //   setMessages((prev) => [
+            //     ...prev,
+            //     {
+            //       id: uuidv4(),
+            //       sender: "bot",
+            //       text: fallbackData.final_msg,
+            //       timestamp: new Date(),
+            //     },
+            //   ]);
+            // }
+          }
+        } catch (err) {
+          // Ignore cancelled requests
+          if (err.name === 'AbortError' || err.name === 'CanceledError') {
+            console.log("Global fallback request cancelled");
+            return;
+          }
+          console.error("Failed to get global fallback:", err);
+        } finally {
+          setIsBotLoading(false);
+          setDisableAllInputs(false);  // Re-enable input
+        }
+        return;
+      }
+    }
 
     setButtons([]);
     setGroupedButtons(null);
@@ -2624,6 +2723,7 @@ export default function HomePage() {
         setGroupedButtons(null); // Clear grouped buttons
         setFaqGroups([]); // Clear FAQ accordions
 
+        let pollStatus = false;
 
         try {
           const submenu = lastSelectedOption;
@@ -2671,6 +2771,13 @@ export default function HomePage() {
                 timestamp: new Date(),
               },
             ]);
+
+            // Check if poll should be shown
+            if (ad?.poll === "show_poll") {
+              try {
+                pollStatus = await handlePollFlow();
+              } catch { }
+            }
           }
 
 
@@ -2722,10 +2829,13 @@ export default function HomePage() {
           }
         }
 
-        // Redirect after 5 seconds and call menu option API
-        setTimeout(async () => {
-          await handleMenuRequest();
-        }, 5000);
+        // Only redirect if poll status is false
+        if (!pollStatus) {
+          // Redirect after 5 seconds and call menu option API
+          setTimeout(async () => {
+            await handleMenuRequest();
+          }, 5000);
+        }
       }
       return;
     }
@@ -2787,34 +2897,6 @@ export default function HomePage() {
           },
         ]);
 
-        // Show redirect message after feedback submission
-        setTimeout(() => {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: uuidv4(),
-              sender: "bot",
-              text:
-                selectedLanguage === "हिंदी"
-                  ? "आपका सत्र समाप्त हो चुका है। आपको 5 सेकंड में होम पेज पर भेज दिया जाएगा।"
-                  : "You session has been expired.You will be redirected to home in 5 seconds...",
-              timestamp: new Date(),
-            },
-          ]);
-
-          // Disable input and all menu buttons
-          setIsInputDisabled(true);
-          setButtons([]);
-          setGroupedButtons(null);
-          setMainMenuButtons(null);
-          setSpecialMenuGroups([]);
-
-          // Reset chat after 5 seconds
-          setTimeout(() => {
-            resetChat();
-          }, 5000);
-        }, 500);
-
         setIsInputDisabled(false);
 
         if (res?.status === "success") {
@@ -2822,6 +2904,8 @@ export default function HomePage() {
           setMainMenuHeadingTemp(null);
           setMainMenuButtonsTemp(null);
         }
+
+        let pollStatus = false;
 
         if (data?.ad_option && data?.ad_option_submenu_name && data?.ad_option_type) {
           try {
@@ -2857,7 +2941,7 @@ export default function HomePage() {
 
             if (ad?.poll === "show_poll") {
               try {
-                await handlePollFlow();
+                pollStatus = await handlePollFlow();
               } catch { }
             }
           } catch (err) {
@@ -2874,6 +2958,37 @@ export default function HomePage() {
               mainMenuButtonsTempRef.current = null;
             }
           }
+        }
+
+        // Show redirect message only if poll status is false
+        if (!pollStatus) {
+          // Show redirect message after feedback submission
+          setTimeout(() => {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: uuidv4(),
+                sender: "bot",
+                text:
+                  selectedLanguage === "हिंदी"
+                    ? "आपका सत्र समाप्त हो चुका है। आपको 5 सेकंड में होम पेज पर भेज दिया जाएगा।"
+                    : "You session has been expired.You will be redirected to home in 5 seconds...",
+                timestamp: new Date(),
+              },
+            ]);
+
+            // Disable input and all menu buttons
+            setIsInputDisabled(true);
+            setButtons([]);
+            setGroupedButtons(null);
+            setMainMenuButtons(null);
+            setSpecialMenuGroups([]);
+
+            // Reset chat after 5 seconds
+            setTimeout(() => {
+              resetChat();
+            }, 5000);
+          }, 500);
         }
       } catch {
         setMessages((prev) => [
@@ -2915,6 +3030,9 @@ export default function HomePage() {
       ]);
       return;
     }
+
+    // Mark all previous messages as history to disable their Open Link buttons
+    setMessages(prev => prev.map(msg => ({ ...msg, isHistoryMessage: true })));
 
     const registeredKeywords = [
       "Registered Consumer / पंजीकृत उपभोक्ता",
@@ -3002,6 +3120,9 @@ export default function HomePage() {
   };
 
   const handleGroupedButton = (opt) => {
+    // Mark all previous messages as history to disable their Open Link buttons
+    setMessages(prev => prev.map(msg => ({ ...msg, isHistoryMessage: true })));
+
     setGroupedButtons(null);
     sendMessage(opt);
   };
@@ -3013,6 +3134,10 @@ export default function HomePage() {
 
   const handleSpecialMenuOption = async (opt) => {
     resetInactivityTimer();
+
+    // Mark all previous messages as history to disable their Open Link buttons
+    setMessages(prev => prev.map(msg => ({ ...msg, isHistoryMessage: true })));
+
     setSpecialMenuActiveIdx(null);
     setSpecialMenuGroups([]);
     setLastSelectedOption(opt);
@@ -3096,6 +3221,10 @@ export default function HomePage() {
       ]);
       return;
     }
+
+    // Mark all previous messages as history to disable their Open Link buttons
+    setMessages(prev => prev.map(msg => ({ ...msg, isHistoryMessage: true })));
+
     setMainMenuButtons(null);
     setMainMenuHeading(null);
     resetBranchAccordion();
@@ -3116,6 +3245,7 @@ export default function HomePage() {
     setEmailValidation(false);
     setButtonIcons([]);
     setLastBotMessage("");
+    setLastBotMessageIds([]);
     resetBranchAccordion();
     setMainMenuButtons(null);
     setMainMenuHeading(null);
@@ -3229,10 +3359,290 @@ export default function HomePage() {
     }
   };
 
+  const handleIntentExampleFallback = async (intentExampleValue, languageOverride = null) => {
+    try {
+      // Use languageOverride if provided, otherwise use selectedLanguage
+      const languageToUse = languageOverride || selectedLanguage;
+
+      // Determine if user is New Consumer or Registered Consumer (keyword-based check)
+      const newConsumerKeywords = ["New Consumer / नया उपभोक्ता", "new consumer", "new", "नया उपभोक्ता", "नया"];
+      const registeredKeywords = ["Registered Consumer / पंजीकृत उपभोक्ता", "registered consumer", "registered", "reg", "पंजीकृत उपभोक्ता", "पंजीकृत", "उपभोक्ता"];
+
+      const isNewConsumer = selectedUserType
+        ? newConsumerKeywords.some((kw) => selectedUserType.toLowerCase().includes(kw.toLowerCase()))
+        : false;
+
+      const isRegisteredConsumer = selectedUserType
+        ? registeredKeywords.some((kw) => selectedUserType.toLowerCase().includes(kw.toLowerCase()))
+        : false;
+
+      let endpoint = "";
+      let payload = {};
+
+      if (isNewConsumer) {
+        // New Consumer Flow
+        endpoint = "/menu_run_flow_submenu_fallback";
+        payload = {
+          subsidiary: "BSES Rajdhani BRPL",
+          user: "New Consumer / नया उपभोक्ता BRPL",
+          language: `${languageToUse} BRPL`,
+          sender_id: userId,
+          message: intentExampleValue,
+        };
+
+        // Add type_of_user if available
+        if (typeOfUser) {
+          payload.type_of_user = typeOfUser;
+        }
+      } else if (isRegisteredConsumer) {
+        // Registered Consumer Flow
+        endpoint = "/register_menu_run_flow_submenu_fallback";
+        payload = {
+          subsidiary: "BSES Rajdhani BRPL",
+          user: "Registered Consumer / पंजीकृत उपभोक्ता BRPL",
+          language: `${languageToUse} BRPL`,
+          sender_id: userId,
+          ca_number: "CA VALIDATED BRPL",
+          otp: "OTP VALIDATED BRPL",
+          message: intentExampleValue,
+        };
+
+        // Add type_of_user if available
+        if (typeOfUser) {
+          payload.type_of_user = typeOfUser;
+        }
+      } else {
+        // If user type is not determined, skip the fallback call
+        console.log("User type not determined, skipping intent_example fallback");
+        return;
+      }
+
+      // Make the API call
+      const res = await apiClient.post(endpoint, payload, { signal: getAbortSignal() });
+
+      // Process the response similar to existing flows
+      const data = res?.response;
+
+      // Update states from response (like sendMessage does)
+      if (data) {
+        let { subsidiary, user_type, language, type_of_user } = data;
+
+        if (subsidiary) {
+          subsidiary = subsidiary.replace(/\bBRPL\b/gi, "").trim();
+          setSelectedProvider(subsidiary);
+        }
+
+        if (user_type) {
+          user_type = user_type.replace(/\bBRPL\b/gi, "").trim();
+          setSelectedUserType(user_type);
+        }
+
+        if (language) {
+          language = language.replace(/\bBRPL\b/gi, "").trim();
+          setSelectedLanguage(language);
+        }
+
+        if (type_of_user) {
+          setTypeOfUser(type_of_user);
+        }
+      }
+
+      // Handle main_menu_heading and main_menu_buttons
+      if (data?.main_menu_heading && data?.main_menu_buttons) {
+        if (!data?.ad_option) {
+          // No ad_option, show main menu immediately after delay
+          showMainMenu(data.main_menu_heading, data.main_menu_buttons);
+        } else {
+          // ad_option exists, store in temp
+          storeMenuTemp(data.main_menu_heading, data.main_menu_buttons);
+        }
+      } else {
+        // Clear any pending delayed show and hide menu immediately
+        if (mainMenuTimeoutRef.current) {
+          clearTimeout(mainMenuTimeoutRef.current);
+          mainMenuTimeoutRef.current = null;
+        }
+        setMainMenuHeading(null);
+        setMainMenuButtons(null);
+        setMainMenuHeadingTemp(null);
+        setMainMenuButtonsTemp(null);
+      }
+
+      if (data && Array.isArray(data.buttons) && Array.isArray(data.heading)) {
+        // Check if this is FAQ style (numbered buttons AND numbered heading lines)
+        const isFaqStyle =
+          data.buttons?.every((btn) => /^\d+\./.test(btn)) &&
+          data.heading?.some((line) => /^\d+\./.test(line));
+
+        // Show heading message only if it has content AND it's not FAQ style
+        if (data.heading.length > 0 && !isFaqStyle) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: uuidv4(),
+              sender: "bot",
+              text: data.heading.join("\n\n"),
+              timestamp: new Date(),
+            },
+          ]);
+          setLastBotMessage(data.heading.join("\n\n"));
+        }
+
+        // Handle FAQ style responses
+        if (isFaqStyle) {
+          const grouped = data.buttons.map((btn) => {
+            const number = btn.split(".")[0];
+            const allLines = [];
+            const headingLines = data.heading;
+            for (let i = 0; i < headingLines.length; i++) {
+              const line = headingLines[i];
+              if (line.startsWith(`${number}.`)) {
+                allLines.push(line);
+                let j = i + 1;
+                while (j < headingLines.length && !/^\d+\./.test(headingLines[j])) {
+                  allLines.push(headingLines[j]);
+                  j++;
+                }
+                break;
+              }
+            }
+            return {
+              title: btn,
+              content: allLines,
+            };
+          });
+
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: uuidv4(),
+              sender: "bot",
+              faqGroups: grouped,
+              timestamp: new Date(),
+            },
+          ]);
+
+          setFaqGroups([]);
+          setButtons([]);
+          setGroupedButtons(null);
+          setSpecialMenuGroups([]);
+          setSpecialMenuActiveIdx(null);
+        } else {
+          // Not FAQ style, handle other response types
+          const updatedButtons = data.buttons.map((btn) => {
+            if (btn === "Virtual Customer Care Centre (BYPL) / Connect Virtually (BRPL)") {
+              return "Connect Virtually (BRPL)";
+            }
+            if (btn === "वर्चुअल कस्टमर केयर सेंटर (BYPL) / वर्चुअली कनेक्ट करें (BRPL)") {
+              return "वर्चुअली कनेक्ट करें (BRPL)";
+            }
+            return btn;
+          });
+
+          // Check if this is main complaint buttons (numbered format with empty heading)
+          if (
+            data.heading.length === 0 &&
+            data.buttons.some((btn) => /^\d+\.\s?/.test(btn))
+          ) {
+            const mainBtns = getMainComplaintButtons(data.buttons);
+            setSpecialMenuMainButtons(mainBtns);
+            setSpecialMenuSubButtons([]);
+            setSpecialMenuParent(null);
+            setLastSpecialMenuButtons(data.buttons);
+
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: uuidv4(),
+                sender: "bot",
+                type: "specialMenuMainButtons",
+                specialMenuMainButtons: mainBtns,
+                lastSpecialMenuButtons: data.buttons,
+              },
+            ]);
+
+            setButtons([]);
+            setGroupedButtons(null);
+            setSpecialMenuGroups([]);
+            setSpecialMenuActiveIdx(null);
+            setFaqGroups([]);
+            setFaqActiveIndex(null);
+            setShowProviderButton(false);
+            setButtonIcons(data.icons || []);
+          }
+          // Check if this is a special menu response
+          else if (isSpecialMenuResponse(data)) {
+            const groups = groupButtons(updatedButtons);
+            setFaqGroups([]);
+            setFaqActiveIndex(null);
+            setSpecialMenuGroups(groups);
+            setButtonIcons(data.icons || []);
+            setSpecialMenuActiveIdx(null);
+            setButtons([]);
+            setGroupedButtons(null);
+            setShowProviderButton(false);
+          } else {
+            // Regular buttons (like language selection)
+            setButtons(updatedButtons);
+            setButtonIcons(data.icons || []);
+            setSpecialMenuGroups([]);
+            setSpecialMenuActiveIdx(null);
+            setGroupedButtons(null);
+            setFaqGroups([]);
+            setFaqActiveIndex(null);
+            setShowProviderButton(false);
+
+            // Check if this is language selection (set flag for proper handling in handleButton)
+            const isLanguageSelection = updatedButtons.some(btn =>
+              btn.toLowerCase() === "english" || btn === "हिंदी"
+            );
+            if (isLanguageSelection || data?.change_language) {
+              setIsLanguageChangeRequested(true);
+            }
+          }
+        }
+      }
+      // Handle intent_example in response (for chained Yes/No confirmations)
+      if (data?.intent_example) {
+        setPendingIntentExample(data.intent_example);
+
+        // Store fallback_language if present
+        let fallbackLang = null;
+        if (data?.fallback_language) {
+          fallbackLang = data.fallback_language;
+          setPendingFallbackLanguage(fallbackLang);
+        }
+
+        // Determine language for Yes/No buttons based on fallback_language
+        const isHindi = fallbackLang?.includes("हिंदी") || fallbackLang?.toLowerCase()?.includes("hindi");
+
+        const yesNoButtons = isHindi ? ["हां", "नहीं"] : ["Yes", "No"];
+
+        setButtons(yesNoButtons);
+        setGroupedButtons(null);
+        setSpecialMenuGroups([]);
+        setSpecialMenuActiveIdx(null);
+        setDisableAllInputs(true);  // Disable input when Yes/No buttons are shown
+      }
+    } catch (err) {
+      // Ignore cancelled requests
+      if (err.name === 'AbortError' || err.name === 'CanceledError') {
+        console.log("Intent example fallback request cancelled");
+        return;
+      }
+      console.error("Failed to handle intent_example fallback:", err);
+      // Don't show error to user as this is a fallback operation
+    }
+  };
+
   const handleSend = async () => {
     resetInactivityTimer();
     if (!input.trim()) return;
     const userMsg = input.trim().toLowerCase();
+
+    // Mark all previous messages as history to disable their Open Link buttons
+    setMessages(prev => prev.map(msg => ({ ...msg, isHistoryMessage: true })));
+
     setMainMenuHeading(null);
     setMainMenuButtons(null);
     setSpecialMenuGroups([]);
@@ -3393,7 +3803,7 @@ export default function HomePage() {
             />
 
             {pollQuestions.length > 0 && currentPollIndex < pollQuestions.length && (
-              <div className="mt-4 p-3 border-t border-gray-300">
+              <div className="mt-2 p-2 border-gray-300">
                 <p className="text-start latoFont font-medium px-4 py-2 rounded-xl text-[15px] border border-[#7D7878] whitespace-pre-line break-words bg-white text-gray-800 shadow max-w-[calc(100%-50px)]">
                   {pollQuestions[currentPollIndex]?.question}
                 </p>
@@ -3472,6 +3882,7 @@ export default function HomePage() {
             menuEnabled={selectedLanguage && selectedUserType && selectedProvider}
             handleFileUpload={handleFileUpload}
             lastBotMessage={lastBotMessage}
+            lastBotMessageIds={lastBotMessageIds}
             setLastBotMessage={setLastBotMessage}
             handleLatLngExtracted={handleLatLngExtracted}
             locationModeKey={locationModeKey}

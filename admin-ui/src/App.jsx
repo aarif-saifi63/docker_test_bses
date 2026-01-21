@@ -172,7 +172,7 @@ function App() {
     <AuthProvider>
       <Toaster />
       <RouterProvider router={router} />
-      
+
     </AuthProvider>
   );
 }

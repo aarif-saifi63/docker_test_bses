@@ -16,7 +16,7 @@ from Controllers.complaints_support_controller import complaint_status
 from Controllers.dashboard_controller import average_interaction_time, chat_status, count_opt_for_ebill, dashboard_complaint_status, get_session_counts, interaction_breakdown
 from Controllers.division_controller import get_divisions
 from Controllers.download_controller import download_ad_content, download_file_path_user, serve_media, view_icon
-from Controllers.fallback_controller import create_fallback, get_all_fallbacks, update_fallback
+from Controllers.fallback_controller import create_fallback, get_all_fallbacks, get_all_global_fallbacks, update_fallback
 from Controllers.feedback_mechanism_controller import add_feedback_question, delete_feedback_question, get_feedback_acceptance, get_feedback_questions, submit_feedback, update_feedback_question
 from Controllers.language_controller import create_language, delete_language, get_language, get_languages, get_visible_languages, update_language
 from Controllers.admin_intent_controller import create_intent, export_intents, get_intents, get_intent_by_id, update_intent, delete_intent
@@ -976,7 +976,7 @@ def protected_update_fallback(fallback_id):
 
 @app.route("/create/submenu-fallback", methods=["POST"])
 @token_required
-@permission_required(module_name="fallback", crud_action="create")
+@permission_required(module_name="fallback", crud_action="update")
 def protected_create_submenu_fallback():
     return create_submenu_fallback()
 
@@ -998,6 +998,14 @@ def protected_get_all_submenu_categories():
 def protected_get_submenu_fallback_by_category(category):
     return get_submenu_fallback_by_category(category)
 
+
+@app.route("/get-global-fallback", methods=["GET"])
+@chatbot_token_required
+def protected_get_all_global_fallback():
+    return get_all_global_fallbacks()
+
+# app.route("/get-global-fallback", methods=["GET"])(get_all_global_fallbacks)
+
 @app.route("/update/submenu-fallback/<string:category>", methods=["PUT"])
 @token_required
 @permission_required(module_name="fallback", crud_action="update")
@@ -1006,7 +1014,7 @@ def protected_update_submenu_fallback(category):
 
 @app.route("/delete/submenu-fallback/<string:category>", methods=["DELETE"])
 @token_required
-@permission_required(module_name="fallback", crud_action="delete")
+@permission_required(module_name="fallback", crud_action="update")
 def protected_delete_submenu_fallback(category):
     return delete_submenu_fallback(category)
 

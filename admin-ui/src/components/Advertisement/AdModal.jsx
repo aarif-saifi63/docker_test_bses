@@ -333,11 +333,10 @@ export default function AdModal({ mode, ad = {}, onClose, onSuccess }) {
         {/* Active */}
         <button
           onClick={() => setIsActive(!isActive)}
-          className={`flex items-center mb-2 gap-1 px-2 py-1 rounded-lg text-sm ${
-            isActive
-              ? "bg-green-100 text-green-700"
-              : "bg-gray-100 text-gray-600"
-          }`}
+          className={`flex items-center mb-2 gap-1 px-2 py-1 rounded-lg text-sm ${isActive
+            ? "bg-green-100 text-green-700"
+            : "bg-gray-100 text-gray-600"
+            }`}
         >
           {isActive ? (
             <>
@@ -374,8 +373,8 @@ export default function AdModal({ mode, ad = {}, onClose, onSuccess }) {
               thumbType === "image"
                 ? "image/*"
                 : thumbType === "video"
-                ? "video/*"
-                : ".pdf,.doc,.docx"
+                  ? "video/*"
+                  : ".pdf,.doc,.docx"
             }
             onChange={(e) => {
               const file = e.target.files[0];
@@ -418,9 +417,8 @@ export default function AdModal({ mode, ad = {}, onClose, onSuccess }) {
             <div className="mt-3">
               {(() => {
                 const path = ad.ad_image_path.toLowerCase();
-                const url = `${import.meta.env.VITE_API_BASE_URL}/${
-                  ad.ad_image_path
-                }`;
+                const url = `${import.meta.env.VITE_API_BASE_URL}/${ad.ad_image_path
+                  }`;
                 if (/\.(jpg|jpeg|png)$/i.test(path)) {
                   return (
                     <img
@@ -491,8 +489,8 @@ export default function AdModal({ mode, ad = {}, onClose, onSuccess }) {
               attachType === "image"
                 ? "image/*"
                 : attachType === "video"
-                ? "video/*"
-                : ".pdf,.doc,.docx"
+                  ? "video/*"
+                  : ".pdf,.doc,.docx"
             }
             onChange={(e) => {
               const file = e.target.files[0];
@@ -535,9 +533,8 @@ export default function AdModal({ mode, ad = {}, onClose, onSuccess }) {
             <div className="mt-3">
               {(() => {
                 const path = ad.ad_pdf_path.toLowerCase();
-                const url = `${import.meta.env.VITE_API_BASE_URL}/${
-                  ad.ad_pdf_path
-                }`;
+                const url = `${import.meta.env.VITE_API_BASE_URL}/${ad.ad_pdf_path
+                  }`;
                 if (/\.(jpg|jpeg|png)$/i.test(path)) {
                   return (
                     <img

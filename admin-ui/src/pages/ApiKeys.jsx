@@ -53,15 +53,15 @@ export default function ApiKeysPage() {
       }
 
       // const res = await axios.get(
-      //   `${import.meta.env.VITE_ADMIN_BASE_URL}/get-api-keys-breakdown`,
+      //   `${import.meta.env.VITE_API_BASE_URL}/get-api-keys-breakdown`,
       //   { params }
       // );
 
-      const res= await apiClient.get("/get-api-keys-breakdown",params)
-      setData(res.data|| []);
+      const res = await apiClient.get("/get-api-keys-breakdown", params)
+      setData(res.data || []);
     } catch (err) {
       console.error("Error fetching API keys", err);
-      toast.error(err?.response?.data?.message||"Failed to fetch API keys data");
+      toast.error(err?.response?.data?.message || "Failed to fetch API keys data");
     } finally {
       setLoading(false);
     }
@@ -118,7 +118,7 @@ export default function ApiKeysPage() {
       toast.success("✅ Exported all data");
     } catch (err) {
       console.error("Export error:", err);
-      toast.error(err?.response?.data?.message||"Export failed");
+      toast.error(err?.response?.data?.message || "Export failed");
     }
   };
 

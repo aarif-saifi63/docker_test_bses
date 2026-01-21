@@ -103,32 +103,32 @@ export default function AdsPage() {
           Loading advertisements...
         </div>
       )}
-        
+
       {!loading && ads.length === 0 && (
-  <div className="text-center py-20">
-    <div className="max-w-md mx-auto">
-      <svg 
-        className="w-20 h-20 text-gray-300 mx-auto mb-4" 
-        fill="none" 
-        stroke="currentColor" 
-        viewBox="0 0 24 24"
-      >
-        <path 
-          strokeLinecap="round" 
-          strokeLinejoin="round" 
-          strokeWidth={1.5} 
-          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" 
-        />
-      </svg>
-      <h3 className="text-xl font-semibold text-gray-700 mb-2">
-        No Advertisements Found
-      </h3>
-      <p className="text-gray-500 mb-6">
-        There are no advertisements to display at the moment.
-      </p>
-    </div>
-  </div>
-)}
+        <div className="text-center py-20">
+          <div className="max-w-md mx-auto">
+            <svg
+              className="w-20 h-20 text-gray-300 mx-auto mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">
+              No Advertisements Found
+            </h3>
+            <p className="text-gray-500 mb-6">
+              There are no advertisements to display at the moment.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
         {ads.map((ad) => (
@@ -139,9 +139,8 @@ export default function AdsPage() {
             {/* Header */}
             <div className="flex items-center gap-4">
               <img
-                src={`${import.meta.env.VITE_API_BASE_URL}/${
-                  ad.ad_image_path
-                }`}
+                src={`${import.meta.env.VITE_API_BASE_URL}/${ad.ad_image_path
+                  }`}
                 alt={ad.ad_name}
                 className="w-24 h-24 object-contain border rounded-md bg-gray-50"
               />
@@ -181,11 +180,10 @@ export default function AdsPage() {
               <p>
                 <button
                   // onClick={() => setIsActive(!isActive)}
-                  className={`flex items-center mb-2 gap-1 px-2 py-1 rounded-lg text-sm ${
-                    ad.is_active
-                      ? "bg-green-100 text-green-700"
-                      : "bg-gray-100 text-gray-600"
-                  }`}
+                  className={`flex items-center mb-2 gap-1 px-2 py-1 rounded-lg text-sm ${ad.is_active
+                    ? "bg-green-100 text-green-700"
+                    : "bg-gray-100 text-gray-600"
+                    }`}
                 >
                   {ad.is_active ? (
                     <>
@@ -207,9 +205,8 @@ export default function AdsPage() {
                 const DOC_EXT = ["pdf", "doc", "docx"];
                 const VIDEO_EXT = ["mp4", "mkv", "webm", "avi"];
 
-                const fileUrl = `${import.meta.env.VITE_API_BASE_URL}/${
-                  ad.ad_pdf_path
-                }`;
+                const fileUrl = `${import.meta.env.VITE_API_BASE_URL}/${ad.ad_pdf_path
+                  }`;
                 const ext = ad.ad_pdf_path.split(".").pop().toLowerCase();
 
                 let label = "View File";

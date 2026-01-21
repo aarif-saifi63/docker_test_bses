@@ -562,7 +562,7 @@ export default function PollsPage() {
                 <div className="flex justify-between items-center mb-2">
                   <h2 className="font-bold text-lg">{poll.title}</h2>
                   <button
-                    onClick={() => toggleActiveStatus(poll)}
+                    // onClick={() => toggleActiveStatus(poll)}
                     className={`flex items-center gap-1 px-2 py-1 rounded-lg text-sm ${
                       poll.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
                     }`}

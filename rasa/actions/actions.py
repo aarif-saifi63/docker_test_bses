@@ -363,6 +363,7 @@ class Register_consumer_options_english(Action):
             print(final_text, "=================================================== dynamic register eng")
 
             dispatcher.utter_message(text=final_text)
+            dispatcher.utter_message(text="registered")
 
         except Exception as e:
             dispatcher.utter_message(
@@ -434,6 +435,7 @@ class Register_consumer_options_hindi(Action):
             print(final_text, "=================================================== dynamic (Hindi)")
 
             dispatcher.utter_message(text=final_text)
+            dispatcher.utter_message(text="registered")
 
         except Exception as e:
             dispatcher.utter_message(text=f"माफ़ करें, मैं अभी मेनू विकल्प लोड नहीं कर पा रहा हूँ।\nत्रुटि: {str(e)}")
@@ -515,6 +517,7 @@ class New_consumer_options_english(Action):
             print(final_text, "=================================================== dynamic (New Consumer English)")
 
             dispatcher.utter_message(text=final_text)
+            dispatcher.utter_message(text="new")
 
         except Exception as e:
             dispatcher.utter_message(text=f"Sorry, I'm unable to load menu options right now.\nError: {str(e)}")
@@ -630,6 +633,7 @@ class New_consumer_options_hindi(Action):
             print(final_text, "=================================================== dynamic (New Consumer Hindi)")
 
             dispatcher.utter_message(text=final_text)
+            dispatcher.utter_message(text="new")
 
         except Exception as e:
             dispatcher.utter_message(

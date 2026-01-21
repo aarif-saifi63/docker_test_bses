@@ -3,6 +3,7 @@ import { Send, Mic, MicOff } from "lucide-react";
 import { IoMenu } from "react-icons/io5";
 import apiClient from "../../services/apiClient";
 import { Loader } from "@googlemaps/js-api-loader";
+import { MESSAGE_IDS, hasMessageId } from "../../constants/messageIds";
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const LOCATION_TRIGGERS = ["type your address manually", "अपना पता मैन्युअली टाइप करें"];
 
@@ -12,6 +13,7 @@ export default function ChatInput({
   handleSend,
   handleFileUpload,
   lastBotMessage,
+  lastBotMessageIds,
   handleLatLngExtracted,
   setLastBotMessage,
   locationModeKey,
@@ -67,27 +69,26 @@ export default function ChatInput({
 
   const botMsg = lastBotMessage?.trim() || "";
 
+  // CA Number Request - keep text-based (no ID available yet)
   const isCARequest =
     botMsg.includes("Please enter your CA number.") ||
     botMsg.includes("कृपया अपना सीए नंबर दर्ज करें।");
 
+  // CA OTP Request - keep text-based with "CA number is being processed"
   const isOTPRequest =
     botMsg.includes("CA number is being processed") ||
     botMsg.includes("कृपया 6 अंकों का ओटीपी दर्ज करें।");
 
-  const isOrderIDRequest =
-    botMsg.includes("Please enter your Order ID") ||
-    botMsg.includes("कृपया अपना ऑर्डर आईडी दर्ज करें।");
+  // Order ID Request - Use ID-based check
+  const isOrderIDRequest = hasMessageId(lastBotMessageIds, MESSAGE_IDS.ORDER_ID_PROMPT_EN, MESSAGE_IDS.ORDER_ID_PROMPT_HI);
 
-  const isOrderVisuall =
-    botMsg.includes("Please enter your 10-digit valid mobile number") ||
-    botMsg.includes("कॉलबैक प्राप्त करने और आगे की सहायता के लिए कृपया अपना वैध 10 अंकों");
+  // Mobile Number Request - Use ID-based check
+  const isOrderVisuall = hasMessageId(lastBotMessageIds, MESSAGE_IDS.MOBILE_PROMPT_EN, MESSAGE_IDS.MOBILE_PROMPT_HI);
 
-  const isOTPVisuall =
-    botMsg.includes("A 6-digit One-Time Password (OTP)") ||
-    botMsg.includes("आपके द्वारा दर्ज किए गए मोबाइल नंबर पर एक ओटीपी भेजा गया है।");
+  // OTP Prompt (after mobile) - Use ID-based check
+  const isOTPVisuall = hasMessageId(lastBotMessageIds, MESSAGE_IDS.OTP_PROMPT_EN, MESSAGE_IDS.OTP_PROMPT_HI);
 
-  // Email validation
+  // Email validation - keep text-based (no ID available yet)
   const isEmailRequest =
     botMsg.includes("Please enter your email ID.") ||
     botMsg.includes("Please enter new email ID.") ||
@@ -162,7 +163,7 @@ export default function ChatInput({
     isInputDisabled ||
     (isCARequest && input.trim().length !== 9) ||
     (isOTPRequest && input.trim().length !== 6) ||
-  (isOrderIDRequest && !(input.trim().length === 12 || input.trim().length === 10 || input.trim().length === 15)) ||
+    (isOrderIDRequest && !(input.trim().length === 12 || input.trim().length === 10 || input.trim().length === 15)) ||
     (awaitingOrderId && !(input.trim().length === 12 || input.trim().length === 10 || input.trim().length === 15)) ||
     (isOrderVisuall && input.trim().length !== 10) ||
     (isOTPVisuall && input.trim().length !== 6) ||
@@ -278,68 +279,68 @@ export default function ChatInput({
     handleLatLngExtracted?.({ lat, lng });
   };
 
-  const startRecording = async () => {
-    try {
-      // Request mic permission and start recording
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaStreamRef.current = stream;
+  // const startRecording = async () => {
+  //   try {
+  //     // Request mic permission and start recording
+  //     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  //     mediaStreamRef.current = stream;
 
-      const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
-      let chunks = [];
+  //     const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+  //     let chunks = [];
 
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.push(e.data);
-      };
+  //     recorder.ondataavailable = (e) => {
+  //       if (e.data.size > 0) chunks.push(e.data);
+  //     };
 
-      recorder.onstop = async () => {
-        const blob = new Blob(chunks, { type: "audio/webm" });
+  //     recorder.onstop = async () => {
+  //       const blob = new Blob(chunks, { type: "audio/webm" });
 
-        const formData = new FormData();
-        formData.append("audio", blob, "recording.webm");
-        try {
-          const resp = await apiClient.post("/speech-to-text", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
+  //       const formData = new FormData();
+  //       formData.append("audio", blob, "recording.webm");
+  //       try {
+  //         const resp = await apiClient.post("/speech-to-text", formData, {
+  //           headers: { "Content-Type": "multipart/form-data" },
+  //         });
 
-          const data = resp;
-          let transcript = data?.text?.trim() || "";
+  //         const data = resp;
+  //         let transcript = data?.result?.text?.trim() || "";
 
-          // Sanitize based on input context
-          if (isCARequest || awaitingCaNumber) {
+  //         // Sanitize based on input context
+  //         if (isCARequest || awaitingCaNumber) {
 
-            transcript = transcript.replace(/\D/g, "").slice(0, 9);
-          } else if (isOTPRequest || awaitingOtp || isOTPVisuall || awaitingVisuallOtp) {
+  //           transcript = transcript.replace(/\D/g, "").slice(0, 9);
+  //         } else if (isOTPRequest || awaitingOtp || isOTPVisuall || awaitingVisuallOtp) {
 
-            transcript = transcript.replace(/\D/g, "").slice(0, 6);
-          } else if (isOrderIDRequest || awaitingOrderId) {
+  //           transcript = transcript.replace(/\D/g, "").slice(0, 6);
+  //         } else if (isOrderIDRequest || awaitingOrderId) {
 
-            transcript = transcript.replace(/[^A-Za-z0-9]/g, "").slice(0, 15);
-          } else if (isOrderVisuall || awaitingVisuall) {
+  //           transcript = transcript.replace(/[^A-Za-z0-9]/g, "").slice(0, 15);
+  //         } else if (isOrderVisuall || awaitingVisuall) {
 
-            transcript = transcript.replace(/\D/g, "").slice(0, 10);
-          }
+  //           transcript = transcript.replace(/\D/g, "").slice(0, 10);
+  //         }
 
-          setInput(transcript);
-          setTimeout(() => inputRef.current?.focus(), 0)
-        } catch (err) {
-          console.error("Speech-to-text API error:", err);
-          toast.error(err.response.data.error || "Failed to reach backend for speech-to-text.");
-        }
+  //         setInput(transcript);
+  //         setTimeout(() => inputRef.current?.focus(), 0)
+  //       } catch (err) {
+  //         console.error("Speech-to-text API error:", err);
+  //         toast.error(err.response.data.error || "Failed to reach backend for speech-to-text.");
+  //       }
 
-        // cleanup
-        stream.getTracks().forEach((track) => track.stop());
-        mediaStreamRef.current = null;
-        setRecorder(null);
-      };
+  //       // cleanup
+  //       stream.getTracks().forEach((track) => track.stop());
+  //       mediaStreamRef.current = null;
+  //       setRecorder(null);
+  //     };
 
-      setRecorder(recorder);
-      recorder.start();
-      setIsRecording(true);
-    } catch (error) {
-      console.error("Microphone error:", error);
-      alert("Microphone access denied or error.");
-    }
-  };
+  //     setRecorder(recorder);
+  //     recorder.start();
+  //     setIsRecording(true);
+  //   } catch (error) {
+  //     console.error("Microphone error:", error);
+  //     alert("Microphone access denied or error.");
+  //   }
+  // };
 
   const stopRecording = () => {
     if (recorder) recorder.stop();

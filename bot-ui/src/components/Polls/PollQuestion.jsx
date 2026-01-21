@@ -15,16 +15,30 @@ export default function PollQuestion({
     case "yesno":
     case "thumbs":
       return (
-        <div className="flex flex-wrap gap-2 mt-2">
-          {q.options?.map((btn, idx) => (
-            <button
-              key={idx}
-              onClick={() => handlePollAnswer(q.id, btn)}
-              className="text-red-700 border border-red-400 bg-white rounded-full px-4 py-2 font-medium text-sm"
-            >
-              {btn}
-            </button>
-          ))}
+       <div className="w-full mt-3">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm text-gray-600">{q.min}</span>
+            <span className="text-lg font-semibold text-red-700 bg-red-50 px-3 py-1 rounded-full border border-red-200">
+              {pollAnswers[q.id] || q.min}
+            </span>
+            <span className="text-sm text-gray-600">{q.max}</span>
+          </div>
+          <input
+            type="range"
+            min={q.min}
+            max={q.max}
+            step={q.step || 1}
+            value={pollAnswers[q.id] || q.min}
+            onChange={(e) =>
+              setPollAnswers({ ...pollAnswers, [q.id]: e.target.value })
+            }
+            onMouseUp={(e) => handlePollAnswer(q.id, e.currentTarget.value)}
+            onTouchEnd={(e) => handlePollAnswer(q.id, e.currentTarget.value)}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+            style={{
+              background: `linear-gradient(to right, #DC2626 0%, #DC2626 ${((pollAnswers[q.id] || q.min) - q.min) / (q.max - q.min) * 100}%, #E5E7EB ${((pollAnswers[q.id] || q.min) - q.min) / (q.max - q.min) * 100}%, #E5E7EB 100%)`
+            }}
+          />
         </div>
       );
 

@@ -43,9 +43,9 @@ def create_submenu_fallback():
         if not is_valid:
             return jsonify({"status": False, "message": msg}), 400
         
-        is_valid, msg = InputValidator.validate_name(user_type, "user type")
-        if not is_valid:
-            return jsonify({"status": False, "message": msg}), 400
+        # is_valid, msg = InputValidator.validate_name(user_type, "user type")
+        # if not is_valid:
+        #     return jsonify({"status": False, "message": msg}), 400
 
         # Validate required fields
         if not category or not intent_names or not initial_msg:

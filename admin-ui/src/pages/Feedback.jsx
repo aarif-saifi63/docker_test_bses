@@ -216,55 +216,6 @@ export default function FeedbackQuestions() {
               )}
             </div>
 
-            {/* modalData */}
-            {editModalOpen && (
-              <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-end z-50">
-                <div className="bg-white w-96 p-6 h-full shadow-lg overflow-auto">
-                  <h3 className="text-lg font-bold mb-4">Edit Question</h3>
-
-                  <label className="block mb-2">
-                    Question:
-                    <input
-                      type="text"
-                      value={editQuestionData.question}
-                      onChange={(e) =>
-                        setEditQuestionData({
-                          ...editQuestionData,
-                          question: e.target.value,
-                        })
-                      }
-                      className="w-full border p-2 rounded mt-1"
-                    />
-                  </label>
-
-                  <label className="block mb-4">
-                    Options (comma separated):
-                    <input
-                      type="text"
-                      value={editOptionsString}
-                      onChange={(e) => setEditOptionsString(e.target.value)}
-                      className="w-full border p-2 rounded mt-1"
-                    />
-                  </label>
-
-                  <div className="flex justify-end gap-2">
-                    <button
-                      onClick={() => setEditModalOpen(false)}
-                      className="px-4 py-2 bg-gray-300 rounded"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleSaveQuestion}
-                      className="px-4 py-2 bg-blue-600 text-white rounded"
-                    >
-                      Save
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Action buttons */}
             <div className="flex gap-2 ml-4">
               <button
@@ -284,6 +235,55 @@ export default function FeedbackQuestions() {
           </div>
         ))}
       </div>
+
+      {/* Edit Modal - Moved outside the map loop */}
+      {editModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-end z-50">
+          <div className="bg-white w-96 p-6 h-full shadow-lg overflow-auto">
+            <h3 className="text-lg font-bold mb-4">Edit Question</h3>
+
+            <label className="block mb-2">
+              Question:
+              <input
+                type="text"
+                value={editQuestionData.question}
+                onChange={(e) =>
+                  setEditQuestionData({
+                    ...editQuestionData,
+                    question: e.target.value,
+                  })
+                }
+                className="w-full border p-2 rounded mt-1"
+              />
+            </label>
+
+            <label className="block mb-4">
+              Options (comma separated):
+              <input
+                type="text"
+                value={editOptionsString}
+                onChange={(e) => setEditOptionsString(e.target.value)}
+                className="w-full border p-2 rounded mt-1"
+              />
+            </label>
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setEditModalOpen(false)}
+                className="px-4 py-2 bg-gray-300 rounded"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveQuestion}
+                className="px-4 py-2 bg-blue-600 text-white rounded"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add New Question */}
       <div className="border p-4 rounded bg-gray-50 shadow">

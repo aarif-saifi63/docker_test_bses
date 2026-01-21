@@ -18,6 +18,7 @@ export default function MISDashboard() {
   const [endDate, setEndDate] = useState(new Date());
   const [peakData, setPeakData] = useState(null);
   const [chatStatusData, setChatStatusData] = useState(null);
+  const [fullChatData, setFullChatData] = useState(null);
   const [averageData, setAverageData] = useState(null);
   const [interactionsData, setInteractionsData] = useState([]);
   const [TotalInteraction, setTotalInteraction] = useState(null);
@@ -187,6 +188,7 @@ const closeModal = () => {
         "/mis/chat-completion-status",
         getParams()
       );
+      setFullChatData(chat); // Store full response with filters and stats
       setChatStatusData(
         chat?.stats?.[0] || {
           total_sessions: 0,
@@ -352,27 +354,29 @@ const closeModal = () => {
   };
 
   const handleExportChat = () => {
-    if (!chatStatusData) return;
+    if (!fullChatData || !fullChatData.stats) return;
 
-    const dataToExport = [
-      {
-        "Total Sessions": chatStatusData.total_sessions || 0,
-        "Chat Completed": chatStatusData.completed_chats || 0,
-        "Chat Left": chatStatusData.left_chats || 0,
-        "Average Duration": averageData?.average_duration || "",
-      },
-    ];
+    const statsData = fullChatData.stats.map((stat, index) => ({
+      "S.No": index + 1,
+      "Total Sessions": stat.total_sessions || 0,
+      "Completed Chats": stat.completed_chats || 0,
+      "Left Chats": stat.left_chats || 0,
+      "English Sessions": stat.english_sessions || 0,
+      "Hindi Sessions": stat.hindi_sessions || 0,
+      "New User Sessions": stat.new_user_sessions || 0,
+      "Registered User Sessions": stat.registered_user_sessions || 0,
+    }));
 
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const worksheet = XLSX.utils.json_to_sheet(statsData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Chat Status");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Chat Completion Stats");
 
     const excelBuffer = XLSX.write(workbook, {
       bookType: "xlsx",
       type: "array",
     });
     const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
-    saveAs(blob, "chat_status_report.xlsx");
+    saveAs(blob, "chat_completion_report.xlsx");
   };
 
   const handleExportVisually = () => {
@@ -521,9 +525,17 @@ const closeModal = () => {
       {/* Pagination */}
       <div className="flex justify-center items-center space-x-2 mt-4">
         <button
+          onClick={() => goToPage(1)}
+          disabled={currentPage === 1}
+          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300 transition-colors"
+        >
+          First
+        </button>
+
+        <button
           onClick={goToPrevPage}
           disabled={currentPage === 1}
-          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300 transition-colors"
         >
           Previous
         </button>
@@ -547,10 +559,10 @@ const closeModal = () => {
               <button
                 key={num}
                 onClick={() => goToPage(num)}
-                className={`px-3 py-1 rounded ${
+                className={`px-3 py-1 rounded transition-colors ${
                   num === currentPage
                     ? "bg-blue-600 text-white"
-                    : "bg-gray-200 text-black"
+                    : "bg-gray-200 text-black hover:bg-gray-300"
                 }`}
               >
                 {num}
@@ -561,9 +573,17 @@ const closeModal = () => {
         <button
           onClick={goToNextPage}
           disabled={currentPage === totalPages}
-          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300 transition-colors"
         >
           Next
+        </button>
+
+        <button
+          onClick={() => goToPage(totalPages)}
+          disabled={currentPage === totalPages}
+          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300 transition-colors"
+        >
+          Last
         </button>
       </div>
 

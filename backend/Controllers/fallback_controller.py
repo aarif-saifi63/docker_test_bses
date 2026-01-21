@@ -35,6 +35,20 @@ def get_all_fallbacks():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+def get_all_global_fallbacks():
+    try:
+        db = SessionLocal()
+        fallbacks = db.query(FallbackV).all()
+
+        result = [
+            {"id": f.id, "initial_msg": f.initial_msg, "final_msg": f.final_msg}
+            for f in fallbacks
+        ]
+        return jsonify(result), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 
