@@ -5,6 +5,7 @@ import requests
 from Controllers.api_key_master_controller import save_api_key_count
 from Models.session_model import Session
 from Controllers.rasa_webhook_controller import get_ist_time
+from Models.utter_messages_model import UtterMessage
 from database import SessionLocal
 from token_manager import token_manager
 import xml.etree.ElementTree as ET
@@ -194,6 +195,20 @@ def get_order_status():
         if order_status is None:
             # order_status = "There is no status available for the provided Order ID."
             # return jsonify({"message": "There is no status available for the provided Order ID.", "message_hindi": "इस ऑर्डर आईडी के लिए कोई स्टेटस नहीं मिला।", "status": False}), 200
+
+            thank_eng = db.query(UtterMessage).filter(
+                UtterMessage.id == 10,
+            ).first()
+
+            # thank_hin = db.query(UtterMessage).filter(
+            #     UtterMessage.id == 11,
+            # ).first()
+
+            # main_menu_texts = [
+            #     thank_eng.text,
+            #     thank_hin.text
+            # ]
+            
             return jsonify({
                 "order_status": order_status,
                 "valid": False,
@@ -205,7 +220,7 @@ def get_order_status():
                                             "Yes",
                                             "No"
                                             ],
-                    "main_menu_heading": "Thank you. Would you like to return to the main menu? Select Yes or type ‘menu’ or ‘hi’ to continue."
+                    "main_menu_heading": thank_eng.text
                 }
             })
 
@@ -214,35 +229,43 @@ def get_order_status():
 
         result = ""
 
+        result_msg_eng = db.query(UtterMessage).filter(
+                UtterMessage.id == 51,
+            ).first()
+        
+        result_msg_hin = db.query(UtterMessage).filter(
+                UtterMessage.id == 53,
+            ).first()
+
         if order_status == "Deficiency issued for Technical Feasibility":
             TYPE_OF_DEFICIENCY = "BTFR"
-            result = f"""New connection request on hold due to deficiency
+            result = f"""{result_msg_eng.text}
 
             Click here to view deficiency: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
         elif order_status == "Auto cancelled":
             TYPE_OF_DEFICIENCY = "AC"
-            result = f"""New connection request on hold due to deficiency
+            result = f"""{result_msg_eng.text}
             
             Click here to view deficiency: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
         elif order_status == "Document Deficiency issued":
             TYPE_OF_DEFICIENCY = "DR"
-            result = f"""New connection request on hold due to deficiency
+            result = f"""{result_msg_eng.text}
             
             Click here to view deficiency: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
         elif order_status == "Deficiency issued for Commercial Feasibility":
             TYPE_OF_DEFICIENCY = "CFR"
-            result = f"""New connection request on hold due to deficiency
+            result = f"""{result_msg_eng.text}
             
             Click here to view deficiency: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
         elif order_status == "Deficiency issued for Commercial Feasibility/Technical Feasibility":
             TYPE_OF_DEFICIENCY = "BTFR+CFR"
-            result = f"""New connection request on hold due to deficiency
+            result = f"""{result_msg_eng.text}
             
             Click here to view deficiency: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
         
         elif order_status == "Deficiency document received and Application under Process":
             TYPE_OF_DEFICIENCY = "DR"
-            result = f"""New connection request on hold due to deficiency
+            result = f"""{result_msg_eng.text}
             
             Click here to view deficiency: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
 
@@ -256,33 +279,33 @@ def get_order_status():
 
         if order_status == "Deficiency issued for Technical Feasibility":
             TYPE_OF_DEFICIENCY = "BTFR"
-            result_hindi = f"""कमी के कारण नया कनेक्शन अनुरोध रोक दिया गया है।
+            result_hindi = f"""{result_msg_hin.text}
             
             कमी देखने के लिए यहाँ क्लिक करें: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
         elif order_status == "Auto cancelled":
             TYPE_OF_DEFICIENCY = "AC"
-            result_hindi = f"""कमी के कारण नया कनेक्शन अनुरोध रोक दिया गया है।
+            result_hindi = f"""{result_msg_hin.text}
             
             कमी देखने के लिए यहाँ क्लिक करें: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
         elif order_status == "Document Deficiency issued":
             TYPE_OF_DEFICIENCY = "DR"
-            result_hindi = f"""कमी के कारण नया कनेक्शन अनुरोध रोक दिया गया है।
+            result_hindi = f"""{result_msg_hin.text}
             
             कमी देखने के लिए यहाँ क्लिक करें: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
         elif order_status == "Deficiency issued for Commercial Feasibility":
             TYPE_OF_DEFICIENCY = "CFR"
-            result_hindi = f"""कमी के कारण नया कनेक्शन अनुरोध रोक दिया गया है।
+            result_hindi = f"""{result_msg_hin.text}
             
             कमी देखने के लिए यहाँ क्लिक करें: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
         elif order_status == "Deficiency issued for Commercial Feasibility/Technical Feasibility":
             TYPE_OF_DEFICIENCY = "BTFR+CFR"
-            result_hindi = f"""कमी के कारण नया कनेक्शन अनुरोध रोक दिया गया है।
+            result_hindi = f"""{result_msg_hin.text}
             
             कमी देखने के लिए यहाँ क्लिक करें: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
 
         elif order_status == "Deficiency document received and Application under Process":
             TYPE_OF_DEFICIENCY = "DR"
-            result_hindi = f"""कमी के कारण नया कनेक्शन अनुरोध रोक दिया गया है।
+            result_hindi = f"""{result_msg_hin.text}
             कमी देखने के लिए यहाँ क्लिक करें: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
 
         elif order_status == "New Connection Processed":
@@ -295,6 +318,11 @@ def get_order_status():
             result_hindi = order_status
 
         if is_valid == False:
+
+            thank_eng = db.query(UtterMessage).filter(
+                UtterMessage.id == 10,
+            ).first()
+
             return jsonify({
                 "order_status": order_status,
                 "valid": is_valid,
@@ -306,7 +334,7 @@ def get_order_status():
                                             "Yes",
                                             "No"
                                             ],
-                    "main_menu_heading": "Thank you. Would you like to return to the main menu? Select Yes or type ‘menu’ or ‘hi’ to continue."
+                    "main_menu_heading": thank_eng.text
                 }
             })
         
@@ -324,7 +352,11 @@ def get_order_status():
 
         print("Last Heading:", last_heading)
 
-        if last_heading == "Please enter your Order ID. The Order ID starts with ‘008’, ‘AN’, or ‘ON’":
+        order_stat_msg = db.query(UtterMessage).filter(
+                UtterMessage.id == 50,
+            ).first()
+
+        if last_heading == f"{order_stat_msg.text}":
 
             print("Inside last heading condition", result)
 
@@ -358,13 +390,18 @@ def get_order_status():
                 }
             }
         )
+
+        uttter_message_id = [
+            51,53
+        ]
         
         return jsonify({
             "order_status": order_status,
             "valid": is_valid,
             "status": True,
             "message": result,
-            "message_hindi": result_hindi
+            "message_hindi": result_hindi,
+            "uttter_message_id": uttter_message_id
         })
 
     except Exception as e:

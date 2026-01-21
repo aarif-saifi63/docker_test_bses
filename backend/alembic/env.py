@@ -29,7 +29,7 @@ from Models import (
     intent_example_model, intent_model, language_model, menu_option_model, 
     permission_matrix_model, story_model, story_steps_all_model, story_steps_model, sub_menu_option_model, 
     user_details_model, user_permission_mapping_model, user_role_model, 
-    users_model, utter_messages_model, utter_model, feedback_response_model, ad_model, poll_model, poll_response_model, session_model, bses_token_model, token_blacklist_model
+    users_model, utter_messages_model, utter_model, feedback_response_model, ad_model, poll_model, poll_response_model, session_model, bses_token_model, token_blacklist_model, submenu_fallback_model
 )
 
 config = context.config

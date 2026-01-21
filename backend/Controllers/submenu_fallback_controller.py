@@ -50,7 +50,7 @@ def create_submenu_fallback():
         # Validate required fields
         if not category or not intent_names or not initial_msg:
             return jsonify({
-                "error": "Fields 'category', 'intent_names', 'initial_msg', and 'final_msg' are required"
+                "error": "Fields 'category', 'intent_names', 'initial_msg' are required"
             }), 400
 
         # Validate category (no special characters at start for CSV injection prevention)

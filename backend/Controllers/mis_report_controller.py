@@ -11,6 +11,7 @@ from sqlalchemy import func
 from dateutil.parser import isoparse
 import json, calendar, traceback
 from Models.session_model import Session
+from Models.utter_messages_model import UtterMessage
 from database import SessionLocal
 from pytz import timezone
 from dotenv import load_dotenv
@@ -475,10 +476,24 @@ def mis_chat_completion_status():
         #     "धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)"
         # ]
 
+
+        thank_eng = db.query(UtterMessage).filter(
+            UtterMessage.id == 10,
+        ).first()
+
+        thank_hin = db.query(UtterMessage).filter(
+            UtterMessage.id == 11,
+        ).first()
+
         thank_you_messages = [
-            "Thank you. Would you like to return to the main menu? Select Yes or type ‘menu’ or ‘hi’ to continue.",
-            "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए ‘हाँ’, ‘menu’ या ‘hi’ टाइप करें।"
+            thank_eng.text,
+            thank_hin.text
         ]
+
+        # thank_you_messages = [
+        #     "Thank you. Would you like to return to the main menu? Select Yes or type ‘menu’ or ‘hi’ to continue.",
+        #     "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए ‘हाँ’, ‘menu’ या ‘hi’ टाइप करें।"
+        # ]
 
         # --- Fetch sessions with optional filters ---
         query = db.query(Session)
@@ -1154,10 +1169,24 @@ def visually_impaired_analysis():
         #     "धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)"
         # ]
 
+
+        thank_eng = db.query(UtterMessage).filter(
+            UtterMessage.id == 10,
+        ).first()
+
+        thank_hin = db.query(UtterMessage).filter(
+            UtterMessage.id == 11,
+        ).first()
+
         completion_messages = [
-            "Thank you. Would you like to return to the main menu? Select Yes or type ‘menu’ or ‘hi’ to continue.",
-            "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए ‘हाँ’, ‘menu’ या ‘hi’ टाइप करें।"
+            thank_eng.text,
+            thank_hin.text
         ]
+
+        # completion_messages = [
+        #     "Thank you. Would you like to return to the main menu? Select Yes or type ‘menu’ or ‘hi’ to continue.",
+        #     "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए ‘हाँ’, ‘menu’ या ‘hi’ टाइप करें।"
+        # ]
 
         visually_impaired_variants = [
             "Visually Impaired BRPL",

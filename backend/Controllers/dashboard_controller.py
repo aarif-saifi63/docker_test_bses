@@ -2,6 +2,7 @@ from collections import defaultdict
 from flask import json, jsonify, request
 import requests
 from Models.session_model import Session
+from Models.utter_messages_model import UtterMessage
 from database import SessionLocal
 from datetime import date, datetime, timedelta
 # from sqlalchemy import func, cast, Date, extract
@@ -439,10 +440,23 @@ def interaction_breakdown():
         #     "धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)"
         # ]
 
+        thank_eng = db.query(UtterMessage).filter(
+            UtterMessage.id == 10,
+        ).first()
+
+        thank_hin = db.query(UtterMessage).filter(
+            UtterMessage.id == 11,
+        ).first()
+
         completion_messages = [
-            "Thank you. Would you like to return to the main menu? Select Yes or type ‘menu’ or ‘hi’ to continue.",
-            "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए ‘हाँ’, ‘menu’ या ‘hi’ टाइप करें।"
+            thank_eng.text,
+            thank_hin.text
         ]
+
+        # completion_messages = [
+        #     "Thank you. Would you like to return to the main menu? Select Yes or type ‘menu’ or ‘hi’ to continue.",
+        #     "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए ‘हाँ’, ‘menu’ या ‘hi’ टाइप करें।"
+        # ]
 
 
         breakdown = {opt: {"count": 0, "logs": []}
@@ -941,10 +955,23 @@ def chat_status():
         #     "धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)"
         # ]
 
+        thank_eng = db.query(UtterMessage).filter(
+            UtterMessage.id == 10,
+        ).first()
+
+        thank_hin = db.query(UtterMessage).filter(
+            UtterMessage.id == 11,
+        ).first()
+
         thank_you_messages = [
-            "Thank you. Would you like to return to the main menu? Select Yes or type ‘menu’ or ‘hi’ to continue.",
-            "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए ‘हाँ’, ‘menu’ या ‘hi’ टाइप करें।"
+            thank_eng.text,
+            thank_hin.text
         ]
+
+        # thank_you_messages = [
+        #     "Thank you. Would you like to return to the main menu? Select Yes or type ‘menu’ or ‘hi’ to continue.",
+        #     "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए ‘हाँ’, ‘menu’ या ‘hi’ टाइप करें।"
+        # ]
 
 
         # --- process sessions ---

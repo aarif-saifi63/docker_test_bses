@@ -12,6 +12,7 @@ from Models.intent_example_model import IntentExampleV
 from Models.session_model import Session
 from Models.sub_menu_option_model import SubMenuOptionV
 from Models.submenu_fallback_model import SubmenuFallbackV
+from Models.utter_messages_model import UtterMessage
 from database import SessionLocal
 from sqlalchemy.dialects.postgresql import array
 from database import SessionLocal
@@ -361,11 +362,26 @@ def webhook():
         #     "Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)",
         #     "धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)"
         # ]
+        db_session = SessionLocal()
+
+        thank_eng = db_session.query(UtterMessage).filter(
+            UtterMessage.id == 10,
+        ).first()
+
+        thank_hin = db_session.query(UtterMessage).filter(
+            UtterMessage.id == 11,
+        ).first()
 
         main_menu_texts = [
-            "Thank you. Would you like to return to the main menu? Select Yes or type ‘menu’ or ‘hi’ to continue.",
-            "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए ‘हाँ’, ‘menu’ या ‘hi’ टाइप करें।"
+            thank_eng.text,
+            thank_hin.text
         ]
+
+
+        # main_menu_texts = [
+        #     "Thank you. Would you like to return to the main menu? Select Yes or type ‘menu’ or ‘hi’ to continue.",
+        #     "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए ‘हाँ’, ‘menu’ या ‘hi’ टाइप करें।"
+        # ]
 
 
         for item in rasa_response_json:
@@ -417,6 +433,40 @@ def webhook():
             print("Keeping submenu fallback message in heading")
 
 
+        # Check all messages (heading, buttons, icons) against utter_messages table
+        utter_message_ids = []
+
+        try:
+            # Collect all text items to check
+            texts_to_check = []
+
+            # Add heading texts
+            for heading_text in heading:
+                texts_to_check.append(heading_text.strip())
+
+            # Add button texts
+            for button_text in buttons:
+                texts_to_check.append(button_text.strip())
+
+            # Add icon texts
+            for icon_text in icons:
+                texts_to_check.append(icon_text.strip())
+
+            # Check each text against utter_messages table
+            for text in texts_to_check:
+                utter_record = db_session.query(UtterMessage).filter(
+                    UtterMessage.text == text,
+                    # UtterMessage.is_active == True
+                ).first()
+
+                if utter_record and utter_record.id not in utter_message_ids:
+                    utter_message_ids.append(utter_record.id)
+                    print(f"Found utter_message_id {utter_record.id} for text: {text}")
+        except Exception as e:
+            print(f"Error checking utter messages: {e}")
+        finally:
+            db_session.close()
+
         response = {
             'response': {
                 'heading': heading,
@@ -424,7 +474,23 @@ def webhook():
             }
         }
 
+        # Add utter_message_id array if any matches found
+        if utter_message_ids:
+            response['response']['utter_message_id'] = utter_message_ids
+
         # ad = Advertisement.find_one(ad_name="Payment Offers")
+
+        lang_update_eng = db_session.query(UtterMessage).filter(
+            UtterMessage.id == 2,
+        ).first()
+
+        lang_update_hin = db_session.query(UtterMessage).filter(
+            UtterMessage.id == 7,
+        ).first()
+
+        prefer_lang = db_session.query(UtterMessage).filter(
+            UtterMessage.id == 55,
+        ).first()
 
         # Dynamically add keys based on the first heading
         if heading:
@@ -437,14 +503,14 @@ def webhook():
             #     response['response']['user_type'] = user_message
             elif first_message in ["Please select your language"]:
                 response['response']['user_type'] = user_message
-            elif first_message in ["Please select your preferred language"]:
+            elif first_message in [prefer_lang.text]:
                 response['response']['change_language'] = user_message
             elif first_message in ["Please enter your CA number."]:
                 response['response']['user_type'] = user_message
             # elif first_message == "Language has been changed successfully":
-            elif first_message == "Language updated successfully":
+            elif first_message == lang_update_eng.text:
                 response['response']['language'] = user_message
-            elif first_message == "भाषा सफलतापूर्वक बदल दी गई है":
+            elif first_message == lang_update_hin.text:
                 response['response']['language'] = user_message
 
         if icons:
@@ -452,7 +518,41 @@ def webhook():
 
         if main_menu_heading:
             response['response']['main_menu_heading'] = main_menu_heading
-            
+
+            # Check main_menu_heading and main_menu_buttons against utter_messages table
+            db_session_menu = SessionLocal()
+            try:
+                # Check main_menu_heading
+                main_menu_utter_record = db_session_menu.query(UtterMessage).filter(
+                    UtterMessage.text == main_menu_heading.strip(),
+                    UtterMessage.is_active == True
+                ).first()
+
+                if main_menu_utter_record:
+                    # Add to the utter_message_ids array if not already present
+                    if main_menu_utter_record.id not in utter_message_ids:
+                        utter_message_ids.append(main_menu_utter_record.id)
+                        print(f"Found utter_message_id {main_menu_utter_record.id} for main_menu_heading: {main_menu_heading}")
+
+                # Check main_menu_buttons
+                for button_text in main_menu_buttons:
+                    button_utter_record = db_session_menu.query(UtterMessage).filter(
+                        UtterMessage.text == button_text.strip(),
+                        UtterMessage.is_active == True
+                    ).first()
+
+                    if button_utter_record and button_utter_record.id not in utter_message_ids:
+                        utter_message_ids.append(button_utter_record.id)
+                        print(f"Found utter_message_id {button_utter_record.id} for main_menu_button: {button_text}")
+
+                # Update the response with the updated array
+                if utter_message_ids:
+                    response['response']['utter_message_id'] = utter_message_ids
+            except Exception as e:
+                print(f"Error checking main_menu items in utter messages: {e}")
+            finally:
+                db_session_menu.close()
+
             response_intent = requests.post(
                 f"{RASA_API_URL}/model/parse",
                 json={"text": user_message}
@@ -607,7 +707,7 @@ def run_flow():
         def send_to_rasa(message):
             response = requests.post(f"{RASA_API_URL}/webhooks/rest/webhook", json={'sender': sender_id, 'message': message})
             return response.json()
-        
+
         ## Restart the current session for menu flow
         send_to_rasa("restart")
 
@@ -652,13 +752,65 @@ def run_flow():
                 else:
                     heading.append(stripped_line)
 
+        db_session = SessionLocal()
+
+        lang_update_eng = db_session.query(UtterMessage).filter(
+            UtterMessage.id == 2,
+        ).first()
+
+        lang_update_hin = db_session.query(UtterMessage).filter(
+            UtterMessage.id == 7,
+        ).first()
+
+
         # # Filter out unwanted success messages from heading
         unwanted_headings = {
             # "Language has been changed successfully",
-            "Language updated successfully",
-            "भाषा सफलतापूर्वक बदल दी गई है"
+            lang_update_eng,
+            lang_update_hin
         }
+
+        # unwanted_headings = {
+        #     # "Language has been changed successfully",
+        #     "Language updated successfully",
+        #     "भाषा सफलतापूर्वक बदल दी गई है"
+        # }
+
         heading = [h for h in heading if h not in unwanted_headings]
+
+        # Check all messages (heading, buttons, icons) against utter_messages table
+        utter_message_ids = []
+        
+        try:
+            # Collect all text items to check
+            texts_to_check = []
+
+            # Add heading texts
+            for heading_text in heading:
+                texts_to_check.append(heading_text.strip())
+
+            # Add button texts
+            for button_text in buttons:
+                texts_to_check.append(button_text.strip())
+
+            # Add icon texts
+            for icon_text in icons:
+                texts_to_check.append(icon_text.strip())
+
+            # Check each text against utter_messages table
+            for text in texts_to_check:
+                utter_record = db_session.query(UtterMessage).filter(
+                    UtterMessage.text == text,
+                    # UtterMessage.is_active == True
+                ).first()
+
+                if utter_record and utter_record.id not in utter_message_ids:
+                    utter_message_ids.append(utter_record.id)
+                    print(f"Found utter_message_id {utter_record.id} for text: {text}")
+        except Exception as e:
+            print(f"Error checking utter messages in run_flow: {e}")
+        finally:
+            db_session.close()
 
         response = {
             'response': {
@@ -666,6 +818,10 @@ def run_flow():
                 'buttons': buttons
             }
         }
+
+        # Add utter_message_id array if any matches found
+        if utter_message_ids:
+            response['response']['utter_message_id'] = utter_message_ids
 
         # Add type of user if detected
         if type_of_user:
@@ -724,10 +880,26 @@ def run_flow_submenu_fallback():
         main_menu_heading = None
         main_menu_buttons = []
 
+
+        db_session = SessionLocal()
+
+        thank_eng = db_session.query(UtterMessage).filter(
+            UtterMessage.id == 10,
+        ).first()
+
+        thank_hin = db_session.query(UtterMessage).filter(
+            UtterMessage.id == 11,
+        ).first()
+
         main_menu_texts = [
-            "Thank you. Would you like to return to the main menu? Select Yes or type ‘menu’ or ‘hi’ to continue.",
-            "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए ‘हाँ’, ‘menu’ या ‘hi’ टाइप करें।"
+            thank_eng.text,
+            thank_hin.text
         ]
+
+        # main_menu_texts = [
+        #     "Thank you. Would you like to return to the main menu? Select Yes or type 'menu' or 'hi' to continue.",
+        #     "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए 'हाँ', 'menu' या 'hi' टाइप करें।"
+        # ]
 
         for item in rasa_response_json:
             text = item.get("text", "")
@@ -750,13 +922,64 @@ def run_flow_submenu_fallback():
                 else:
                     heading.append(stripped_line)
 
+        lang_update_eng = db_session.query(UtterMessage).filter(
+            UtterMessage.id == 2,
+        ).first()
+
+        lang_update_hin = db_session.query(UtterMessage).filter(
+            UtterMessage.id == 7,
+        ).first()
+
+
         # # Filter out unwanted success messages from heading
         unwanted_headings = {
             # "Language has been changed successfully",
-            "Language updated successfully",
-            "भाषा सफलतापूर्वक बदल दी गई है"
+            lang_update_eng,
+            lang_update_hin
         }
+
+        # # Filter out unwanted success messages from heading
+        # unwanted_headings = {
+        #     # "Language has been changed successfully",
+        #     "Language updated successfully",
+        #     "भाषा सफलतापूर्वक बदल दी गई है"
+        # }
+
         heading = [h for h in heading if h not in unwanted_headings]
+
+        # Check all messages (heading, buttons, icons) against utter_messages table
+        utter_message_ids = []
+
+        try:
+            # Collect all text items to check
+            texts_to_check = []
+
+            # Add heading texts
+            for heading_text in heading:
+                texts_to_check.append(heading_text.strip())
+
+            # Add button texts
+            for button_text in buttons:
+                texts_to_check.append(button_text.strip())
+
+            # Add icon texts
+            for icon_text in icons:
+                texts_to_check.append(icon_text.strip())
+
+            # Check each text against utter_messages table
+            for text in texts_to_check:
+                utter_record = db_session.query(UtterMessage).filter(
+                    UtterMessage.text == text,
+                    # UtterMessage.is_active == True
+                ).first()
+
+                if utter_record and utter_record.id not in utter_message_ids:
+                    utter_message_ids.append(utter_record.id)
+                    print(f"Found utter_message_id {utter_record.id} for text: {text}")
+        except Exception as e:
+            print(f"Error checking utter messages in run_flow_submenu_fallback: {e}")
+        finally:
+            db_session.close()
 
         response = {
             'response': {
@@ -765,11 +988,49 @@ def run_flow_submenu_fallback():
             }
         }
 
+        # Add utter_message_id array if any matches found
+        if utter_message_ids:
+            response['response']['utter_message_id'] = utter_message_ids
+
         if icons:
             response['response']['icons'] = icons
 
         if main_menu_heading:
             response['response']['main_menu_heading'] = main_menu_heading
+
+            # Check main_menu_heading and main_menu_buttons against utter_messages table
+            db_session_menu = SessionLocal()
+            try:
+                # Check main_menu_heading
+                main_menu_utter_record = db_session_menu.query(UtterMessage).filter(
+                    UtterMessage.text == main_menu_heading.strip(),
+                    UtterMessage.is_active == True
+                ).first()
+
+                if main_menu_utter_record:
+                    # Add to the utter_message_ids array if not already present
+                    if main_menu_utter_record.id not in utter_message_ids:
+                        utter_message_ids.append(main_menu_utter_record.id)
+                        print(f"Found utter_message_id {main_menu_utter_record.id} for main_menu_heading: {main_menu_heading}")
+
+                # Check main_menu_buttons
+                for button_text in main_menu_buttons:
+                    button_utter_record = db_session_menu.query(UtterMessage).filter(
+                        UtterMessage.text == button_text.strip(),
+                        UtterMessage.is_active == True
+                    ).first()
+
+                    if button_utter_record and button_utter_record.id not in utter_message_ids:
+                        utter_message_ids.append(button_utter_record.id)
+                        print(f"Found utter_message_id {button_utter_record.id} for main_menu_button: {button_text}")
+
+                # Update the response with the updated array
+                if utter_message_ids:
+                    response['response']['utter_message_id'] = utter_message_ids
+            except Exception as e:
+                print(f"Error checking main_menu items in utter messages: {e}")
+            finally:
+                db_session_menu.close()
 
         if main_menu_buttons:
             response['response']['main_menu_buttons'] = main_menu_buttons
@@ -800,7 +1061,7 @@ def register_run_flow():
         def send_to_rasa(message):
             response = requests.post(f"{RASA_API_URL}/webhooks/rest/webhook", json={'sender': sender_id, 'message': message})
             return response.json()
-        
+
         ## Restart the current session for menu flow
         send_to_rasa("restart")
 
@@ -855,13 +1116,66 @@ def register_run_flow():
                 else:
                     heading.append(stripped_line)
 
+        db_session = SessionLocal()
+
+        lang_update_eng = db_session.query(UtterMessage).filter(
+            UtterMessage.id == 2,
+        ).first()
+
+        lang_update_hin = db_session.query(UtterMessage).filter(
+            UtterMessage.id == 7,
+        ).first()
+
+
         # # Filter out unwanted success messages from heading
         unwanted_headings = {
             # "Language has been changed successfully",
-            "Language updated successfully",
-            "भाषा सफलतापूर्वक बदल दी गई है"
+            lang_update_eng,
+            lang_update_hin
         }
+
+        # # Filter out unwanted success messages from heading
+        # unwanted_headings = {
+        #     # "Language has been changed successfully",
+        #     "Language updated successfully",
+        #     "भाषा सफलतापूर्वक बदल दी गई है"
+        # }
+
         heading = [h for h in heading if h not in unwanted_headings]
+
+        # Check all messages (heading, buttons, icons) against utter_messages table
+        utter_message_ids = []
+        
+        try:
+            # Collect all text items to check
+            texts_to_check = []
+
+            # Add heading texts
+            for heading_text in heading:
+                texts_to_check.append(heading_text.strip())
+
+            # Add button texts
+            for button_text in buttons:
+                texts_to_check.append(button_text.strip())
+
+            # Add icon texts
+            for icon_text in icons:
+                texts_to_check.append(icon_text.strip())
+
+            # Check each text against utter_messages table
+            for text in texts_to_check:
+                utter_record = db_session.query(UtterMessage).filter(
+                    UtterMessage.text == text,
+                    # UtterMessage.is_active == True
+                ).first()
+
+                if utter_record and utter_record.id not in utter_message_ids:
+                    utter_message_ids.append(utter_record.id)
+                    print(f"Found utter_message_id {utter_record.id} for text: {text}")
+        except Exception as e:
+            print(f"Error checking utter messages in register_run_flow: {e}")
+        finally:
+            db_session.close()
 
         response = {
             'response': {
@@ -869,6 +1183,10 @@ def register_run_flow():
                 'buttons': buttons
             }
         }
+
+        # Add utter_message_id array if any matches found
+        if utter_message_ids:
+            response['response']['utter_message_id'] = utter_message_ids
 
         # Add type of user if detected
         if type_of_user:
@@ -939,10 +1257,25 @@ def register_run_flow_submenu_fallback():
         main_menu_heading = None
         main_menu_buttons = []
 
+        db_session = SessionLocal()
+
+        thank_eng = db_session.query(UtterMessage).filter(
+            UtterMessage.id == 10,
+        ).first()
+
+        thank_hin = db_session.query(UtterMessage).filter(
+            UtterMessage.id == 11,
+        ).first()
+
         main_menu_texts = [
-            "Thank you. Would you like to return to the main menu? Select Yes or type ‘menu’ or ‘hi’ to continue.",
-            "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए ‘हाँ’, ‘menu’ या ‘hi’ टाइप करें।"
+            thank_eng.text,
+            thank_hin.text
         ]
+
+        # main_menu_texts = [
+        #     "Thank you. Would you like to return to the main menu? Select Yes or type 'menu' or 'hi' to continue.",
+        #     "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए 'हाँ', 'menu' या 'hi' टाइप करें।"
+        # ]
 
         for item in rasa_response_json:
             text = item.get("text", "")
@@ -965,13 +1298,64 @@ def register_run_flow_submenu_fallback():
                 else:
                     heading.append(stripped_line)
 
+        lang_update_eng = db_session.query(UtterMessage).filter(
+            UtterMessage.id == 2,
+        ).first()
+
+        lang_update_hin = db_session.query(UtterMessage).filter(
+            UtterMessage.id == 7,
+        ).first()
+
+
         # # Filter out unwanted success messages from heading
         unwanted_headings = {
             # "Language has been changed successfully",
-            "Language updated successfully",
-            "भाषा सफलतापूर्वक बदल दी गई है"
+            lang_update_eng,
+            lang_update_hin
         }
+
+        # # Filter out unwanted success messages from heading
+        # unwanted_headings = {
+        #     # "Language has been changed successfully",
+        #     "Language updated successfully",
+        #     "भाषा सफलतापूर्वक बदल दी गई है"
+        # }
+
         heading = [h for h in heading if h not in unwanted_headings]
+
+        # Check all messages (heading, buttons, icons) against utter_messages table
+        utter_message_ids = []
+
+        try:
+            # Collect all text items to check
+            texts_to_check = []
+
+            # Add heading texts
+            for heading_text in heading:
+                texts_to_check.append(heading_text.strip())
+
+            # Add button texts
+            for button_text in buttons:
+                texts_to_check.append(button_text.strip())
+
+            # Add icon texts
+            for icon_text in icons:
+                texts_to_check.append(icon_text.strip())
+
+            # Check each text against utter_messages table
+            for text in texts_to_check:
+                utter_record = db_session.query(UtterMessage).filter(
+                    UtterMessage.text == text,
+                    # UtterMessage.is_active == True
+                ).first()
+
+                if utter_record and utter_record.id not in utter_message_ids:
+                    utter_message_ids.append(utter_record.id)
+                    print(f"Found utter_message_id {utter_record.id} for text: {text}")
+        except Exception as e:
+            print(f"Error checking utter messages in register_run_flow_submenu_fallback: {e}")
+        finally:
+            db_session.close()
 
         response = {
             'response': {
@@ -980,11 +1364,49 @@ def register_run_flow_submenu_fallback():
             }
         }
 
+        # Add utter_message_id array if any matches found
+        if utter_message_ids:
+            response['response']['utter_message_id'] = utter_message_ids
+
         if icons:
             response['response']['icons'] = icons
 
         if main_menu_heading:
             response['response']['main_menu_heading'] = main_menu_heading
+
+            # Check main_menu_heading and main_menu_buttons against utter_messages table
+            db_session_menu = SessionLocal()
+            try:
+                # Check main_menu_heading
+                main_menu_utter_record = db_session_menu.query(UtterMessage).filter(
+                    UtterMessage.text == main_menu_heading.strip(),
+                    UtterMessage.is_active == True
+                ).first()
+
+                if main_menu_utter_record:
+                    # Add to the utter_message_ids array if not already present
+                    if main_menu_utter_record.id not in utter_message_ids:
+                        utter_message_ids.append(main_menu_utter_record.id)
+                        print(f"Found utter_message_id {main_menu_utter_record.id} for main_menu_heading: {main_menu_heading}")
+
+                # Check main_menu_buttons
+                for button_text in main_menu_buttons:
+                    button_utter_record = db_session_menu.query(UtterMessage).filter(
+                        UtterMessage.text == button_text.strip(),
+                        UtterMessage.is_active == True
+                    ).first()
+
+                    if button_utter_record and button_utter_record.id not in utter_message_ids:
+                        utter_message_ids.append(button_utter_record.id)
+                        print(f"Found utter_message_id {button_utter_record.id} for main_menu_button: {button_text}")
+
+                # Update the response with the updated array
+                if utter_message_ids:
+                    response['response']['utter_message_id'] = utter_message_ids
+            except Exception as e:
+                print(f"Error checking main_menu items in utter messages: {e}")
+            finally:
+                db_session_menu.close()
 
         if main_menu_buttons:
             response['response']['main_menu_buttons'] = main_menu_buttons

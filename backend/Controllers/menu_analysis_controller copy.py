@@ -2,6 +2,7 @@ from flask import request, jsonify
 from datetime import datetime, timedelta, timezone
 import json
 from Models.session_model import Session
+from Models.utter_messages_model import UtterMessage
 from database import SessionLocal
 from pytz import timezone
 from dotenv import load_dotenv
@@ -108,11 +109,25 @@ def menu_analysis():
         #     "Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)",
         #     "धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)"
         # ]
+        
+
+        thank_eng = db.query(UtterMessage).filter(
+            UtterMessage.id == 10,
+        ).first()
+
+        thank_hin = db.query(UtterMessage).filter(
+            UtterMessage.id == 11,
+        ).first()
 
         completion_messages = [
-            "Thank you. Would you like to return to the main menu? Select Yes or type ‘menu’ or ‘hi’ to continue.",
-            "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए ‘हाँ’, ‘menu’ या ‘hi’ टाइप करें।"
+            thank_eng.text,
+            thank_hin.text
         ]
+
+        # completion_messages = [
+        #     "Thank you. Would you like to return to the main menu? Select Yes or type ‘menu’ or ‘hi’ to continue.",
+        #     "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए ‘हाँ’, ‘menu’ या ‘hi’ टाइप करें।"
+        # ]
 
         breakdown = {
             canonical_option: {

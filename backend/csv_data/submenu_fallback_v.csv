@@ -1,0 +1,122 @@
+"id","category","intent_names","initial_msg","final_msg","user_type","language"
+1,"Change Language","change_lang_english_rajdhani","Sorry, I didn't get you. Do you want to say change language!","I'm having trouble understanding. Please type 'menu' or 'hi' to return to main menu.","{new,registered}","English"
+2,"Visually Impaired","visually_impaired_english_rajdhani","Sorry, I didn't get you. Do you want to say visually impaired!","I'm having trouble understanding. Please contact our customer care for assistance:
+📞 19123 (Toll-free)","{new,registered}","English"
+3,"Meter Reading Schedule","meter_reading_schedule_english_rajdhani","Sorry, I didn't get you. Do you want to say meter reading schedule!","I'm having trouble understanding. Please contact our customer care for meter reading schedule:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{registered}","English"
+4,"Select Another CA number","check_for_another_ca_number_english_rajdhani","Sorry, I didn't get you. Do you want to say select another ca number!","I'm having trouble understanding. Please type your CA number or contact customer care:
+📞 19123 (Toll-free)","{new,registered}","English"
+5,"Payment History","payment_history_rajdhani","Sorry, I didn't get you. Do you want to say payment history!","I'm having trouble understanding. Please contact our customer care for payment history:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{registered}","English"
+6,"Payment Status","payment_status_rajdhani","Sorry, I didn't get you. Do you want to say payment_status!","I'm having trouble understanding. Please contact our customer care for payment status:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{registered}","English"
+7,"Consumption History","consumption_history_rajdhani","Sorry, I didn't get you. Do you want to say consumption history!","I'm having trouble understanding. Please contact our customer care for consumption history:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{registered}","English"
+8,"Streetlight Complaint","streetlight_complaint_rajdhani","Sorry, I didn't get you. Do you want to say streetlight complaint!","I'm having trouble understanding. Please contact our customer care for streetlight complaints:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{new,registered}","English"
+9,"Branches Nearby","branches_nearby_rajdhani","Sorry, I didn't get you. Do you want to say branches nearby!","I'm having trouble understanding. Please contact our customer care for branch information:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{new,registered}","English"
+10,"Opt for e-bill","opt_for_ebill_rajdhani","Sorry, I didn't get you. Do you want to say opt for e-bill!","I'm having trouble understanding. Please contact our customer care for e-bill registration:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{registered}","English"
+11,"No Supply Complaint Status","complaint_status_english_rajdhani","Sorry, I didn't get you. Do you want to say complaint status!","I'm having trouble understanding. Please contact our customer care for complaint status:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{registered}","English"
+12,"Register Complaint","register_complaint_english_rajdhani","Sorry, I didn't get you. Do you want to say register complaint!","I'm having trouble understanding. Please contact our customer care to register a complaint:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{registered}","English"
+13,"Bill History","bill_history_rajdhani","Sorry, I didn't get you. Do you want to say bill history!","I'm having trouble understanding. Please contact our customer care for bill history:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{registered}","English"
+14,"Duplicate Bill","duplicate_bill_rajdhani","Sorry, I didn't get you. Do you want to say duplicate bill!","I'm having trouble understanding. Please contact our customer care for duplicate bill:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{registered}","English"
+15,"New Connection Application","new_connection_application_brpl_english","Sorry, I didn't get you. Do you want to say new connection application!.\nThis is the second line.\nThank you.","I'm having trouble understanding. Please contact our customer care for assistance with new connection applications:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{new,registered}","English"
+16,"Prepaid Meter - Check Balance","prepaid_meter_recharge_english_rajdhani","Sorry, I didn't get you. Do you want to say prepaid meter recharge!","I'm having trouble understanding. Please contact our customer care for prepaid meter recharge assistance:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{registered}","English"
+17,"New Connection Status","new_connection_status_english_rajdhani","Sorry, I didn't get you. Do you want to say new connection status!","I'm having trouble understanding. Please contact our customer care for connection status:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{new,registered}","English"
+18,"FAQs","faqs_brpl_english","Sorry, I didn't get you. Do you want to say faqs!","I'm having trouble understanding. Please contact our customer care:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{new,registered}","English"
+19,"Connect Virtually","virtual_customer_care_brpl_english","Sorry, I didn't get you. Do you want to say connect virtually!","I'm having trouble understanding. Please contact our customer care:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{new,registered}","English"
+20,"भाषा बदलें","change_lang_hindi_rajdhani","माफ़ कीजिए, मैं समझ नहीं पाया। क्या आप भाषा बदलना चाहते हैं?","I'm having trouble understanding. Please type 'menu' or 'hi' to return to main menu.","{new,registered}","हिंदी"
+21,"दृष्टिबाधित सहायता","visually_impaired_hindi_rajdhani","माफ़ कीजिए, मैं समझ नहीं पाया। क्या आप “दृष्टिबाधित” कहना चाहते हैं?","I'm having trouble understanding. Please contact our customer care for assistance:
+📞 19123 (Toll-free)","{new,registered}","हिंदी"
+22,"कोई और सीए नंबर चुनें","check_for_another_ca_number_hindi_rajdhani","माफ़ कीजिए, मैं समझ नहीं पाया। क्या आप कोई दूसरा CA नंबर चुनना चाहते हैं?","I'm having trouble understanding. Please type your CA number or contact customer care:
+📞 19123 (Toll-free)","{new,registered}","हिंदी"
+23,"मीटर रीडिंग शेड्यूल","meter_reading_schedule_hindi_rajdhani","माफ़ कीजिए, मैं समझ नहीं पाया। क्या आप मीटर रीडिंग शेड्यूल कहना चाहते हैं?","I'm having trouble understanding. Please contact our customer care for meter reading schedule:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{registered}","हिंदी"
+24,"भुगतान की स्थिति","payment_history_rajdhani_hindi","माफ़ कीजिए, मैं समझ नहीं पाया। क्या आप भुगतान इतिहास कहना चाहते हैं?
+","I'm having trouble understanding. Please contact our customer care for payment history:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{registered}","हिंदी"
+25,"भुगतान इतिहास","payment_status_rajdhani_hindi","माफ़ कीजिए, मैं समझ नहीं पाया। क्या आप भुगतान स्थिति कहना चाहते हैं?
+","I'm having trouble understanding. Please contact our customer care for payment status:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{registered}","हिंदी"
+26,"खपत का इतिहास","consumption_history_rajdhani_hindi","माफ़ कीजिए, मैं समझ नहीं पाया। क्या आप उपभोग इतिहास कहना चाहते हैं?
+","I'm having trouble understanding. Please contact our customer care for consumption history:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{registered}","हिंदी"
+27,"स्ट्रीटलाइट शिकायत","streetlight_complaint_rajdhani_hindi","माफ़ कीजिए, मैं समझ नहीं पाया। क्या आप स्ट्रीटलाइट शिकायत कहना चाहते हैं?
+","I'm having trouble understanding. Please contact our customer care for streetlight complaints:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{new,registered}","हिंदी"
+28,"नज़दीकी शाखाएँ","branches_nearby_rajdhani_hindi","माफ़ कीजिए, मैं समझ नहीं पाया। क्या आप नज़दीकी शाखाएँ कहना चाहते हैं?
+","I'm having trouble understanding. Please contact our customer care for branch information:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{new,registered}","हिंदी"
+29,"ई-बिल के लिए ऑप्ट-इन करें","opt_for_ebill_rajdhani_hindi","माफ़ कीजिए, मैं समझ नहीं पाया। क्या आप ई-बिल के लिए विकल्प चुनना चाहते हैं?
+","I'm having trouble understanding. Please contact our customer care for e-bill registration:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{registered}","हिंदी"
+30,"नो सप्लाई शिकायत की स्थिति","complaint_status_hindi_rajdhani","माफ़ कीजिए, मैं समझ नहीं पाया। क्या आप शिकायत की स्थिति कहना चाहते हैं?
+","I'm having trouble understanding. Please contact our customer care for complaint status:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{registered}","हिंदी"
+31,"शिकायत दर्ज करें","register_complaint_hindi_rajdhani","माफ़ कीजिए, मैं समझ नहीं पाया। क्या आप शिकायत दर्ज करना चाहते हैं?
+","I'm having trouble understanding. Please contact our customer care to register a complaint:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{registered}","हिंदी"
+32,"बिल इतिहास","bill_history_rajdhani_hindi","माफ़ कीजिए, मैं समझ नहीं पाया। क्या आप बिल इतिहास कहना चाहते हैं?
+","I'm having trouble understanding. Please contact our customer care for bill history:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{registered}","हिंदी"
+33,"डुप्लिकेट बिल","duplicate_bill_rajdhani_hindi","माफ़ कीजिए, मैं समझ नहीं पाया। क्या आप डुप्लिकेट बिल कहना चाहते हैं?
+","I'm having trouble understanding. Please contact our customer care for duplicate bill:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{registered}","हिंदी"
+34,"नया कनेक्शन आवेदन","new_connection_application_brpl_hindi","माफ़ कीजिए, मैं समझ नहीं पाया। क्या आप नई कनेक्शन आवेदन कहना चाहते हैं?
+","I'm having trouble understanding. Please contact our customer care for assistance with new connection applications:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{new,registered}","हिंदी"
+35,"प्रीपेड मीटर - बैलेंस जांचें","prepaid_meter_recharge_hindi_rajdhani","माफ़ कीजिए, मैं समझ नहीं पाया। क्या आप प्रीपेड मीटर रिचार्ज कहना चाहते हैं?
+","I'm having trouble understanding. Please contact our customer care for prepaid meter recharge assistance:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{registered}","हिंदी"
+36,"नए कनेक्शन की स्थिति","new_connection_status_hindi_rajdhani","माफ़ कीजिए, मैं समझ नहीं पाया। क्या आप नई कनेक्शन की स्थिति कहना चाहते हैं?
+","I'm having trouble understanding. Please contact our customer care for connection status:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{new,registered}","हिंदी"
+37,"सामान्य प्रश्न (FAQs)","faqs_brpl_hindi","माफ़ कीजिए, मैं समझ नहीं पाया। क्या आप अक्सर पूछे जाने वाले प्रश्न (FAQs) कहना चाहते हैं?
+","I'm having trouble understanding. Please contact our customer care:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{new,registered}","हिंदी"
+38,"वर्चुअली कनेक्ट करें","virtual_customer_care_brpl_hindi","माफ़ कीजिए, मैं समझ नहीं पाया। क्या आप वर्चुअली जुड़ना कहना चाहते हैं?
+","I'm having trouble understanding. Please contact our customer care:
+📞 19123 (Toll-free)
+📧 customercare@bsesdelhi.com","{new,registered}","हिंदी"
