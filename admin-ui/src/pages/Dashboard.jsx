@@ -598,70 +598,72 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Pagination Controls */}
-      <div className="flex justify-center items-center space-x-2 mt-4">
-        <button
-          onClick={() => goToPage(1)}
-          disabled={currentPage === 1}
-          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300 transition-colors"
-        >
-          First
-        </button>
+      {/* Pagination Controls - Only show when there are pages */}
+      {totalPages > 0 && (
+        <div className="flex justify-center items-center space-x-2 mt-4">
+          <button
+            onClick={() => goToPage(1)}
+            disabled={currentPage === 1}
+            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300 transition-colors"
+          >
+            First
+          </button>
 
-        <button
-          onClick={goToPrevPage}
-          disabled={currentPage === 1}
-          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300 transition-colors"
-        >
-          Previous
-        </button>
+          <button
+            onClick={goToPrevPage}
+            disabled={currentPage === 1}
+            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300 transition-colors"
+          >
+            Previous
+          </button>
 
-        {Array.from({ length: totalPages }, (_, i) => i + 1)
-          .filter((num) => {
-            if (num === 1 || num === totalPages) return true;
-            if (num >= currentPage - 2 && num <= currentPage + 2) return true;
-            return false;
-          })
-          .map((num, idx, arr) => {
-            const prev = arr[idx - 1];
-            if (prev && num - prev > 1) {
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter((num) => {
+              if (num === 1 || num === totalPages) return true;
+              if (num >= currentPage - 2 && num <= currentPage + 2) return true;
+              return false;
+            })
+            .map((num, idx, arr) => {
+              const prev = arr[idx - 1];
+              if (prev && num - prev > 1) {
+                return (
+                  <span key={`dots-${num}`} className="px-2">
+                    ...
+                  </span>
+                );
+              }
               return (
-                <span key={`dots-${num}`} className="px-2">
-                  ...
-                </span>
+                <button
+                  key={num}
+                  onClick={() => goToPage(num)}
+                  className={`px-3 py-1 rounded transition-colors ${
+                    num === currentPage
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-200 text-black hover:bg-gray-300"
+                  }`}
+                >
+                  {num}
+                </button>
               );
-            }
-            return (
-              <button
-                key={num}
-                onClick={() => goToPage(num)}
-                className={`px-3 py-1 rounded transition-colors ${
-                  num === currentPage
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-200 text-black hover:bg-gray-300"
-                }`}
-              >
-                {num}
-              </button>
-            );
-          })}
+            })}
 
-        <button
-          onClick={goToNextPage}
-          disabled={currentPage === totalPages}
-          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300 transition-colors"
-        >
-          Next
-        </button>
+          <button
+            onClick={goToNextPage}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300 transition-colors"
+          >
+            Next
+          </button>
 
-        <button
-          onClick={() => goToPage(totalPages)}
-          disabled={currentPage === totalPages}
-          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300 transition-colors"
-        >
-          Last
-        </button>
-      </div>
+          <button
+            onClick={() => goToPage(totalPages)}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300 transition-colors"
+          >
+            Last
+          </button>
+        </div>
+      )}
 
       {/* Full Log Modal */}
       <InteractionMisModal

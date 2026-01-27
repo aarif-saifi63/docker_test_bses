@@ -149,7 +149,12 @@ export default function InteractionsHeader({
           <input
             type="text"
             value={caNumber}
-            onChange={(e) => setCaNumber(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === "" || (/^\d+$/.test(value) && value.length <= 9)) {
+                setCaNumber(value);
+              }
+            }}
             placeholder="CA Number"
             className="border border-gray-300 rounded-md px-3 py-1 text-sm bg-white w-32"
           />
@@ -158,7 +163,12 @@ export default function InteractionsHeader({
           <input
             type="text"
             value={telNo}
-            onChange={(e) => setTelNo(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === "" || (/^\d+$/.test(value) && value.length <= 10)) {
+                setTelNo(value);
+              }
+            }}
             placeholder="Tel. No."
             className="border border-gray-300 rounded-md px-3 py-1 text-sm bg-white w-32"
           />

@@ -242,9 +242,9 @@ def webhook():
                             user_type_display = "New Consumer" if normalized_user_type == "new" else "Registered Consumer"
 
                             if submenu_fallback_language == "English":
-                                permission_denied_msg = f"You are a {user_type_display} and you don't have permission to use {option} option."
+                                permission_denied_msg = f"You are a {user_type_display} and this {option} option is not available for you. You can click on bullet 'menu' to return to the main options. And click on the Home to start over."
                             else:
-                                permission_denied_msg = f"आप एक {user_type_display} हैं और आपके पास {option} विकल्प का उपयोग करने की अनुमति नहीं है।"
+                                permission_denied_msg = f"आप {user_type_display} हैं और यह {option} विकल्प आपके लिए उपलब्ध नहीं है। मुख्य विकल्पों पर वापस जाने के लिए 'menu' बुलेट पर क्लिक करें। और दोबारा शुरू करने के लिए Home पर क्लिक करें।"
                                 
                             # Set the permission denied message
                             initial = permission_denied_msg

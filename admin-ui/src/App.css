@@ -1,0 +1,170 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap');
+
+@import "tailwindcss";
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+body{font-family: "Lato", sans-serif;}
+
+.latoFont{font-family: "Lato", sans-serif;}
+
+
+.boxBorderSub {
+  position: relative;
+  border: 3px solid transparent;
+  /* border-radius: 8px; */
+  background-image: 
+    linear-gradient(white, white), /* inner background */
+    linear-gradient(86.64deg, #FA7C14 5.56%, #A30F18 51.83%, #FF3946 97.64%); /* border gradient */
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+
+
+.boxBorder {
+  position: relative;
+  border: 3px solid transparent;
+  /* border-radius: 8px; */
+  background-image: 
+    linear-gradient(white, white), /* inner background */
+    linear-gradient(86.64deg, #FA7C14 5.56%, #A30F18 51.83%, #FF3946 97.64%); /* border gradient */
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+
+.boxBorder:before{content:"";
+  position: absolute; top:50%; left:-10px; width:0; height:0;
+  transform:translate(-50%, -50%);
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent; 
+  border-right: 20px solid #FA7C14; 
+}
+
+.boxBorder:after{content:"";
+  position: absolute; top:50%; left:-3px; width:0; height:0;
+  transform:translate(-50%, -50%);
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent; 
+  border-right: 20px solid #FFF; 
+}
+
+.gradientBtn{
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2)), linear-gradient(86.64deg, #FA7C14 5.56%, #A30F18 51.83%, #FF3946 97.64%);
+}
+
+
+.languageBtn .newConsumerBoxes {display:flex; gap:10px; align-items:center; padding:8px 10px; min-width:145px;  cursor: pointer;
+  position: relative;
+  border: 3px solid transparent;
+  border-radius: 8px;
+  background-image: 
+    linear-gradient(white, white), /* inner background */
+    linear-gradient(86.64deg, #FA7C14 5.56%, #A30F18 51.83%, #FF3946 97.64%); /* border gradient */
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+
+.languageBtn .newConsumerBoxes button{border:0px; padding:0px; color:#000;}
+
+
+.newConsumerBtn{display:flex; gap:20px; align-items:center; width:100%;}
+
+.newConsumerBtn button {width:100%; text-align:left;
+  position: relative;
+  border: 3px solid transparent;
+  border-radius: 8px;
+  background-image: 
+    linear-gradient(white, white), /* inner background */
+    linear-gradient(86.64deg, #FA7C14 5.56%, #A30F18 51.83%, #FF3946 97.64%); /* border gradient */
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+
+.newConsumerBtn button:before{content:"";
+  position: absolute; top:50%; left:-10px; width:0; height:0;
+  transform:translate(-50%, -50%);
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent; 
+  border-right: 20px solid #FA7C14; 
+}
+
+.newConsumerBtn button:after{content:"";
+  position: absolute; top:50%; left:-3px; width:0; height:0;
+  transform:translate(-50%, -50%);
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent; 
+  border-right: 20px solid #FFF; 
+}
+
+
+.newConsumerBtn .newConsumerBoxes{display:flex; gap:24px; justify-content:center; align-items:center; width:100%;}
+
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+.chatBtnMascots .chatIconMascots{width:100%; height:100%; object-fit:cover; object-position:top; border-radius:100%;}
+
+.chatHeader h1{font-size:22px;}
+.chatHeader .thunderIcon{position:absolute; top:0; left:0;}
+.chatHeader .mascotsIcon{height:100px; width:100px; border-radius:100%; border:3px solid #FFF; position:absolute; transform:translate(-50%, -50%); top:0; left:50%; object-fit:cover; object-position:top;}
+
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+
+.backbutton .icon{
+	position: absolute;
+  color: #333;
+	height: 48px;
+	width: 48px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background-color: #FFF;
+	left: -25px;
+	border-radius: 100%;
+}
+
+
+.ad-option {
+  margin-top: 10px;
+  margin-bottom: 10px;
+  text-align: left;
+}
