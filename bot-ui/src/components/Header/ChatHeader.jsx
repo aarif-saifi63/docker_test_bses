@@ -9,7 +9,7 @@ export default function ChatHeader({ onMenuClick, menuEnabled, resetChat }) {
       <img src={thunder} alt="Thunder" className="thunderIcon" />
       <img src={voltra} alt="voltra" className="mascotsIcon" />
 
-      <h1 className="font-semibold text-center">e-MITRA</h1>
+      <h1 className="font-semibold text-center">e-Mitra</h1>
       <button
         onClick={resetChat}
         className="homeBtn absolute top-5 right-5 h-[45px] w-[45px] flex items-center justify-center rounded-full transition bg-[#DE4247] hover:bg-[#F00E15] cursor-pointer"

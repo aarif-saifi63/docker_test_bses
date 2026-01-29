@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import apiClient from "../services/apiClient";
 import { MESSAGE_IDS, hasMessageId } from "../constants/messageIds";
 
-export const STATIC_WELCOME = `Hello ! I'm e-MITRA , yours BSES Rajdhani assistant .To get started , click the Home icon or Main Menu 
+export const STATIC_WELCOME = `Hello ! I'm e-Mitra , yours BSES Rajdhani assistant .To get started , click the Home icon or Main Menu 
 
 नमस्ते ! मैं ई-मित्र हूं, आपका बीएसईएस राजधानी सहायक। आरंभ करने के लिए, होम  के चिन्ह या मुख्य मेनू पर क्लिक करें`;
 
