@@ -1455,8 +1455,9 @@ def validate_mobile(mobile_number, sender_id):
     
 
 import xml.etree.ElementTree as ET
+from datetime import datetime
 
-def insert_mobapp_data(mobile_no):
+def insert_mobapp_data(mobile_no, language):
     db = SessionLocal()
     try:
         # Extract data from request JSON
@@ -1467,10 +1468,15 @@ def insert_mobapp_data(mobile_no):
         # request_type = request.json.get("RequestType", "")
         # language_type = request.json.get("LanguageType", "")
 
-        date_time = ""
-        source = ""
-        request_type = ""
-        language_type = ""
+        # Get current date and time
+        date_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+        # date_time = ""
+        source = "BRPLWBot"
+        request_type = "New"
+        # language_type = "Hindi"
+
+        print(language, "========================= language")
 
         print(mobile_no, "========================= mobile_no")
 
@@ -1498,7 +1504,7 @@ def insert_mobapp_data(mobile_no):
       <DateTime>{date_time}</DateTime>
       <Source>{source}</Source>
       <RequestType>{request_type}</RequestType>
-      <LanguageType>{language_type}</LanguageType>
+      <LanguageType>{language}</LanguageType>
     </Insert_MobApp_DataToBRPLCRM>
   </soap:Body>
 </soap:Envelope>'''
@@ -1539,9 +1545,16 @@ def insert_mobapp_data(mobile_no):
 
         print(result_text, "================================= result text")
 
+        pattern = r"(BR\d+)"
+        match = re.search(pattern, result_text)
+
+        request_number = match.group(1)
+        print("Request Number:", request_number)
+
         return {
             "status": True,
-            "message": result_text
+            "message": result_text,
+            "request_number": request_number
         }
 
     except Exception as e:
@@ -1814,5 +1827,56 @@ def complaint_status(ca_number, sender_id):
 
 
 ## Detect language
+
+## Validate Prepaid CA Number
+
+def is_prepaid_ca_valid(ca_number: str) -> bool:
+    url = "http://125.22.84.58:9880/EESL_DSM/ISUService.asmx?op=ZBAPI_PREPAID_CA_VALID"
+
+    headers = {
+        "Authorization": f"Bearer {token_manager.get_token('jwt')}",
+        "Content-Type": "text/xml; charset=utf-8"
+    }
+
+    body = f"""<?xml version="1.0" encoding="utf-8"?>
+    <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                   xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+      <soap:Body>
+        <ZBAPI_PREPAID_CA_VALID xmlns="http://tempuri.org/">
+          <CA_NUMBER>000{ca_number}</CA_NUMBER>
+        </ZBAPI_PREPAID_CA_VALID>
+      </soap:Body>
+    </soap:Envelope>"""
+
+    try:
+        response = requests.post(url, headers=headers, data=body, timeout=30)
+        response.raise_for_status()
+
+        # Parse XML
+        root = ET.fromstring(response.text)
+
+        # Find FLAG element (ignore namespaces)
+        flag = None
+        for elem in root.iter():
+            if elem.tag.endswith("FLAG"):
+                flag = elem.text
+                break
+
+        if flag is None:
+            return {"status": False}  # safety fallback
+        
+        if flag.strip().upper() == "N":
+            return {"status": False}
+        
+        else:
+            return {"status": True}
+
+        # return flag.strip().upper() != "N"
+
+    except Exception as e:
+        print("SOAP Error:", e)
+        return False
+
 
 

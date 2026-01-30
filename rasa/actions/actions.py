@@ -15,7 +15,7 @@ from typing import Any, Text, Dict, List
 from dotenv import load_dotenv
 import os
 from Model.session_model import Session
-from utils.helper import API_GetMeterReadingSchedule, area_outage, complaint_status, get_bill_history, get_order_status, get_outlet_data, get_payment_history, get_pdf_bill, insert_mobapp_data, register_ncc, registration_ebill, send_otp, update_email_in_db, update_missing_email, validate_ca, validate_mobile
+from utils.helper import API_GetMeterReadingSchedule, area_outage, complaint_status, get_bill_history, get_order_status, get_outlet_data, get_payment_history, get_pdf_bill, insert_mobapp_data, is_prepaid_ca_valid, register_ncc, registration_ebill, send_otp, update_email_in_db, update_missing_email, validate_ca, validate_mobile
 
 # Load .env file
 load_dotenv()
@@ -802,12 +802,36 @@ class Prepaid_Meter_Recharge_english(Action):
 
 # https://www.bsesdelhi.com/web/brpl/prepaid-meter-recharge
 # """)
-        send_dynamic_messages(dispatcher, "", "prepaid_meter_recharge", lang="en")
-        #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
-        dispatcher.utter_message(text="Yes menu b")
-        dispatcher.utter_message(text="No menu b")
-        return [Restarted()]
+        sender_id = tracker.sender_id
+        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
+        data = response.json()
+
+        ca = data.get("ca_number")
+
+        ca_number = extract_ca_number(ca)
+
+        print(ca_number, "===================== ca number prepaid meter recharge")
+
+        data = is_prepaid_ca_valid(ca_number)
+
+        print(data, "===================== prepaid meter recharge data")
+
+        print(data.get("status"), "===================== prepaid meter recharge status")
+
+        if data.get("status") == False:
+            dispatcher.utter_message(text="This is not a prepaid CA number.")
+            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            dispatcher.utter_message(text="Yes menu b")
+            dispatcher.utter_message(text="No menu b")
+            return [Restarted()]
+        
+        else:
+            send_dynamic_messages(dispatcher, "", "prepaid_meter_recharge", lang="en")
+            #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
+            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            dispatcher.utter_message(text="Yes menu b")
+            dispatcher.utter_message(text="No menu b")
+            return [Restarted()]
     
 class Prepaid_Meter_Recharge_hindi(Action):
     def name(self):
@@ -818,12 +842,30 @@ class Prepaid_Meter_Recharge_hindi(Action):
 
 # https://www.bsesdelhi.com/web/brpl/prepaid-meter-recharge
 # """)
-        send_dynamic_messages(dispatcher, "", "prepaid_meter_recharge", lang="hi")
-        #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
-        dispatcher.utter_message(text="हाँ menu b")
-        dispatcher.utter_message(text="नहीं menu b")
-        return [Restarted()]
+        sender_id = tracker.sender_id
+        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
+        data = response.json()
+
+        ca = data.get("ca_number")
+
+        ca_number = extract_ca_number(ca)
+
+        data = is_prepaid_ca_valid(ca_number)
+
+        if data.get("status") == False:
+            dispatcher.utter_message(text="यह प्रीपेड CA नंबर नहीं है।")
+            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            dispatcher.utter_message(text="हाँ menu b")
+            dispatcher.utter_message(text="नहीं menu b")
+            return [Restarted()]
+        
+        else:
+            send_dynamic_messages(dispatcher, "", "prepaid_meter_recharge", lang="hi")
+            #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
+            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            dispatcher.utter_message(text="हाँ menu b")
+            dispatcher.utter_message(text="नहीं menu b")
+            return [Restarted()]
     
     
 
@@ -1828,14 +1870,14 @@ class Visually_Impaired_module_final_english(Action):
 
         tel_no = data.get("tel_no")
 
-        data2 = insert_mobapp_data(tel_no)
+        data2 = insert_mobapp_data(tel_no, language="English")
 
         # response2 = requests.post(f"{FLASK_BASE_URL}/alert_mobapp_data", json={"MobileNo": tel_no})
         # data2 = response2.json()
 
         if(data2.get('status') == True):
             # dispatcher.utter_message(text="Your request number has been successfully registered. Our helpdesk team will contact you shortly.")
-            dispatcher.utter_message(text=f"Request Number: {tel_no}")
+            dispatcher.utter_message(text=f"Request Number: {data2.get('request_number')}")
             send_dynamic_messages(dispatcher, "", "visually_impaired_step_3", lang="en")
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
             send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
@@ -1891,13 +1933,13 @@ class Visually_Impaired_module_final_hindi(Action):
 
         tel_no = data.get("tel_no")
 
-        data2 = insert_mobapp_data(tel_no)
+        data2 = insert_mobapp_data(tel_no, language="Hindi")
 
         # response2 = requests.post(f"{FLASK_BASE_URL}/alert_mobapp_data", json={"MobileNo": tel_no})
         # data2 = response2.json()
 
         if(data2.get('status') == True):
-            dispatcher.utter_message(text=f"अनुरोध नंबर: {tel_no}")
+            dispatcher.utter_message(text=f"अनुरोध नंबर: {data2.get('request_number')}")
             dispatcher.utter_message(text=f"{data2.get('message')}")
 
             #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
