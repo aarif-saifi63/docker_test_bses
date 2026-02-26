@@ -16,6 +16,8 @@ import redis
 from dotenv import load_dotenv
 load_dotenv()
 
+
+
 # Redis connection
 # redis_client = redis.Redis(
 #     host="localhost",
@@ -561,7 +563,7 @@ def API_GetMeterReadingSchedule(ca_number):
 
     except Exception as e:
         db.rollback()
-        return {"status":False, "found":False, "message":f"Error: {str(e)}"}
+        return {"status":False, "found":False, "message":f"Error: something went wrong"}
     finally:
         db.close()
 
@@ -648,7 +650,7 @@ def get_order_status(order_number):
         }
 
     except Exception as e:
-        return {"error": str(e), "status": False}
+        return {"error": "something went wrong", "status": False}
     finally:
         db.close()
     
@@ -755,7 +757,7 @@ def get_order_status(order_number):
 #         }
 
 #     except Exception as e:
-#         return {"error": str(e), "status": False}
+#         return {"error": "something went wrong", "status": False}
 
 
 ## Payment Hisotry
@@ -1055,7 +1057,7 @@ def update_missing_email(ca_number, email):
             "status": True
         }
     except Exception as e:
-        return {"error": str(e), "status": False}
+        return {"error": "something went wrong", "status": False}
     
 
 def update_email_in_db(sender_id, email):
@@ -1079,7 +1081,7 @@ def update_email_in_db(sender_id, email):
                 "response": "email updated in database"
             }
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": "something went wrong"}
 
 
 def registration_ebill(ca_number):
@@ -1142,7 +1144,7 @@ def registration_ebill(ca_number):
                 "status": True
             }
         except Exception as e:
-            return {"error": str(e), "status": False}
+            return {"error": "something went wrong", "status": False}
     except Exception as e:
         raise e
     finally:
@@ -1234,7 +1236,7 @@ def area_outage(ca_number):
             }
 
     except Exception as e:
-        return {"status": False, "message": str(e)}
+        return {"status": False, "message": "something went wrong"}
     finally:
         db.close()
 
@@ -1356,7 +1358,7 @@ def register_ncc(sender_id, ca_number, mobile_no):
         }
 
     except Exception as e:
-        return {"error": str(e), "status": False}
+        return {"error": "something went wrong", "status": False}
     finally:
         db.close()
     
@@ -1560,7 +1562,7 @@ def insert_mobapp_data(mobile_no, language):
     except Exception as e:
         return {
             "status": False,
-            "error": str(e)
+            "error": "something went wrong"
         }
     finally:
         db.close()
@@ -1830,53 +1832,145 @@ def complaint_status(ca_number, sender_id):
 
 ## Validate Prepaid CA Number
 
-def is_prepaid_ca_valid(ca_number: str) -> bool:
-    url = "http://125.22.84.58:9880/EESL_DSM/ISUService.asmx?op=ZBAPI_PREPAID_CA_VALID"
+# def is_prepaid_ca_valid(ca_number: str) -> bool:
+#     url = "http://125.22.84.58:9880/EESL_DSM/ISUService.asmx?op=ZBAPI_PREPAID_CA_VALID"
 
-    headers = {
-        "Authorization": f"Bearer {token_manager.get_token('jwt')}",
-        "Content-Type": "text/xml; charset=utf-8"
-    }
+#     headers = {
+#         "Authorization": f"Bearer {token_manager.get_token('jwt')}",
+#         "Content-Type": "text/xml; charset=utf-8"
+#     }
 
-    body = f"""<?xml version="1.0" encoding="utf-8"?>
-    <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-                   xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-      <soap:Body>
-        <ZBAPI_PREPAID_CA_VALID xmlns="http://tempuri.org/">
-          <CA_NUMBER>000{ca_number}</CA_NUMBER>
-        </ZBAPI_PREPAID_CA_VALID>
-      </soap:Body>
-    </soap:Envelope>"""
+#     body = f"""<?xml version="1.0" encoding="utf-8"?>
+#     <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+#                    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+#                    xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+#       <soap:Body>
+#         <ZBAPI_PREPAID_CA_VALID xmlns="http://tempuri.org/">
+#           <CA_NUMBER>000{ca_number}</CA_NUMBER>
+#         </ZBAPI_PREPAID_CA_VALID>
+#       </soap:Body>
+#     </soap:Envelope>"""
 
+#     try:
+#         response = requests.post(url, headers=headers, data=body, timeout=30)
+#         response.raise_for_status()
+
+#         # Parse XML
+#         root = ET.fromstring(response.text)
+
+#         # Find FLAG element (ignore namespaces)
+#         flag = None
+#         for elem in root.iter():
+#             if elem.tag.endswith("FLAG"):
+#                 flag = elem.text
+#                 break
+
+#         if flag is None:
+#             return {"status": False}  # safety fallback
+        
+#         if flag.strip().upper() == "N":
+#             return {"status": False}
+        
+#         else:
+#             return {"status": True}
+
+#         # return flag.strip().upper() != "N"
+
+#     except Exception as e:
+#         print("SOAP Error:", e)
+#         return False
+
+
+
+
+import requests
+import xml.etree.ElementTree as ET
+
+
+def is_prepaid_ca_valid(ca_number: str) -> dict:
+    db = SessionLocal()
     try:
-        response = requests.post(url, headers=headers, data=body, timeout=30)
-        response.raise_for_status()
-
-        # Parse XML
-        root = ET.fromstring(response.text)
-
-        # Find FLAG element (ignore namespaces)
-        flag = None
-        for elem in root.iter():
-            if elem.tag.endswith("FLAG"):
-                flag = elem.text
-                break
-
-        if flag is None:
-            return {"status": False}  # safety fallback
+        # Fetch API details for CA validation
+        record = db.query(API_Key_Master).filter_by(api_name="Validate prepaid meter through ca number").first()
+        if not record:
+            return {"valid": False, "message": "Prepaid validation API not configured."}
         
-        if flag.strip().upper() == "N":
-            return {"status": False}
+        # Extract headers safely
+        prepaid_validation_headers = record.api_headers or {}
+        prepaid_validation_content_type = prepaid_validation_headers.get("Content-Type")
+        prepaid_validation_soap_action = prepaid_validation_headers.get("SOAPAction")
         
-        else:
+        # SOAP URL
+        url = record.api_url
+        # url = "http://10.8.61.235/delhiwsV2/isuservice.asmx?op=ZBAPI_ZBI_PREPAID_MTR"
+
+
+         # Headers with auth token
+        headers = {
+            'Content-Type': prepaid_validation_content_type,
+            'SOAPAction': prepaid_validation_soap_action,
+        }
+
+        # headers = {
+        #     "Content-Type": "text/xml; charset=utf-8",
+        #     "SOAPAction": "http://tempuri.org/ZBAPI_ZBI_PREPAID_MTR"
+        # }
+
+        body = f"""<?xml version="1.0" encoding="utf-8"?>
+        <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                    xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+        <soap:Body>
+            <ZBAPI_ZBI_PREPAID_MTR xmlns="http://tempuri.org/">
+            <CA_NUMBER>000{ca_number}</CA_NUMBER>
+            </ZBAPI_ZBI_PREPAID_MTR>
+        </soap:Body>
+        </soap:Envelope>"""
+
+        try:
+            try:
+                response = requests.post(url, headers=headers, data=body, timeout=30)
+                response.raise_for_status()
+                response_text = response.text
+            except Exception as e:
+                print("Prepaid api error: ============")
+                return {"status": False, "message": "Prepaid Validation service unavailable."}    
+
+
+            # Log API call
+            # save_api_key_count("Prepaid Meter - Check Balance / Recharge", "Validate prepaid meter through ca number", body, response_text)
+
+            # Parse XML Response
+            root = ET.fromstring(response.text)
+
+            # Extract FLAG (ignore namespaces safely)
+            flag = None
+            for elem in root.iter():
+                if elem.tag.endswith("FLAG"):
+                    flag = elem.text
+                    print(flag, "========== prepaid flag")
+                    break
+
+            print(flag, "========== prepaid flag")
+
+            # Safety fallback
+            if not flag:
+                return {"status": False}
+
+            # Business logic
+            if flag.strip().upper() == "NR":
+                return {"status": False}
+
             return {"status": True}
 
-        # return flag.strip().upper() != "N"
-
+        except Exception as e:
+            print("SOAP Error:", e)
+            return {"status": False}
+        
     except Exception as e:
-        print("SOAP Error:", e)
-        return False
+        db.rollback()
+        print("Unexpected error in validate prepaid meter:", e)
+        return {"status": False, "message": "Internal error."}
 
-
-
+    finally:
+        db.close()

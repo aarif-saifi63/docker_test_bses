@@ -34,7 +34,7 @@ def create_intent():
         return jsonify(status=True, message="Intent created successfully", intent_id=intent_id), 201
 
     except Exception as e:
-        return jsonify(status=False, message=str(e)), 500
+        return jsonify(status=False, message="something went wrong"), 500
 
 def get_intents():
     try:
@@ -139,7 +139,7 @@ def get_intents():
 
     except Exception as e:
         print(e)
-        return jsonify(status=False, message=str(e)), 500
+        return jsonify(status=False, message="something went wrong"), 500
 
 
 def get_intent_by_id(intent_id):
@@ -159,7 +159,7 @@ def get_intent_by_id(intent_id):
 
         return jsonify(status=True, data=data), 200
     except Exception as e:
-        return jsonify(status=False, message=str(e)), 500
+        return jsonify(status=False, message="something went wrong"), 500
 
 
 def update_intent(intent_id):
@@ -199,7 +199,7 @@ def update_intent(intent_id):
         return jsonify(status=True, message="Intent updated successfully"), 200
 
     except Exception as e:
-        return jsonify(status=False, message=str(e)), 500
+        return jsonify(status=False, message="something went wrong"), 500
 
 
 def delete_intent(intent_id):
@@ -211,7 +211,7 @@ def delete_intent(intent_id):
         IntentExampleV.delete_by_intent(intent_id)
         return jsonify(status=True, message="Intent deleted successfully"), 200
     except Exception as e:
-        return jsonify(status=False, message=str(e)), 500
+        return jsonify(status=False, message="something went wrong"), 500
 
 
 ## Export Intents
@@ -305,7 +305,7 @@ def export_intents():
 
     except Exception as e:
         print(f"Error in export_intents: {e}")
-        return jsonify(status=False, message=str(e)), 500
+        return jsonify(status=False, message="something went wrong"), 500
 
 
 def generate_excel(data):

@@ -136,7 +136,7 @@ def generate_duplicate_bill_pdf():
         })
 
     except Exception as e:
-        return jsonify({"error": str(e), "status": False}), 500
+        return jsonify({"error": "something went wrong", "status": False}), 500
     finally:
         db.close()
     
@@ -428,7 +428,7 @@ def update_missing_email(ca_number, email):
                 "status": True
             }
         except Exception as e:
-            return {"error": str(e), "status": False}
+            return {"error": "something went wrong", "status": False}
     except Exception as e:
         raise e
     finally:
@@ -456,7 +456,7 @@ def update_missing_email(ca_number, email):
 #                 "response": "email updated in database"
 #             }
 #     except Exception as e:
-#         return {"error": str(e)}
+#         return {"error": "something went wrong"}
 
 def update_email_in_db(sender_id=None, email=None):
     # data = request.json
@@ -485,7 +485,7 @@ def update_email_in_db(sender_id=None, email=None):
 
     except Exception as e:
         db.rollback()
-        return {"status": False, "error": str(e)}
+        return {"status": False, "error": "something went wrong"}
 
     finally:
         db.close()
@@ -549,4 +549,4 @@ def update_email_in_db(sender_id=None, email=None):
 #             "status": True
 #         })
 #     except Exception as e:
-#         return jsonify({"error": str(e), "status": False}), 500
+#         return jsonify({"error": "something went wrong", "status": False}), 500

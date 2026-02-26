@@ -31,7 +31,7 @@ def create_permission():
         return jsonify(status=True, message="Permission created successfully", permission_id=permission_id), 201
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
 
 
 # --- Get Permissions with pagination and search ---
@@ -73,7 +73,7 @@ def get_permissions():
         ), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
 
 
 # --- Get Permission by ID ---
@@ -95,7 +95,7 @@ def get_permission_by_id(permission_id):
         return jsonify(status=True, message="Permission fetched successfully", data=data), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
 
 
 # --- Update Permission ---
@@ -118,7 +118,7 @@ def update_permission(permission_id):
         return jsonify(status=True, message="Permission updated successfully"), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
 
 
 # --- Delete Permission ---
@@ -131,4 +131,4 @@ def delete_permission(permission_id):
         return jsonify(status=True, message="Permission deleted successfully"), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500

@@ -48,7 +48,7 @@ def encrypt_jwt_payload(jwt_token: str) -> str:
         # Return as base64 string for easy transmission
         return base64.urlsafe_b64encode(encrypted_bytes).decode()
     except Exception as e:
-        raise ValueError(f"Failed to encrypt JWT: {str(e)}")
+        raise ValueError(f"Failed to encrypt JWT: something went wrong")
 
 
 def decrypt_jwt_payload(encrypted_token: str) -> str:
@@ -71,7 +71,7 @@ def decrypt_jwt_payload(encrypted_token: str) -> str:
         decrypted_bytes = cipher.decrypt(encrypted_bytes)
         return decrypted_bytes.decode()
     except Exception as e:
-        raise ValueError(f"Failed to decrypt JWT: {str(e)}")
+        raise ValueError(f"Failed to decrypt JWT: something went wrong")
 
 
 def generate_encryption_key() -> str:

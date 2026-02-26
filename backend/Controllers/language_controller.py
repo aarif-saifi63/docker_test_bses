@@ -62,7 +62,7 @@ def create_language():
         }), 201
 
     except Exception as e:
-        return jsonify({"error": str(e), "status": False}), 500
+        return jsonify({"error": "something went wrong", "status": False}), 500
 
     finally:
         db.close()
@@ -83,7 +83,7 @@ def get_languages():
         ]
         return jsonify({"data":result, "message": "Fetch successfully", "status": True})
     except Exception as e:
-        return jsonify({"error": str(e), "status": False}), 500
+        return jsonify({"error": "something went wrong", "status": False}), 500
 
 
 # Get a single language by ID
@@ -102,7 +102,7 @@ def get_language(language_id):
         }
         return jsonify({"data":result, "message": "Fetch successfully", "status": True})
     except Exception as e:
-        return jsonify({"error": str(e), "status": False}), 500
+        return jsonify({"error": "something went wrong", "status": False}), 500
 
 
 # Update a language by ID
@@ -162,7 +162,7 @@ def update_language(language_id):
         }), 200
 
     except Exception as e:
-        return jsonify({"error": str(e), "status": False}), 500
+        return jsonify({"error": "something went wrong", "status": False}), 500
 
     finally:
         db.close()
@@ -178,7 +178,7 @@ def delete_language(language_id):
         else:
             return jsonify({"error": "Language not found", "status": False}), 404
     except Exception as e:
-        return jsonify({"error": str(e), "status": False}), 500
+        return jsonify({"error": "something went wrong", "status": False}), 500
     
 
 def get_visible_languages():
@@ -202,6 +202,6 @@ def get_visible_languages():
 
         return jsonify({"status": True, "data": langs_list})
     except Exception as e:
-        return jsonify({"status": False, "error": str(e)}), 500
+        return jsonify({"status": False, "error": "something went wrong"}), 500
     finally:
         db.close()

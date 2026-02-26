@@ -7,7 +7,7 @@ from Controllers.submenu_fallback_controller import create_submenu_fallback, del
 from middlewares.auth_chatbot_middleware import chatbot_token_required
 from middlewares.auth_middleware import optional_token, token_required, permission_required
 # Controller Imports
-from Controllers.ad_controller import ad_on_menu_click, add_ad, chatbot_intro_ad, delete_ad, get_ad, get_ad_analytics, get_all_ads, get_unique_submenus, submit_ad_tracker, update_ad
+from Controllers.ad_controller import ad_on_menu_click, add_ad, chatbot_intro_ad, delete_ad, get_ad, get_ad_analytics, get_all_ads, get_unique_submenus, get_unique_submenus_internal, submit_ad_tracker, update_ad
 from Controllers.api_key_master_controller import api_hit_breakdown, create_api_key, get_all_api_details, get_api_details_with_breakdown, update_api_key_by_name
 from Controllers.chatbot_auth_controller import chatbot_init_session, chatbot_logout, chatbot_refresh_session, chatbot_validate_session
 from Controllers.bill_pay_controller import dashboard_download_duplicate_bill, dashboard_pay_bill, save_bill_pay_chat, save_duplicate_bill_chat
@@ -253,8 +253,8 @@ def download_file_path_thumbnails(filename):
 ## Admin Credentials (Login is Public)
 app.route('/register', methods=['POST'])(register_user)
 app.route('/login', methods=['POST'])(login_user)
-app.route('/users/logout', methods=['POST'])(logout_user)
-app.route("/refresh", methods=["POST"])(refresh_token)
+#app.route('/users/logout', methods=['POST'])(logout_user)
+#app.route("/refresh", methods=["POST"])(refresh_token)
 
 ## RSA Public Key (Public - for encrypting login credentials)
 app.route("/rsa/public-key", methods=["GET"])(get_public_key)
@@ -263,7 +263,22 @@ app.route("/rsa/public-key", methods=["GET"])(get_public_key)
 app.route("/users/login", methods=["POST"])(login_user_detail)
 
 ## Verify Login (Public - SECURITY: One-time token verification to prevent replay attacks)
-app.route("/users/verify-login", methods=["POST"])(verify_login)
+#app.route("/users/verify-login", methods=["POST"])(verify_login)
+
+@app.route('/users/verify-login', methods=['POST'])
+@token_required
+def protected_verify_login():
+    return verify_login()
+
+@app.route('/users/logout', methods=['POST'])
+@token_required
+def protected_logout_user():
+    return logout_user()
+
+@app.route('/refresh', methods=['POST'])
+# @token_required
+def protected_refresh_token():
+    return refresh_token()
 
 ## Procteded Public User-Facing Endpoints
 
@@ -304,15 +319,27 @@ def protected_ad_on_menu_click():
 ## Public User-Facing Endpoints
 app.route('/save-bill-pay-chat', methods=['POST'])(save_bill_pay_chat)
 app.route('/save-duplicate-bill', methods=['POST'])(save_duplicate_bill_chat)
-app.route('/submenus', methods=['GET'])(get_unique_submenus)
+app.route('/submenus-internal', methods=['GET'])(get_unique_submenus_internal)
 # app.route("/chatbot-intro-ad", methods=["GET"])(chatbot_intro_ad)
 # app.route("/ad-on-menu-click", methods=["POST"])(ad_on_menu_click)
 # app.route("/submit-ad-tracker", methods=["POST"])(submit_ad_tracker)
 # app.route("/feedback/submit", methods=["POST"])(submit_feedback)
 # app.route("/polls/active", methods=["GET"])(get_active_poll)
 # app.route("/poll/submit", methods=["POST"])(submit_poll_response)
-app.route('/divisions', methods=['GET'])(get_divisions)
+#app.route('/divisions', methods=['GET'])(get_divisions)
 app.route('/visible-languages', methods=['GET'])(get_visible_languages)
+
+
+@app.route('/submenus', methods=['GET'])
+@token_required
+def protected_unique_submenus():
+    return get_unique_submenus()
+
+
+@app.route('/divisions', methods=['GET'])
+@token_required
+def protected_divisions():
+    return get_divisions()
 
 user_ca_storage = {}
 

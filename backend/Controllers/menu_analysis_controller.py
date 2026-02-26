@@ -42,13 +42,13 @@ def menu_analysis():
 
         # --- Fetch dynamic submenus ---
         try:
-            submenu_url = f"{flask_url}/submenus"
+            submenu_url = f"{flask_url}/submenus-internal"
             submenu_response = requests.get(submenu_url, timeout=10)
             submenu_response.raise_for_status()
             submenu_data = submenu_response.json().get("data", [])
         except Exception as e:
-            logger.error(f"Failed to fetch submenus: {str(e)}")
-            return jsonify({"error": "Failed to fetch menu options"}), 500
+            logger.error(f"something went wrong")
+            return jsonify({"message": "Failed to fetch menu options"}), 500
 
         # --- Build canonical option map dynamically ---
         # Group submenus by submenu_id (NOT menu_id) to pair English & Hindi equivalents
@@ -206,7 +206,7 @@ def menu_analysis():
                         if ts:
                             timestamps.append(ts)
             except Exception as e:
-                logger.warning(f"Error parsing timestamps for session {session.id}: {str(e)}")
+                logger.warning(f"Error parsing timestamps for session {session.id}")
                 continue
 
             if not timestamps:
@@ -216,7 +216,7 @@ def menu_analysis():
             try:
                 session.chat.sort(key=lambda x: to_ist(x.get("timestamp")) if x.get("timestamp") else datetime.min, reverse=False)
             except Exception as e:
-                logger.warning(f"Error sorting chat for session {session.id}: {str(e)}")
+                logger.warning(f"Error sorting chat for session {session.id}")
                 continue
 
             session_start = min(timestamps)
@@ -361,8 +361,8 @@ def menu_analysis():
         }), 200
 
     except Exception as e:
-        logger.error(f"Error in menu_analysis: {str(e)}", exc_info=True)
-        return jsonify({"error": "Something went wrong", "details": str(e)}), 500
+        logger.error(f"Error in menu_analysis", exc_info=True)
+        return jsonify({"message": "Something went wrong"}), 500
 
     finally:
         if db:

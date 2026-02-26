@@ -163,7 +163,7 @@ def get_user_menu_data():
 
     except Exception as e:
         db.rollback()
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500
     finally:
         db.close()
 
@@ -194,7 +194,7 @@ def get_rajdhani_users():
         }), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500
     finally:
         db.close()
 
@@ -353,8 +353,8 @@ def get_rajdhani_users():
 
 #     except Exception as e:
 #         db.rollback()
-#         app.logger.error(f"Transaction failed: {str(e)}")
-#         return jsonify({"error": "Transaction failed", "details": str(e)}), 500
+#         app.logger.error(f"Transaction failed: {"something went wrong"}")
+#         return jsonify({"error": "Transaction failed", "details": "something went wrong"}), 500
 #     finally:
 #         db.close()
 
@@ -518,8 +518,8 @@ def get_rajdhani_users():
 
 #     except Exception as e:
 #         db.rollback()
-#         # app.logger.error(f"Transaction failed: {str(e)}")
-#         return jsonify({"error": "Transaction failed", "details": str(e)}), 500
+#         # app.logger.error(f"Transaction failed: "something went wrong"")
+#         return jsonify({"error": "Transaction failed", "details": "something went wrong"}), 500
 #     finally:
 #         db.close()
 
@@ -1211,7 +1211,7 @@ def export_domain():
         )
 
     except Exception as e:
-        return {"error": str(e)}, 500
+        return {"error": "something went wrong"}, 500
 
     finally:
         db.close()
@@ -1330,7 +1330,7 @@ def export_domain():
 #         )
 
 #     except Exception as e:
-#         return {"error": str(e)}, 500
+#         return {"error": "something went wrong"}, 500
 #     finally:
 #         db.close()
 
@@ -1492,7 +1492,7 @@ def download_stories():
         )
  
     except Exception as e:
-        return {"error": str(e)}, 500
+        return {"error": "something went wrong"}, 500
     finally:
         db.close()
 
@@ -1565,7 +1565,7 @@ def rebuild_intent_file():
         )
 
     except Exception as e:
-        return {"error": str(e)}, 500
+        return {"error": "something went wrong"}, 500
     finally:
         db.close()
 
@@ -1592,7 +1592,7 @@ def delete_submenu(submenu_id):
         }), 200
     except Exception as e:
         db.rollback()
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500
     finally:
         db.close()
 
@@ -1627,7 +1627,7 @@ def delete_menu(menu_id):
 
     except Exception as e:
         db.rollback()
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500
     finally:
         db.close()
 
@@ -1664,10 +1664,10 @@ def delete_menu(menu_id):
 
 #     except SQLAlchemyError as e:
 #         db.rollback()
-#         return jsonify({"error": str(e), "status": False}), 500
+#         return jsonify({"error": "something went wrong", "status": False}), 500
 #     except Exception as e:
 #         db.rollback()
-#         return jsonify({"error": f"Unexpected error: {str(e)}", "status": True}), 500
+#         return jsonify({"error": "something went wrong", "status": False}), 500
 #     finally:
 #         db.close()
 
@@ -1742,9 +1742,9 @@ def update_menu_sequence():
 
     except SQLAlchemyError as e:
         db.rollback()
-        return jsonify({"error": str(e), "status": False}), 500
+        return jsonify({"error": "something went wrong", "status": False}), 500
     except Exception as e:
         db.rollback()
-        return jsonify({"error": f"Unexpected error: {str(e)}", "status": False}), 500
+        return jsonify({"error": "something went wrong", "status": False}), 500
     finally:
         db.close()

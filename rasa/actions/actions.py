@@ -49,7 +49,7 @@ def send_dynamic_messages(dispatcher, action_name, message_type, lang="en"):
             if text:
                 dispatcher.utter_message(text=text)
     except Exception as e:
-        dispatcher.utter_message(text=f"Unable to fetch messages for {action_name}. Error: {str(e)}")
+        dispatcher.utter_message(text=f"Unable to fetch messages for {action_name}. Error: something went wrong")
 
 
 def send_dynamic_messages_without_dispatcher(action_name, message_type, lang="en"):
@@ -74,7 +74,7 @@ def send_dynamic_messages_without_dispatcher(action_name, message_type, lang="en
         return first_message.get("text", "Message text not found.")
 
     except Exception as e:
-        return f"Unable to fetch messages for {action_name}. Error: {str(e)}"
+        return f"Unable to fetch messages for {action_name}. Error: something went wrong"
     
 
 
@@ -367,7 +367,7 @@ class Register_consumer_options_english(Action):
 
         except Exception as e:
             dispatcher.utter_message(
-                text=f"Sorry, I'm unable to load menu options right now.\nError: {str(e)}"
+                text=f"Sorry, I'm unable to load menu options right now.\nError: something went wrong"
             )
 
         return []
@@ -438,7 +438,7 @@ class Register_consumer_options_hindi(Action):
             dispatcher.utter_message(text="registered")
 
         except Exception as e:
-            dispatcher.utter_message(text=f"माफ़ करें, मैं अभी मेनू विकल्प लोड नहीं कर पा रहा हूँ।\nत्रुटि: {str(e)}")
+            dispatcher.utter_message(text=f"माफ़ करें, मैं अभी मेनू विकल्प लोड नहीं कर पा रहा हूँ।")
 
         return []
 
@@ -520,7 +520,7 @@ class New_consumer_options_english(Action):
             dispatcher.utter_message(text="new")
 
         except Exception as e:
-            dispatcher.utter_message(text=f"Sorry, I'm unable to load menu options right now.\nError: {str(e)}")
+            dispatcher.utter_message(text=f"Sorry, I'm unable to load menu options right now.\nError: something went wrong")
 
         return []
 
@@ -637,7 +637,7 @@ class New_consumer_options_hindi(Action):
 
         except Exception as e:
             dispatcher.utter_message(
-                text=f"माफ़ करें, मैं अभी मेनू विकल्प लोड नहीं कर पा रहा हूँ।\nत्रुटि: {str(e)}"
+                text=f"माफ़ करें, मैं अभी मेनू विकल्प लोड नहीं कर पा रहा हूँ।"
             )
 
         return []

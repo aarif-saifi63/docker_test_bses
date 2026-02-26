@@ -89,7 +89,7 @@ def verify_access_token(encrypted_token):
 
         return payload if payload.get("type") == "access" else None
     except Exception as e:
-        print(f"Token verification failed: {str(e)}")
+        print(f"Token verification failed: something went wrong")
         return None
 
 
@@ -112,7 +112,7 @@ def verify_refresh_token(encrypted_token):
 
         return payload if payload.get("type") == "refresh" else None
     except Exception as e:
-        print(f"Refresh token verification failed: {str(e)}")
+        print(f"Refresh token verification failed: something went wrong")
         return None
     
 # def is_blacklisted(token):
@@ -171,7 +171,7 @@ def token_required(f):
         except jwt.ExpiredSignatureError:
             return jsonify({"message": "Token expired", "status": False}), 401
         except Exception as e:
-            print(f"Token validation error: {str(e)}")
+            print(f"Token validation error: something went wrong")
             return jsonify({"message": "Invalid or expired token", "status": False}), 401
 
         # 5️⃣ Attach user info to request context

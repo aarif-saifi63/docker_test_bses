@@ -44,7 +44,7 @@ def create_api_key():
         return jsonify({"status": True, "id": record_id}), 201
 
     except Exception as e:
-        return jsonify({"status": False, "error": str(e)}), 500
+        return jsonify({"status": False, "error": "something went wrong"}), 500
     
 
 def update_api_key_by_name():
@@ -107,7 +107,7 @@ def update_api_key_by_name():
         }), 200
 
     except Exception as e:
-        return jsonify({"status": False, "error": str(e)}), 500
+        return jsonify({"status": False, "error": "something went wrong"}), 500
     finally:
         db.close()
     
@@ -138,7 +138,7 @@ def get_all_api_details():
         }), 200
 
     except Exception as e:
-        return jsonify({"status": False, "error": str(e)}), 500
+        return jsonify({"status": False, "error": "something went wrong"}), 500
     finally:
         db.close()
      

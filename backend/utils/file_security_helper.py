@@ -184,7 +184,7 @@ class FileSecurityHelper:
             file_bytes = file.read()
             file.seek(0)
         except Exception as e:
-            return False, f"Unable to read file content: {str(e)}"
+            return False, f"Unable to read file content: something went wrong"
 
         # 6. Magic number validation (CRITICAL SECURITY CHECK)
         if not cls._validate_magic_bytes(file_bytes, ext):
@@ -206,6 +206,15 @@ class FileSecurityHelper:
             is_safe, svg_error = cls._validate_svg_content(file_bytes)
             if not is_safe:
                 return False, f"SVG validation failed: {svg_error}"
+            
+        # if ext in cls.ALLOWED_CONTENT_TYPES:
+        #     # Additional check for images: detect embedded scripts (polyglot attack)
+        #     if cls._pdf_contains_script_like_content(file_bytes):
+        #         return False, "Malicious content detected in file"
+            
+        #     is_safe, svg_error = cls._validate_svg_content(file_bytes)
+        #     if not is_safe:
+        #         return False, "Malicious content detected in file"
 
         # 10. General malicious content scan
         if not cls._scan_content(file_bytes, file.filename):
@@ -219,9 +228,9 @@ class FileSecurityHelper:
         Check for double extension attacks
 
         Examples:
-        - file.php.pdf ❌
-        - file.exe.docx ❌
-        - document.pdf ✅
+        - file.php.pdf 
+        - file.exe.docx 
+        - document.pdf (allowed, single extension)
         """
         if not filename:
             return True
@@ -271,8 +280,10 @@ class FileSecurityHelper:
                 b'PK\x03\x04',     # ZIP/Office signature
                 b'\xD0\xCF\x11\xE0',  # OLE/Office signature
                 b'MZ',             # Executable signature
-                b'<!DOCTYPE',      # HTML signature
-                b'<html',          # HTML signature
+                b'<!DOCTYPE',      # HTML/XML DOCTYPE
+                b'<html',          # HTML page
+                b'<body',          # HTML body tag
+                b'<script',        # Script tag (XSS / HTML injection)
             ]
             for forbidden_sig in forbidden_sigs:
                 if forbidden_sig in header:
@@ -295,6 +306,10 @@ class FileSecurityHelper:
         if ext in {".jpg", ".jpeg"}:
             if not file_bytes.startswith(b'\xff\xd8\xff'):
                 return False
+            # JPEG should end with FFD9
+            if not file_bytes.endswith(b'\xff\xd9'):
+                return False
+            
             # Large JPEGs should have FFD9 end marker
             if len(file_bytes) > 1000 and not file_bytes.endswith(b'\xff\xd9'):
                 # Some JPEGs might have trailing data, check if FFD9 exists somewhere
@@ -387,6 +402,8 @@ class FileSecurityHelper:
             r"pcntl_exec\s*\(",     # Process control
             r"cmd\.exe",            # Windows command execution
             r"/bin/(ba)?sh",        # Unix shell execution
+            r"script\s*:",          # Script tags (XSS)
+            r"svg\s*:",             # SVG tags (can contain scripts)
         ]
 
         for pattern in malicious_patterns:
@@ -400,6 +417,19 @@ class FileSecurityHelper:
                 return False
             # Check for HTML/XML in images
             if b'<html' in content.lower() or b'<body' in content.lower():
+                return False
+            
+            lower_bytes = content.lower()
+            
+            # Reject if SVG detected inside image
+            if b"<svg" in lower_bytes:
+                return False
+            
+            # Reject if script tag detected
+            if b"<script" in lower_bytes:
+                return False
+            
+            if b"<?xml" in lower_bytes:
                 return False
 
         return True
@@ -418,6 +448,17 @@ class FileSecurityHelper:
         Returns:
             Tuple[bool, str]: (is_safe, error_message)
         """
+        # --- Byte-level pre-scan (runs before lxml to prevent C-level crashes) ---
+        # lxml's C parser can segfault on certain payloads; reject dangerous
+        # patterns here so lxml never processes them.
+        svg_lower = svg_bytes.lower()
+        if b'<script' in svg_lower:
+            return False, "Script elements are not allowed in SVG"
+        if b'<!doctype' in svg_lower or b'<!entity' in svg_lower:
+            return False, "DOCTYPE and ENTITY declarations are not allowed in SVG"
+        if b'javascript:' in svg_lower:
+            return False, "JavaScript protocol is not allowed in SVG"
+
         try:
             from lxml import etree
         except ImportError:
@@ -466,9 +507,9 @@ class FileSecurityHelper:
             return True, ""
 
         except etree.XMLSyntaxError as e:
-            return False, f"Invalid XML syntax: {str(e)}"
+            return False, f"Invalid XML syntax: something went wrong"
         except Exception as e:
-            return False, f"SVG validation error: {str(e)}"
+            return False, f"SVG validation error: something went wrong"
 
     @classmethod
     def _validate_svg_basic(cls, svg_bytes: bytes) -> Tuple[bool, str]:
@@ -611,7 +652,7 @@ class FileSecurityHelper:
         try:
             os.makedirs(upload_dir, exist_ok=True)
         except Exception as e:
-            return False, None, f"Failed to create upload directory: {str(e)}"
+            return False, None, f"Failed to create upload directory: something went wrong"
 
         # 9. Build full path
         full_path = os.path.join(upload_dir, secure_filename)
@@ -621,7 +662,7 @@ class FileSecurityHelper:
             file.seek(0)
             file.save(full_path)
         except Exception as e:
-            return False, None, f"Failed to save file: {str(e)}"
+            return False, None, f"Failed to save file: something went wrong"
 
         # 11. Set secure file permissions (read-only for group/others)
         try:
@@ -649,7 +690,7 @@ class FileSecurityHelper:
                 os.remove(full_path)
             except:
                 pass
-            return False, None, f"Post-save verification failed: {str(e)}"
+            return False, None, f"Post-save verification failed: something went wrong"
 
         # 13. Return relative path (for database storage)
         # Assuming upload_dir is like "/path/to/uploads/ad_content"

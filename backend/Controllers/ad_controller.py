@@ -251,8 +251,8 @@ def add_ad():
         }), 201
 
     except Exception as e:
-        logging.error(f"Unexpected error in add_ad: {str(e)}", exc_info=True)
-        return jsonify({"status": False, "message": str(e)}), 500
+        logging.error(f"Unexpected error in add_ad: something went wrong", exc_info=True)
+        return jsonify({"status": False, "message": "something went wrong"}), 500
     finally:
         if db is not None:
             db.close()
@@ -489,8 +489,8 @@ def add_ad():
 #             }), 200
 
 #     except Exception as e:
-#         logging.error(f"Unexpected error in update_ad for ad_id {ad_id}: {str(e)}", exc_info=True)
-#         return jsonify({"status": False, "message": str(e)}), 500
+#         logging.error(f"Unexpected error in update_ad for ad_id {ad_id}: something went wrong", exc_info=True)
+#         return jsonify({"status": False, "message": "something went wrong"}), 500
 
 
 def update_ad():
@@ -691,8 +691,8 @@ def update_ad():
             }), 200
 
     except Exception as e:
-        logging.error(f"Unexpected error in update_ad for ad_id {ad_id}: {str(e)}", exc_info=True)
-        return jsonify({"status": False, "message": str(e)}), 500
+        logging.error(f"Unexpected error in update_ad for ad_id {ad_id}: something went wrong", exc_info=True)
+        return jsonify({"status": False, "message": "something went wrong"}), 500
     finally:
         db.close()
 
@@ -720,13 +720,13 @@ def delete_ad():
                     os.remove(os.path.join(UPLOAD_DIR, ad.ad_image_path))
                     logging.debug(f"Deleted file {ad.ad_image_path} for ad_id {ad_id}")
                 except Exception as e:
-                    logging.warning(f"Failed to delete file {ad.ad_image_path}: {str(e)}")
+                    logging.warning(f"Failed to delete file {ad.ad_image_path}: something went wrong")
             if ad.ad_pdf_path and os.path.exists(os.path.join(UPLOAD_DIR, ad.ad_pdf_path)):
                 try:
                     os.remove(os.path.join(UPLOAD_DIR, ad.ad_pdf_path))
                     logging.debug(f"Deleted file {ad.ad_pdf_path} for ad_id {ad_id}")
                 except Exception as e:
-                    logging.warning(f"Failed to delete file {ad.ad_pdf_path}: {str(e)}")
+                    logging.warning(f"Failed to delete file {ad.ad_pdf_path}: something went wrong")
 
             # Delete the advertisement
             ad.delete(db=db)
@@ -739,8 +739,8 @@ def delete_ad():
             }), 200
 
     except Exception as e:
-        logging.error(f"Unexpected error in delete_ad for ad_id {ad_id}: {str(e)}", exc_info=True)
-        return jsonify({"status": False, "message": str(e)}), 500
+        logging.error(f"Unexpected error in delete_ad for ad_id {ad_id}: something went wrong", exc_info=True)
+        return jsonify({"status": False, "message": "something went wrong"}), 500
     finally:
         db.close()
 
@@ -814,7 +814,7 @@ def generate_signed_url_for_file(file_path, expires_in=300):
         return f"{download_path}?{qs}"
 
     except Exception as e:
-        logging.error(f"Error generating signed URL: {str(e)}")
+        logging.error(f"Error generating signed URL: something went wrong")
         # Fallback to original path if signing fails
         return file_path
 
@@ -920,7 +920,7 @@ def get_ad():
         return jsonify({"data": result, "message": "Ad fetch success", "status": True}), 200
 
     except Exception as e:
-        return jsonify({"error": str(e), "status": False}), 500
+        return jsonify({"error": "something went wrong", "status": False}), 500
 
     finally:
         db.close()
@@ -986,7 +986,7 @@ def get_ad():
 #         }), 200
 
 #     except Exception as e:
-#         logging.error(f"Unexpected error in chatbot_intro_ad: {str(e)}", exc_info=True)
+#         logging.error(f"Unexpected error in chatbot_intro_ad: something went wrong", exc_info=True)
 #         return jsonify({
 #             "status": False,
 #             "message": "Internal server error"
@@ -1061,7 +1061,7 @@ def chatbot_intro_ad():
         }), 200
 
     except Exception as e:
-        logging.error(f"Unexpected error in chatbot_intro_ad: {str(e)}", exc_info=True)
+        logging.error(f"Unexpected error in chatbot_intro_ad: something went wrong", exc_info=True)
         return jsonify({
             "status": False,
             "message": "Internal server error"
@@ -1147,7 +1147,7 @@ def get_all_ads():
         }), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500
     finally:
         db.close()
 
@@ -1182,7 +1182,7 @@ def get_unique_submenus():
         return jsonify({"data": unique_list, "message": "Sub-menus fetch success", "status": True, "count": len(unique_list)}), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500
     finally:
         db.close()
     
@@ -1218,10 +1218,46 @@ def get_unique_submenus():
         return jsonify({"data": unique_list, "message": "Sub-menus fetch success", "status": True, "count": len(unique_list)}), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500
     finally:
         db.close()
     
+
+def get_unique_submenus_internal():
+    try:
+        db = SessionLocal()
+
+        # Fetch all submenus
+        submenus = db.query(SubMenuOptionV).all()
+
+        if not submenus:
+            return jsonify({"message": "No submenus found"}), 404
+
+        # Use a set to remove duplicates by submenu name + language
+        unique_submenus = {}
+        for submenu in submenus:
+            key = (submenu.name.strip().lower(), submenu.lang.strip().lower() if submenu.lang else "")
+            if key not in unique_submenus:
+                unique_submenus[key] = {
+                    "id": submenu.id,
+                    "menu_id": submenu.menu_id,
+                    "user_id": submenu.user_id,
+                    "name": submenu.name,
+                    "lang": submenu.lang,
+                    "is_visible": submenu.is_visible,
+                }
+
+        # Convert unique submenu values to a list
+        unique_list = list(unique_submenus.values())
+
+        return jsonify({"data": unique_list, "message": "Sub-menus fetch success", "status": True, "count": len(unique_list)}), 200
+
+    except Exception as e:
+        return jsonify({"error": "something went wrong"}), 500
+    finally:
+        db.close()
+
+
 
 def ad_on_menu_click():
     try:
@@ -1311,7 +1347,7 @@ def ad_on_menu_click():
         return jsonify({"data":response, "message": "Successfull","status": True}), 200
     
     except Exception as e:
-        return jsonify({"error": str(e), "status": False}), 500
+        return jsonify({"error": "something went wrong", "status": False}), 500
     finally:
         db.close()
     
@@ -1380,7 +1416,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 #     except Exception as e:
 #         db.rollback()
-#         return jsonify({"error": str(e), "status": False}), 500
+#         return jsonify({"error": "something went wrong", "status": False}), 500
 
 #     finally:
 #         db.close()
@@ -1449,7 +1485,7 @@ def submit_ad_tracker():
 
     except Exception as e:
         db.rollback()
-        return jsonify({"error": str(e), "status": False}), 500
+        return jsonify({"error": "something went wrong", "status": False}), 500
 
     finally:
         db.close()
@@ -1574,7 +1610,7 @@ def get_ad_analytics():
 
     except Exception as e:
         db.rollback()
-        return jsonify({"error": str(e), "status": False}), 500
+        return jsonify({"error": "something went wrong", "status": False}), 500
 
     finally:
         db.close()

@@ -314,7 +314,7 @@ def get_ca():
             return jsonify(found=False, message="CA number not found for this sender_id")
     except Exception as e:
         print("Error fetching CA number:", e)
-        return jsonify({"found": False, "error": str(e)}), 500
+        return jsonify({"found": False, "error": "something went wrong"}), 500
 
     finally:
         db.close()
@@ -338,7 +338,7 @@ def get_ca_for_division(sender_id):
             return jsonify(found=False, message="CA number not found for this sender_id")
     except Exception as e:
         print("Error fetching CA number:", e)
-        return jsonify({"found": False, "error": str(e)}), 500
+        return jsonify({"found": False, "message": "something went wrong"}), 500
 
     finally:
         db.close()
@@ -365,8 +365,8 @@ def get_session_data():
         else:
             return jsonify(found=False, message="Data not found")
     except Exception as e:
-        print("Error fetching CA number:", e)
-        return jsonify({"found": False, "error": str(e)}), 500
+        print("Error fetching session data:", e)
+        return jsonify({"found": False, "message": "something went wrong"}), 500
 
     finally:
         db.close()

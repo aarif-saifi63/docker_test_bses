@@ -84,7 +84,7 @@ def chatbot_init_session():
         #     logging.info(f"New chatbot session created: {sender_id}")
         # except Exception as e:
         #     db.rollback()
-        #     logging.error(f"Failed to create session in DB: {str(e)}")
+        #     logging.error(f"Failed to create session in DB: "something went wrong"")
         #     # Continue anyway - session will be created on first interaction
         # finally:
         #     db.close()
@@ -130,7 +130,7 @@ def chatbot_init_session():
         return response, 201
 
     except Exception as e:
-        logging.error(f"Error in chatbot_init_session: {str(e)}", exc_info=True)
+        logging.error(f"something went wrong", exc_info=True)
         return jsonify({
             "status": False,
             "message": "Failed to initialize session"
@@ -219,7 +219,7 @@ def chatbot_refresh_session():
         return response, 200
 
     except Exception as e:
-        logging.error(f"Error in chatbot_refresh_session: {str(e)}", exc_info=True)
+        logging.error(f"something went wrong in chatbot_refresh_session", exc_info=True)
         return jsonify({
             "status": False,
             "message": "Failed to refresh session"
@@ -318,7 +318,7 @@ def chatbot_validate_session():
             }), 401
 
     except Exception as e:
-        logging.error(f"Error in chatbot_validate_session: {str(e)}", exc_info=True)
+        logging.error(f"something went wrong in chatbot_validate_session", exc_info=True)
         return jsonify({
             "status": False,
             "message": "Failed to validate session"
@@ -386,7 +386,7 @@ def chatbot_logout():
         return response, 200
 
     except Exception as e:
-        logging.error(f"Error in chatbot_logout: {str(e)}", exc_info=True)
+        logging.error(f"something went wrong in chatbot_logout", exc_info=True)
         return jsonify({
             "status": False,
             "message": "Logout failed"

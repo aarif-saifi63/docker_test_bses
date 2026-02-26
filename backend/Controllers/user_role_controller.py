@@ -24,7 +24,7 @@ from database import SessionLocal
 #         return jsonify(status=True, message="Role created successfully", role_id=role_id), 201
 
 #     except Exception as e:
-#         return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+#         return jsonify(status=False, message=f"An error occurred: "something went wrong""), 500
 
 
 def create_role():
@@ -80,7 +80,7 @@ def create_role():
         # return jsonify(status=True, message="Role created successfully", role_id=role_id), 201
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
 
 
 
@@ -121,7 +121,7 @@ def get_roles():
         ), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
 
 # --- Get Role by ID ---
 def get_role_by_id(role_id):
@@ -139,7 +139,7 @@ def get_role_by_id(role_id):
         return jsonify(status=True, message="Role fetched successfully", data=data), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
 
 # --- Update Role ---
 def update_role(role_id):
@@ -162,7 +162,7 @@ def update_role(role_id):
         return jsonify(status=True, message="Role updated successfully"), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
 
 # --- Delete Role ---
 # def delete_role(role_id):
@@ -174,7 +174,7 @@ def update_role(role_id):
 #         return jsonify(status=True, message="Role deleted successfully"), 200
 
 #     except Exception as e:
-#         return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+#         return jsonify(status=False, message=f"An error occurred: "something went wrong""), 500
 
 def delete_role(role_id):
     db = SessionLocal()
@@ -191,6 +191,6 @@ def delete_role(role_id):
         return jsonify(status=True, message="Role deleted successfully"), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
     finally:
         db.close()

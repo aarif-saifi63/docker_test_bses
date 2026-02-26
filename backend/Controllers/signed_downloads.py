@@ -92,7 +92,7 @@ def _resolve_and_check(root: str, rel_path: str):
 
         return str(full_path)
     except Exception as e:
-        logging.error(f"Error resolving path {rel_path}: {str(e)}")
+        logging.error(f"something went wrong", exc_info=True)
         return None
 
 @bp.route("/generate_signed_url", methods=["POST"])
@@ -147,7 +147,7 @@ def generate_signed_url():
                 redis_client.setex(f"signedurl:{sig}", expires_in, "1")
                 logging.info(f"Signed URL cached in Redis: {sig[:8]}...")
             except Exception as e:
-                logging.warning(f"Redis caching failed: {str(e)}")
+                logging.warning("something went wrong")
 
         # Build download URL
         host = request.host_url.rstrip("/")
@@ -170,11 +170,11 @@ def generate_signed_url():
         }), 200
 
     except BadRequest as e:
-        return jsonify({"status": False, "message": str(e)}), 400
+        return jsonify({"status": False, "message": "something went wrong"}), 400
     except NotFound as e:
-        return jsonify({"status": False, "message": str(e)}), 404
+        return jsonify({"status": False, "message": "something went wrong"}), 404
     except Exception as e:
-        logging.error(f"Error generating signed URL: {str(e)}", exc_info=True)
+        logging.error(f"Error generating signed URL: something went wrong", exc_info=True)
         return jsonify({"status": False, "message": "Internal server error"}), 500
 
 @bp.route("/download", methods=["GET"])
@@ -232,7 +232,7 @@ def download():
                     logging.warning(f"Invalid or reused download link: {sig[:8]}...")
                     raise Forbidden("Download link is invalid or has already been used")
             except Exception as e:
-                logging.error(f"Redis validation failed: {str(e)}")
+                logging.error(f"Redis validation failed: something went wrong")
                 # Fail closed: reject if Redis check fails
                 raise Forbidden("Unable to validate download link")
 
@@ -279,11 +279,11 @@ def download():
         return response
 
     except BadRequest as e:
-        return jsonify({"status": False, "message": str(e)}), 400
+        return jsonify({"status": False, "message": "something went wrong"}), 400
     except Forbidden as e:
-        return jsonify({"status": False, "message": str(e)}), 403
+        return jsonify({"status": False, "message": "something went wrong"}), 403
     except NotFound as e:
-        return jsonify({"status": False, "message": str(e)}), 404
+        return jsonify({"status": False, "message": "something went wrong"}), 404
     except Exception as e:
-        logging.error(f"Error in download: {str(e)}", exc_info=True)
+        logging.error(f"Error in download: something went wrong", exc_info=True)
         return jsonify({"status": False, "message": "Internal server error"}), 500

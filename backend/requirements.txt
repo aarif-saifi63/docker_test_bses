@@ -36,3 +36,4 @@ redis
 cryptography
 passlib[bcrypt]
 lxml
+email-validator

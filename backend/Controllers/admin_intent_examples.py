@@ -20,7 +20,7 @@ def create_intent_example():
         return jsonify(status=True, message="Intent example created successfully", example_id=example_id), 201
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message="something went wrong"), 500
 
 
 # --- Get all Examples for an Intent ---
@@ -32,7 +32,7 @@ def get_examples_by_intent(intent_id):
         return jsonify(status=True, message="Examples fetched successfully", data=data), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message="something went wrong"), 500
 
 
 # --- Get Example by ID ---
@@ -51,7 +51,7 @@ def get_example_by_id(example_id):
         return jsonify(status=True, message="Example fetched successfully", data=data), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message="something went wrong"), 500
 
 
 # --- Update Example ---
@@ -110,7 +110,7 @@ def get_example_by_id(example_id):
 #         ), 200
 
 #     except Exception as e:
-#         return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+#         return jsonify(status=False, message=f"An error occurred: "something went wrong""), 500
 
 def update_intent_example(intent_id):
     """
@@ -181,7 +181,7 @@ def update_intent_example(intent_id):
  
     except Exception as e:
         db.close()
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message="something went wrong"), 500
 
 
 # --- Delete Example ---
@@ -194,7 +194,7 @@ def delete_intent_example(example_id):
         return jsonify(status=True, message="Example deleted successfully"), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message="something went wrong"), 500
 
 
 # --- Delete all Examples for an Intent ---
@@ -204,4 +204,4 @@ def delete_examples_by_intent(intent_id):
         return jsonify(status=True, message="All examples for the intent deleted"), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message="something went wrong"), 500

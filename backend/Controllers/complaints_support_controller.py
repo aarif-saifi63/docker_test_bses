@@ -96,7 +96,7 @@ from database import SessionLocal
 #             }), 500
 
 #     except Exception as e:
-#         return jsonify({"status": False, "message": str(e)}), 500
+#         return jsonify({"status": False, "message": "something went wrong"}), 500
 
 
 
@@ -214,7 +214,7 @@ from database import SessionLocal
 #         })
 
 #     except Exception as e:
-#         return jsonify({"error": str(e), "status": False}), 500
+#         return jsonify({"error": "something went wrong", "status": False}), 500
     
 
 ## Complaint Status

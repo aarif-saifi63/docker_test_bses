@@ -27,7 +27,7 @@ def register_user():
         return jsonify(status=True, message="User registered successfully", user_id=user_id), 201
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 400
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 400
 
 
 # user login
@@ -64,4 +64,4 @@ def login_user():
             return jsonify(status=False, message="Invalid login details"), 400
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500

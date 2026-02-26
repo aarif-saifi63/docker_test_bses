@@ -44,7 +44,7 @@ def save_bill_pay_chat():
         return jsonify({"message": "Bill Pay Chat saved successfully"}), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500
     
 
 def save_duplicate_bill_chat():
@@ -83,7 +83,7 @@ def save_duplicate_bill_chat():
         return jsonify({"message": "Duplicate Bill Chat saved successfully"}), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500
     
 
 def dashboard_pay_bill():

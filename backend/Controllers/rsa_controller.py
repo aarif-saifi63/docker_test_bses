@@ -37,7 +37,7 @@ def get_public_key():
         }), 200
 
     except Exception as e:
-        logger.error(f"Failed to retrieve public key: {str(e)}")
+        logger.error(f"Failed to retrieve public key: something went wrong", exc_info=True)
         return jsonify({
             "status": False,
             "message": "Failed to retrieve public key"

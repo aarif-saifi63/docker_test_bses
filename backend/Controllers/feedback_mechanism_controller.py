@@ -32,9 +32,19 @@ def add_feedback_question():
         if not is_valid:
             return jsonify({"status": False, "message": msg}), 400
 
-        is_valid_options, msg_options = InputValidator.validate_name(question, "options")
-        if not is_valid_options:
-            return jsonify({"status": False, "message": msg_options}), 400
+        # is_valid_options, msg_options = InputValidator.validate_name(question, "options")
+        # if not is_valid_options:
+        #     return jsonify({"status": False, "message": msg_options}), 400
+
+        # Validate Options (if provided)
+        if options:
+            if not isinstance(options, list):
+                return jsonify({"status": False, "message": "Options must be a list"}), 400
+
+            for index, option in enumerate(options):
+                is_valid_option, msg_option = InputValidator.validate_name(option, f"option[{index}]")
+                if not is_valid_option:
+                    return jsonify({"status": False, "message": msg_option}), 400
 
         if not question:
             return jsonify({"status": "error", "message": "Question is required"}), 400
@@ -70,7 +80,7 @@ def add_feedback_question():
             }
         }), 201
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "something went wrong"}), 500
     finally:
         if db:
             db.close()
@@ -88,9 +98,19 @@ def update_feedback_question(question_id):
         if not is_valid:
             return jsonify({"status": False, "message": msg}), 400
 
-        is_valid_options, msg_options = InputValidator.validate_name(question, "options")
-        if not is_valid_options:
-            return jsonify({"status": False, "message": msg_options}), 400
+        # is_valid_options, msg_options = InputValidator.validate_name(question, "options")
+        # if not is_valid_options:
+        #     return jsonify({"status": False, "message": msg_options}), 400
+
+        # Validate Options (if provided)
+        if options:
+            if not isinstance(options, list):
+                return jsonify({"status": False, "message": "Options must be a list"}), 400
+
+            for index, option in enumerate(options):
+                is_valid_option, msg_option = InputValidator.validate_name(option, f"option[{index}]")
+                if not is_valid_option:
+                    return jsonify({"status": False, "message": msg_option}), 400
 
         db = SessionLocal()
 
@@ -141,7 +161,7 @@ def update_feedback_question(question_id):
             return jsonify({"status": "error", "message": "Feedback question not found"}), 404
 
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "something went wrong"}), 500
     finally:
         if db:
             db.close()
@@ -168,7 +188,7 @@ def delete_feedback_question(question_id):
     except Exception as e:
         if db:
             db.rollback()
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "something went wrong"}), 500
 
     finally:
         if db:
@@ -201,7 +221,7 @@ def get_feedback_acceptance():
         }), 200
 
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "something went wrong"}), 500
     finally:
         if db:
             db.close()
@@ -242,7 +262,7 @@ def get_feedback_questions():
         }), 200
 
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "something went wrong"}), 500
     finally:
         if db:
             db.close()
@@ -365,4 +385,4 @@ def submit_feedback():
         return jsonify(response), 201
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500

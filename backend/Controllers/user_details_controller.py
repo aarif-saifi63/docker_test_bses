@@ -21,6 +21,7 @@ from werkzeug.security import generate_password_hash
 from dotenv import load_dotenv
 from utils.rsa_encryption import decrypt_data
 from utils.one_time_token import generate_verification_token, verify_and_consume_token
+from email_validator import validate_email, EmailNotValidError
 import pytz
 
 IST = pytz.timezone("Asia/Kolkata")
@@ -55,6 +56,18 @@ def register_user_detail():
         is_valid, msg = InputValidator.validate_fallback(email_id, "email")
         if not is_valid:
             return jsonify({"status": False, "message": msg}), 400
+        
+        # Validate Password
+        is_valid, msg = InputValidator.validate_password(password, "password")
+        if not is_valid:
+            return jsonify({"status": False, "message": msg}), 400
+        
+        # Validate Email Format
+        try:
+            valid = validate_email(email_id)
+            email_id = valid.email  # normalized email
+        except EmailNotValidError as e:
+            return jsonify({"status": False, "message": "Invalid email format"}), 400
 
         if not email_id or not password or not role_id:
             return jsonify(status=False, message="Email, password, and role_id are required"), 400
@@ -106,7 +119,7 @@ def register_user_detail():
         return jsonify(status=True, message="User registered successfully", user_id=user_id), 201
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
 
 
 # Login user
@@ -432,7 +445,7 @@ def login_user_detail():
             )
             print(f"✅ Created session binding for user {user.id} with SID: {session_id[:16]}...")
         except Exception as e:
-            print(f"⚠️ Failed to create session binding: {str(e)}")
+            print(f"⚠️ Failed to create session binding: something went wrong")
             # Continue login even if session binding fails (graceful degradation)
             # But log this for security monitoring
 
@@ -488,7 +501,7 @@ def login_user_detail():
         return response
 
     except Exception as e:
-        print(f"Login error: {str(e)}")
+        print(f"Login error: something went wrong")
         return jsonify(status=False, message="Login failed"), 500 
     
 
@@ -608,7 +621,7 @@ def login_user_detail():
 #         return response
 
 #     except Exception as e:
-#         print(f"Login error: {str(e)}")
+#         print(f"Login error: something went wrong")
 #         return jsonify(status=False, message="Login failed"), 500 
     
 
@@ -676,7 +689,7 @@ def refresh_token():
             )
             print(f"✅ Created new session binding for token refresh")
     except Exception as e:
-        print(f"⚠️ Failed to update session binding on refresh: {str(e)}")
+        print(f"⚠️ Failed to update session binding on refresh: something went wrong")
         # Continue with token refresh even if session binding fails
 
     response = jsonify({"status": True, "message": "Token refreshed"})
@@ -750,7 +763,7 @@ def get_all_users():
         return jsonify(status=True, message="Users List with Permissions", data=user_list), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
     finally:
         db.close()
 
@@ -787,7 +800,7 @@ def logout_user():
                     print(f"✅ Invalidated session binding for logout")
 
             except Exception as e:
-                print(f"Failed to blacklist access token: {str(e)}")
+                print(f"Failed to blacklist access token: something went wrong")
                 pass  # ignore bad token
 
         if refresh_token:
@@ -799,7 +812,7 @@ def logout_user():
                     # Store the encrypted token in blacklist
                     db.add(TokenBlacklist(token=refresh_token, expires_at=expiry))
             except Exception as e:
-                print(f"Failed to blacklist refresh token: {str(e)}")
+                print(f"Failed to blacklist refresh token: something went wrong")
                 pass
 
         db.commit()
@@ -870,7 +883,7 @@ def update_user(user_id):
 
     except Exception as e:
         db.rollback()
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
     finally:
         db.close()
 
@@ -917,7 +930,7 @@ def update_user(user_id):
 #         ), 200
 
 #     except Exception as e:
-#         return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+#         return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
 
 
 def get_user_permission():
@@ -967,7 +980,7 @@ def get_user_permission():
         ), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
 
 
 def verify_login():
@@ -1048,7 +1061,7 @@ def verify_login():
         }), 200
 
     except Exception as e:
-        print(f"[ERROR] Login verification error: {str(e)}")
+        print(f"[ERROR] Login verification error: something went wrong")
         return jsonify({
             "status": False,
             "message": "Verification failed due to server error"
@@ -1074,7 +1087,7 @@ def delete_user(user_id):
 
     except Exception as e:
         db.rollback()
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
 
     finally:
         db.close()

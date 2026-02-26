@@ -186,7 +186,7 @@ def run_training_pipeline():
         load_model_to_rasa(model_path)
 
     except Exception as e:
-        update_training_status(status="error", message=str(e))
+        update_training_status(status="error", message="something went wrong")
         print("Training error:", e)
 
 
@@ -228,7 +228,7 @@ def run_training_with_lock():
 
     except Exception as e:
         print("Training error:", e)
-        update_training_status(status="error", message=str(e))
+        update_training_status(status="error", message="something went wrong")
 
     finally:
         # Release lock ONLY if this thread holds it

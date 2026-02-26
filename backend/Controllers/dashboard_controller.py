@@ -36,7 +36,7 @@ def get_session_counts():
         ist = timezone('Asia/Kolkata')
 
         # --- Fetch submenu data dynamically ---
-        submenu_url = f"{flask_url}/submenus"
+        submenu_url = f"{flask_url}/submenus-internal"
         submenu_response = requests.get(submenu_url, timeout=10)
         submenu_data = submenu_response.json().get("data", [])
 
@@ -600,7 +600,7 @@ def interaction_breakdown():
 
     except Exception as e:
         print("Error in interaction_breakdown:", e)
-        return jsonify({"error": "Something went wrong", "details": str(e)}), 500
+        return jsonify({"error": "Something went wrong"}), 500
 
     finally:
         db.close()
@@ -812,7 +812,7 @@ def average_interaction_time():
     except Exception as e:
         print("Error in average_interaction_time:", e)
         traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500
 
     finally:
         if db:

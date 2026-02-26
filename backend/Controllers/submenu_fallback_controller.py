@@ -102,7 +102,7 @@ def create_submenu_fallback():
         }), 201
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500
 
 
 def get_all_submenu_fallbacks():
@@ -134,7 +134,7 @@ def get_all_submenu_fallbacks():
         return jsonify(result_with_id), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500
 
 
 def get_submenu_fallback_by_category(category):
@@ -168,7 +168,7 @@ def get_submenu_fallback_by_category(category):
         }), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500
 
 
 def update_submenu_fallback(category):
@@ -223,7 +223,7 @@ def update_submenu_fallback(category):
         }), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500
 
 
 def delete_submenu_fallback(category):
@@ -252,7 +252,7 @@ def delete_submenu_fallback(category):
         }), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500
 
 
 def get_all_submenu_categories():
@@ -286,4 +286,4 @@ def get_all_submenu_categories():
         return jsonify(result), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500

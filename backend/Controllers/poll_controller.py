@@ -67,7 +67,7 @@ def create_poll():
         }), 201
 
     except Exception as e:
-        return jsonify({"status": "fail", "message": str(e)}), 500
+        return jsonify({"status": "fail", "message": "something went wrong"}), 500
 
 
 def update_poll(poll_id):
@@ -167,7 +167,7 @@ def update_poll(poll_id):
 
     except Exception as e:
         db.rollback()
-        return jsonify({"status": "fail", "message": str(e)}), 500
+        return jsonify({"status": "fail", "message": "something went wrong"}), 500
     finally:
         db.close()
         
@@ -195,7 +195,7 @@ def delete_poll(poll_id):
         db.rollback()
         return jsonify({
             "status": "fail",
-            "message": str(e)
+            "message": "something went wrong"
         }), 500
     finally:
         db.close()
@@ -255,7 +255,7 @@ def submit_poll_response():
         return jsonify({"status": "success", "poll_response_id": poll_response_id})
     
     except Exception as e:
-        return jsonify({"status": "fail", "error": str(e)}), 500
+        return jsonify({"status": "fail", "message": "something went wrong"}), 500
 
 
 def get_all_polls():
@@ -330,7 +330,7 @@ def get_all_polls():
         }), 200
 
     except Exception as e:
-        return jsonify({"status": "fail", "message": str(e)}), 500
+        return jsonify({"status": "fail", "message": "something went wrong"}), 500
     finally:
         if db_session:
             db_session.close()

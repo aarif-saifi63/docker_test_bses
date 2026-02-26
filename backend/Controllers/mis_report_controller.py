@@ -40,7 +40,7 @@ def mis_peak_hours():
         ist = timezone('Asia/Kolkata')
 
         # --- Fetch submenu data dynamically ---
-        submenu_url = f"{flask_url}/submenus"
+        submenu_url = f"{flask_url}/submenus-internal"
         submenu_response = requests.get(submenu_url, timeout=10)
         submenu_data = submenu_response.json().get("data", [])
 
@@ -395,7 +395,7 @@ def mis_avg_interaction_duration():
     except Exception as e:
         print("MIS Avg Interaction Duration Error:", e)
         traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': "something went wrong"}), 500
     
     finally:
         if db:

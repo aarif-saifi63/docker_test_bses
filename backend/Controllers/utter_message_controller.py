@@ -28,7 +28,7 @@ def send_dynamic_messages(dispatcher, action_name, message_type, lang="en"):
         for msg in messages:
             dispatcher.utter_message(text=msg)
     except Exception as e:
-        dispatcher.utter_message(text=f"Unable to fetch messages for {action_name}. Error: {str(e)}")
+        dispatcher.utter_message(text=f"Unable to fetch messages for {action_name}. Error: something went wrong")
 
 
 
@@ -92,7 +92,7 @@ def create_utter_message():
         return jsonify({"status": "fail", "message": str(e.__cause__ or e)}), 500
     except Exception as e:
         db.rollback()
-        return jsonify({"status": "fail", "message": str(e)}), 500
+        return jsonify({"status": "fail", "message": "something went wrong"}), 500
     finally:
         db.close()
 
@@ -438,7 +438,7 @@ def update_utter_message(uid):
         return jsonify({"status": "fail", "message": str(e.__cause__ or e)}), 500
     except Exception as e:
         db.rollback()
-        return jsonify({"status": "fail", "message": str(e)}), 500
+        return jsonify({"status": "fail", "message": "something went wrong"}), 500
     finally:
         db.close()
 
@@ -470,6 +470,6 @@ def delete_utter_message(uid):
         return jsonify({"status": "fail", "message": str(e.__cause__ or e)}), 500
     except Exception as e:
         db.rollback()
-        return jsonify({"status": "fail", "message": str(e)}), 500
+        return jsonify({"status": "fail", "message": "something went wrong"}), 500
     finally:
         db.close()

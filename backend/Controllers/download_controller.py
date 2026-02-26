@@ -65,7 +65,7 @@ def serve_media(relative_path):
         return send_file(full_path, as_attachment=False)
 
     except Exception as e:
-        abort(400, description=f"Error serving file: {str(e)}")
+        abort(400, description=f"something went wrong")
 
 ## Download Icons
 
@@ -97,4 +97,4 @@ def view_icon(filename):
 
         return send_from_directory(directory, file_only)
     except Exception as e:
-        return {"error": str(e)}, 500
+        return {"error": "something went wrong"}, 500

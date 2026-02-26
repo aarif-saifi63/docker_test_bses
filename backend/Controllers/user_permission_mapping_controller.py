@@ -24,7 +24,7 @@ def create_mapping():
         return jsonify(status=True, message="Mapping created successfully", mapping_id=mapping_id), 201
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
 
 def get_mappings():
     try:
@@ -85,7 +85,7 @@ def get_mappings():
         ), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
 
 def get_mapping_by_id(mapping_id):
     try:
@@ -102,7 +102,7 @@ def get_mapping_by_id(mapping_id):
         return jsonify(status=True, message="Mapping fetched successfully", data=data), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
 
 def update_mapping(mapping_id):
     db = None
@@ -168,7 +168,7 @@ def update_mapping(mapping_id):
     except Exception as e:
         if db:
             db.rollback()
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
     finally:
         if db:
             db.close()
@@ -229,7 +229,7 @@ def update_mapping_users():
         ), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
 
 
 def delete_mapping(mapping_id):
@@ -241,4 +241,4 @@ def delete_mapping(mapping_id):
         return jsonify(status=True, message="Mapping deleted successfully"), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500

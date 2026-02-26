@@ -118,7 +118,7 @@ class RequestSecurityValidator:
                             return False, f"Potentially malicious content detected in field '{field_name}': {description}"
 
         except Exception as e:
-            return False, f"Failed to parse form data: {str(e)}"
+            return False, f"Failed to parse form data: something went wrong"
 
         # All checks passed
         return True, ""

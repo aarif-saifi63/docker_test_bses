@@ -41,7 +41,7 @@ def menu_analysis():
         per_page = 5
 
         # --- Fetch dynamic submenus ---
-        submenu_url = f"{flask_url}/submenus"
+        submenu_url = f"{flask_url}/submenus-internal"
         submenu_response = requests.get(submenu_url, timeout=10)
         submenu_data = submenu_response.json().get("data", [])
 

@@ -19,7 +19,7 @@ def create_fallback():
         return jsonify({"message": "Fallback created successfully", "id": fallback.id}), 201
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500
 
 
 def get_all_fallbacks():
@@ -34,7 +34,7 @@ def get_all_fallbacks():
         return jsonify(result), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500
     
 def get_all_global_fallbacks():
     try:
@@ -48,7 +48,7 @@ def get_all_global_fallbacks():
         return jsonify(result), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500
 
 
 
@@ -65,7 +65,7 @@ def get_fallback(fallback_id):
         }), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500
 
 
 def update_fallback(fallback_id):
@@ -101,7 +101,7 @@ def update_fallback(fallback_id):
         return jsonify({"message": "Fallback updated successfully"}), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500
 
 
 def delete_fallback(fallback_id):
@@ -116,4 +116,4 @@ def delete_fallback(fallback_id):
         return jsonify({"message": "Fallback deleted successfully"}), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500

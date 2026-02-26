@@ -458,6 +458,7 @@ PUBLIC_ENDPOINTS = [
     "/save-bill-pay-chat",
     "/save-duplicate-bill",
     "/submenus",
+    "/submenus-internal"
     "/chatbot-intro-ad",
     "/ad-on-menu-click",
     "/submit-ad-tracker",

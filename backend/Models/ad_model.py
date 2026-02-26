@@ -99,11 +99,11 @@ class Advertisement(Base):
             db.commit()
         except IntegrityError as e:
             db.rollback()
-            logging.error(f"Cannot delete Advertisement {self.id} due to dependencies: {str(e)}")
+            logging.error(f"Cannot delete Advertisement {self.id} due to dependencies: something went wrong")
             raise Exception("Cannot delete advertisement due to related records")
         except Exception as e:
             db.rollback()
-            logging.error(f"Error deleting Advertisement {self.id}: {str(e)}", exc_info=True)
+            logging.error(f"Error deleting Advertisement {self.id}: something went wrong", exc_info=True)
             raise
         finally:
             if not db:  # Only close the session if we created it

@@ -189,7 +189,7 @@ def verify_access_token(encrypted_token):
 
         return payload if payload.get("type") == "access" else None
     except Exception as e:
-        print(f"Token verification failed: {str(e)}")
+        print(f"Token verification failed: something went wrong")
         return None
 
 
@@ -212,7 +212,7 @@ def verify_refresh_token(encrypted_token):
 
         return payload if payload.get("type") == "refresh" else None
     except Exception as e:
-        print(f"Refresh token verification failed: {str(e)}")
+        print(f"Refresh token verification failed: something went wrong")
         return None
     
 # def is_blacklisted(token):
@@ -270,7 +270,7 @@ def token_required(f):
         except jwt.ExpiredSignatureError:
             return jsonify({"message": "Token expired", "status": False}), 401
         except Exception as e:
-            print(f"Token validation error: {str(e)}")
+            print(f"Token validation error: something went wrong")
             return jsonify({"message": "Invalid or expired token", "status": False}), 401
 
         # 🔒 CRITICAL SECURITY: Validate token ownership AND session fixation protection
@@ -515,7 +515,7 @@ def flexible_token_required(f):
                     request.auth_type = "admin"
                     return f(*args, **kwargs)
             except Exception as e:
-                print(f"Admin token validation failed: {str(e)}")
+                print(f"Admin token validation failed: something went wrong")
         
         # Validate chatbot token
         if chatbot_token:
@@ -526,7 +526,7 @@ def flexible_token_required(f):
                     request.auth_type = "chatbot"
                     return f(*args, **kwargs)
             except Exception as e:
-                print(f"Chatbot token validation failed: {str(e)}")
+                print(f"Chatbot token validation failed: something went wrong")
         
         # No valid token found
         return jsonify({

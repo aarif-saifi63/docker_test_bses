@@ -93,7 +93,7 @@ import re
 #             return jsonify(status=True, found=False, message="No valid meter reading schedule found.")
 
 #     except Exception as e:
-#         return jsonify(status=False, found=False, message=f"Error: {str(e)}"), 500
+#         return jsonify(status=False, found=False, message=f"Error: "something went wrong""), 500
     
 
 ## New Application Status API

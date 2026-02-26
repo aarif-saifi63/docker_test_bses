@@ -91,7 +91,7 @@ def register_user_detail():
         return jsonify(status=True, message="User registered successfully", user_id=user_id), 201
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
 
 
 # Login user
@@ -408,7 +408,7 @@ def login_user_detail():
         return response
 
     except Exception as e:
-        print(f"Login error: {str(e)}")
+        print(f"Login error: something went wrong")
         return jsonify(status=False, message="Login failed"), 500 
     
 
@@ -528,7 +528,7 @@ def login_user_detail():
 #         return response
 
 #     except Exception as e:
-#         print(f"Login error: {str(e)}")
+#         print(f"Login error: "something went wrong"")
 #         return jsonify(status=False, message="Login failed"), 500 
     
 
@@ -613,7 +613,7 @@ def get_all_users():
         return jsonify(status=True, message="Users List with Permissions", data=user_list), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
     finally:
         db.close()
 
@@ -643,7 +643,7 @@ def logout_user():
                     # Store the encrypted token in blacklist
                     db.add(TokenBlacklist(token=access_token, expires_at=expiry))
             except Exception as e:
-                print(f"Failed to blacklist access token: {str(e)}")
+                print(f"Failed to blacklist access token: something went wrong")
                 pass  # ignore bad token
 
         if refresh_token:
@@ -655,7 +655,7 @@ def logout_user():
                     # Store the encrypted token in blacklist
                     db.add(TokenBlacklist(token=refresh_token, expires_at=expiry))
             except Exception as e:
-                print(f"Failed to blacklist refresh token: {str(e)}")
+                print(f"Failed to blacklist refresh token: something went wrong")
                 pass
 
         db.commit()
@@ -721,7 +721,7 @@ def update_user(user_id):
 
     except Exception as e:
         db.rollback()
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
     finally:
         db.close()
 
@@ -768,7 +768,7 @@ def update_user(user_id):
 #         ), 200
 
 #     except Exception as e:
-#         return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+#         return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
 
 
 def get_user_permission():
@@ -818,7 +818,7 @@ def get_user_permission():
         ), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
     
 
 def delete_user(user_id):
@@ -840,7 +840,7 @@ def delete_user(user_id):
 
     except Exception as e:
         db.rollback()
-        return jsonify(status=False, message=f"An error occurred: {str(e)}"), 500
+        return jsonify(status=False, message=f"An error occurred: something went wrong"), 500
 
     finally:
         db.close()

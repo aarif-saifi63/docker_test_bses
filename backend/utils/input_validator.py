@@ -314,4 +314,23 @@ class InputValidator:
                 return False, f"{field_name} contains potential DDE attack pattern (pipe with formula characters)"
 
         return True, "OK"
+    
+
+    @staticmethod
+    def validate_password(password, field_name="password"):
+        if not password:
+            return False, f"{field_name} is required"
+
+        if len(password) < 8 or len(password) > 16:
+            return False, f"{field_name} must be between 8 and 16 characters"
+
+        password_regex = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#])[A-Za-z\d@$!%*?&^#]{8,16}$'
+
+        if not re.match(password_regex, password):
+            return False, (
+                f"{field_name} must contain at least one uppercase letter, "
+                f"one lowercase letter, one digit, and one special character"
+            )
+
+        return True, "Valid"
 

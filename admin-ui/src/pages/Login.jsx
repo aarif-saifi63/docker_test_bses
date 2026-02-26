@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 import { AuthContext } from "../context/AuthContext";
 import Img from "../assets/Img.jpg";
+
 export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -37,6 +38,65 @@ export default function Login() {
 
   useEffect(() => {
     generateCaptcha();
+    
+    const preventDefault = (e) => {
+      e.preventDefault();
+    };
+
+    const handleKeyDown = (e) => {
+      const key = e.key.toLowerCase();
+
+      // Block F12
+      if (key === "f12") {
+        e.preventDefault();
+      }
+
+      // Block Ctrl shortcuts
+      if (e.ctrlKey) {
+        const blockedKeys = ["c", "v", "x", "s", "u", "p"];
+        if (blockedKeys.includes(key)) {
+          e.preventDefault();
+        }
+      }
+
+      // Block Ctrl+Shift+I / J / C (DevTools)
+      if (e.ctrlKey && e.shiftKey) {
+        const blockedShiftKeys = ["i", "j", "c"];
+        if (blockedShiftKeys.includes(key)) {
+          e.preventDefault();
+        }
+      }
+    };
+
+    // Disable right click
+    document.addEventListener("contextmenu", preventDefault);
+
+    // Disable copy / paste / cut
+    document.addEventListener("copy", preventDefault);
+    document.addEventListener("cut", preventDefault);
+    document.addEventListener("paste", preventDefault);
+
+    // Disable drag
+    document.addEventListener("dragstart", preventDefault);
+    document.addEventListener("drop", preventDefault);
+
+    // Disable keyboard shortcuts
+    document.addEventListener("keydown", handleKeyDown);
+
+    // Disable text selection (JS fallback)
+    document.body.style.userSelect = "none";
+
+    return () => {
+      document.removeEventListener("contextmenu", preventDefault);
+      document.removeEventListener("copy", preventDefault);
+      document.removeEventListener("cut", preventDefault);
+      document.removeEventListener("paste", preventDefault);
+      document.removeEventListener("dragstart", preventDefault);
+      document.removeEventListener("drop", preventDefault);
+      document.removeEventListener("keydown", handleKeyDown);
+
+      document.body.style.userSelect = "auto";
+    };
   }, []);
 
   const handleSubmit = async (e) => {

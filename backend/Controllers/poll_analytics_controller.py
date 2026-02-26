@@ -103,7 +103,7 @@ IST = pytz.timezone("Asia/Kolkata")
 #         ), 200
 
 #     except Exception as e:
-#         return jsonify(status=False, message=f"Error: {str(e)}"), 500
+#         return jsonify(status=False, message=f"Error: "something went wrong""), 500
 #     finally:
 #         db.close()
 
@@ -207,7 +207,7 @@ IST = pytz.timezone("Asia/Kolkata")
 #         ), 200
 
 #     except Exception as e:
-#         return jsonify(status=False, message=f"Error: {str(e)}"), 500
+#         return jsonify(status=False, message=f"Error: something went wrong"), 500
 #     finally:
 #         db.close()
 
@@ -348,8 +348,8 @@ def get_poll_summary_and_analytics():
         ), 200
 
     except Exception as e:
-        print("Error in get_poll_summary_and_analytics:", str(e))
-        return jsonify(status=False, message=f"Error: {str(e)}"), 500
+        print("Error in get_poll_summary_and_analytics:", "something went wrong")
+        return jsonify(status=False, message=f"Error: something went wrong"), 500
 
     finally:
         db.close()
@@ -445,7 +445,7 @@ def get_poll_analytics():
     except Exception as e:
         return jsonify({
             "status": False,
-            "message": f"An error occurred: {str(e)}"
+            "message": f"An error occurred: something went wrong"
         }), 500
     
     # finally:

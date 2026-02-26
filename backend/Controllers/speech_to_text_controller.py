@@ -52,7 +52,7 @@ def speech_to_text():
         AudioSegment.from_file(original_path).export(wav_path, format="wav")
     except Exception as e:
         cleanup([original_path])
-        return jsonify({"error": f"Audio conversion failed: {str(e)}"}), 400
+        return jsonify({"error": f"Audio conversion failed: something went wrong"}), 400
 
     try:
         model = get_whisper_model()   # ← initialized AFTER fork
@@ -69,7 +69,7 @@ def speech_to_text():
 
     except Exception as e:
         cleanup([original_path, wav_path])
-        return jsonify({"error": f"Transcription failed: {str(e)}"}), 500
+        return jsonify({"error": f"Transcription failed: something went wrong"}), 500
 
 
 def cleanup(paths):
@@ -251,7 +251,7 @@ def cleanup(paths):
 #         })
 
 #     except Exception as e:
-#         return jsonify({"status": False, "error": str(e)}), 500
+#         return jsonify({"status": False, "error": "something went wrong"}), 500
 
 #     finally:
 #         if "audio_path" in locals() and os.path.exists(audio_path):

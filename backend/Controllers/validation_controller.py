@@ -809,7 +809,7 @@ def detect_language_batch(texts: list, debug: bool = False) -> list:
 #         return jsonify({
 #             "status": False,
 #             "message": "Something went wrong",
-#             "error": str(e)
+#             "error": "something went wrong"
 #         }), 500
 
 ALLOWED_LANGUAGES = ["english", "hindi", "hinglish"]
@@ -892,5 +892,4 @@ def validate_language():
         return jsonify({
             "status": False,
             "message": "Something went wrong",
-            "error": str(e)
         }), 500

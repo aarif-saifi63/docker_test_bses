@@ -100,7 +100,7 @@ class Session(Base):
         except Exception as e:
             return {
                 "status": "fail",
-                "message": str(e),
+                "message": "something went wrong",
                 "division_name": None
             }
         finally:

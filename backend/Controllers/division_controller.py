@@ -22,4 +22,4 @@ def get_divisions():
         return jsonify({"data": division_list, "message": "featch division successfully", "status": True, "count": len(division_list)}), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "something went wrong"}), 500

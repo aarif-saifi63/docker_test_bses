@@ -147,7 +147,7 @@ def get_feedback_summary_and_analytics():
         ), 200
 
     except Exception as e:
-        return jsonify(status=False, message=f"Error: {str(e)}"), 500
+        return jsonify(status=False, message=f"Error: something went wrong"), 500
 
     finally:
         db.close()
@@ -293,7 +293,7 @@ def get_feedback_summary_and_analytics():
 #         ), 200
 
 #     except Exception as e:
-#         return jsonify(status=False, message=f"Error: {str(e)}"), 500
+#         return jsonify(status=False, message=f"Error: "something went wrong""), 500
 
 #     finally:
 #         db.close()
@@ -459,7 +459,7 @@ def get_feedback_summary_and_analytics():
 
 #     except Exception as e:
 #         print(f"[ERROR] Feedback summary error: {e}")
-#         return jsonify(status=False, message=f"Error: {str(e)}"), 500
+#         return jsonify(status=False, message=f"Error: something went wrong"), 500
 
 #     finally:
 #         db.close()

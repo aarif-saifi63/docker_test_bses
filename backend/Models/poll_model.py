@@ -62,7 +62,7 @@ class Poll(Base):
 
         except Exception as e:
             db.rollback()
-            return {"status": "fail", "message": str(e)}
+            return {"status": "fail", "message": "something went wrong"}
         finally:
             db.close()
 
@@ -125,7 +125,7 @@ class Poll(Base):
 
         except Exception as e:
             db.rollback()
-            return {"status": "fail", "message": str(e)}
+            return {"status": "fail", "message": "something went wrong"}
         finally:
             db.close()
 

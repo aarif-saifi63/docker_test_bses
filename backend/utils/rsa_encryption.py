@@ -161,7 +161,7 @@ def decrypt_data(encrypted_data_b64):
         return decrypted_data.decode('utf-8')
 
     except Exception as e:
-        logger.error(f"RSA decryption failed: {str(e)}")
+        logger.error(f"RSA decryption failed: something went wrong")
         raise ValueError("Failed to decrypt data. Invalid encryption or corrupted data.")
 
 
@@ -193,7 +193,7 @@ def encrypt_data(plaintext):
         return base64.b64encode(encrypted_data).decode('utf-8')
 
     except Exception as e:
-        logger.error(f"RSA encryption failed: {str(e)}")
+        logger.error(f"RSA encryption failed: something went wrong")
         raise ValueError("Failed to encrypt data")
 
 
