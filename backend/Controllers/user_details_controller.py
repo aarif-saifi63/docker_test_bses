@@ -14,7 +14,7 @@ from Models.token_blacklist_model import TokenBlacklist
 from Models.active_session_model import ActiveSession
 from utils.input_validator import InputValidator
 from database import SessionLocal
-from middlewares.auth_middleware import ACCESS_EXPIRES_MINUTES, REFRESH_EXPIRES_DAYS, generate_access_token, generate_refresh_token, verify_refresh_token, hash_token, generate_session_id, set_session_id, clear_session_data
+from middlewares.auth_middleware import ACCESS_EXPIRES_MINUTES, REFRESH_EXPIRES_DAYS, generate_access_token, generate_refresh_token, verify_access_token, verify_refresh_token, hash_token, generate_session_id, set_session_id, clear_session_data
 from cryptography.fernet import Fernet
 import os
 from werkzeug.security import generate_password_hash
@@ -57,17 +57,17 @@ def register_user_detail():
         if not is_valid:
             return jsonify({"status": False, "message": msg}), 400
         
-        # Validate Password
-        is_valid, msg = InputValidator.validate_password(password, "password")
-        if not is_valid:
-            return jsonify({"status": False, "message": msg}), 400
-        
         # Validate Email Format
         try:
             valid = validate_email(email_id)
             email_id = valid.email  # normalized email
         except EmailNotValidError as e:
             return jsonify({"status": False, "message": "Invalid email format"}), 400
+
+        # Validate Password
+        is_valid, msg = InputValidator.validate_password(password, "password")
+        if not is_valid:
+            return jsonify({"status": False, "message": msg}), 400
 
         if not email_id or not password or not role_id:
             return jsonify(status=False, message="Email, password, and role_id are required"), 400
@@ -411,6 +411,16 @@ def login_user_detail():
         # SECURITY: Clear failed login attempts on successful login
         clear_login_attempts(ip, email_id)
 
+        # SINGLE-SESSION ENFORCEMENT: each user is allowed exactly one active session.
+        # If the user already has an active session, block the new login and ask
+        # them to logout from the existing session first.
+        existing_sessions = ActiveSession.get_user_active_sessions(user.id)
+        if existing_sessions:
+            return jsonify({
+                "status": False,
+                "message": "You already have an active login session. Please logout first to login again."
+            }), 400
+
         # 🔒 SECURITY: Generate Session ID (SID) for session fixation protection
         # This prevents token hijacking by binding the token to a specific session
         session_id = generate_session_id()
@@ -634,7 +644,33 @@ def refresh_token():
 
     payload = verify_refresh_token(refresh_cookie)
     if not payload:
-        return jsonify({"status": False, "message": "Invalid or expired refresh token"}), 401
+        # Refresh token expired — perform same cleanup as logout:
+        # blacklist tokens, invalidate active session, clear cookies.
+        try:
+            db = SessionLocal()
+            if old_access_token:
+                try:
+                    access_data = verify_access_token(old_access_token)
+                    if access_data:
+                        expiry = datetime.utcfromtimestamp(access_data["exp"])
+                        db.add(TokenBlacklist(token=old_access_token, expires_at=expiry))
+                except Exception:
+                    pass
+                access_token_hash = hash_token(old_access_token)
+                ActiveSession.invalidate_session(access_token_hash)
+            try:
+                db.add(TokenBlacklist(token=refresh_cookie, expires_at=datetime.utcnow()))
+            except Exception:
+                pass
+            db.commit()
+            db.close()
+        except Exception:
+            pass
+        response = make_response(jsonify({"status": False, "message": "Session expired. Please login again."}), 401)
+        response.set_cookie('access_token', '', max_age=0, httponly=True, secure=True, samesite="None", path='/')
+        response.set_cookie('refresh_token', '', max_age=0, httponly=True, secure=True, samesite="None", path='/')
+        response = clear_session_data(response)
+        return response
 
     # ROTATE refresh token (security best practice)
     new_access = generate_access_token(payload["user_id"], payload["email_id"], payload["role_id"])

@@ -15,8 +15,10 @@ Solution:
 
 from sqlalchemy import Column, String, Integer, DateTime, Text, Index
 from database import Base, SessionLocal
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
+
+INACTIVITY_TIMEOUT_MINUTES = 15
 
 IST = pytz.timezone("Asia/Kolkata")
 
@@ -153,6 +155,17 @@ class ActiveSession(Base):
                 print(f"   Actual SID (from current request): {session_id[:16] if session_id else 'None'}...")
 
                 return False, "Session mismatch. Token is being used in unauthorized session. Possible hijacking attack."
+
+            # Check inactivity timeout — logout user if idle for too long.
+            # last_activity is stored as IST (naive) via current_time_ist(), so the
+            # limit must also be IST (naive) — using datetime.now() would be UTC and
+            # would never trigger since last_activity appears ~5.5 hrs ahead.
+            inactivity_limit = datetime.now(IST).replace(tzinfo=None) - timedelta(minutes=INACTIVITY_TIMEOUT_MINUTES)
+            last_activity = session_record.last_activity
+            if last_activity and last_activity.replace(tzinfo=None) < inactivity_limit:
+                db.delete(session_record)
+                db.commit()
+                return False, "INACTIVITY_TIMEOUT"
 
             # Update last activity
             session_record.last_activity = current_time_ist()

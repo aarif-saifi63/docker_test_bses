@@ -32,6 +32,7 @@ TABLE_CSV_MAP = {
     "story_steps.csv": "story_steps",
     "story_steps_all.csv": "story_steps_all",
     "sub_menu_option_v.csv": "sub_menu_option_v",
+    "submenu_fallback_v.csv": "submenu_fallback_v",
     "user_roles.csv": "user_roles",
     "user_details.csv": "user_details",
     "user_permission_mapping.csv": "user_permission_mapping",

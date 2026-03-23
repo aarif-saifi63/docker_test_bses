@@ -79,7 +79,7 @@ class TokenManager:
         <soap:Body>
             <GenerateAuthenticationToken xmlns="http://tempuri.org/">
             <userName>DelhiV2ServiceUser</userName>
-            <password>9*bS#7zT!xLwQ3vF</password>
+            <password>X!9q#Ld7@Vw$35Nz</password>
             </GenerateAuthenticationToken>
         </soap:Body>
         </soap:Envelope>"""

@@ -19,7 +19,7 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY", "CHANGE_IN_PROD")
 REFRESH_SECRET_KEY = os.getenv("REFRESH_SECRET_KEY", "CHANGE_IN_PROD")
 JWT_ALGORITHM = "HS256"
 
-ACCESS_EXPIRES_MINUTES = 15
+ACCESS_EXPIRES_MINUTES = 45
 REFRESH_EXPIRES_DAYS = 7
 
 
@@ -303,6 +303,28 @@ def token_required(f):
         )
 
         if not is_valid:
+            # Inactivity timeout — full logout: blacklist token, clear cookies
+            if error_msg == "INACTIVITY_TIMEOUT":
+                try:
+                    db = SessionLocal()
+                    data = verify_access_token(token)
+                    if data:
+                        expiry = datetime.utcfromtimestamp(data["exp"])
+                        db.add(TokenBlacklist(token=token, expires_at=expiry))
+                        db.commit()
+                    db.close()
+                except Exception:
+                    pass
+                response = make_response(jsonify({
+                    "message": "You have been logged out due to inactivity.",
+                    "status": False,
+                    "error_code": "INACTIVITY_TIMEOUT"
+                }), 403)
+                response.set_cookie('access_token', '', max_age=0, httponly=True, secure=True, samesite="None", path='/')
+                response.set_cookie('refresh_token', '', max_age=0, httponly=True, secure=True, samesite="None", path='/')
+                response = clear_session_data(response)
+                return response
+
             print(f"🚨 SECURITY ALERT: Token hijacking attempt detected!")
             print(f"   Token claims user_id: {user_id_from_token}")
             print(f"   Token hash: {token_hash[:16]}...")
@@ -310,12 +332,14 @@ def token_required(f):
             print(f"   IP: {request.remote_addr}")
             print(f"   User-Agent: {request.headers.get('User-Agent', 'Unknown')}")
 
-            # Clear potentially compromised session
+            # Clear session and return 403 (not 401) so the client does NOT
+            # attempt a token refresh — the session was intentionally invalidated
+            # (e.g. concurrent login from another device) and the user must re-login.
             response = make_response(jsonify({
                 "message": error_msg,
                 "status": False,
-                "error_code": "TOKEN_HIJACKING_DETECTED"
-            }), 401)
+                "error_code": "SESSION_INVALIDATED"
+            }), 403)
             response = clear_session_data(response)
             return response
 
