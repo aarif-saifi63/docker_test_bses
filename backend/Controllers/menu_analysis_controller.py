@@ -22,26 +22,26 @@ def menu_analysis():
     db = None
     try:
         db = SessionLocal()
-
-        # --- Query parameters ---
-        date_str = request.args.get("date")
-        start_date_str = request.args.get("start_date")
-        end_date_str = request.args.get("end_date")
-        month_str = request.args.get("month")
-        last_hour = request.args.get("last_hour", "false").lower() == "true"
-        division_name = request.args.get("division_name")
-        ca_number = request.args.get("ca_number")
-        tel_no = request.args.get("tel_no")
-        source = request.args.get("source")
-        menu_option = request.args.get("menu_option")
-
-        page = max(int(request.args.get("page", 1)), 1)
-        per_page = int(request.args.get("per_page", 5))
-
-        logger.info(f"Menu analysis request - menu_option: {menu_option}, filters: division={division_name}, ca={ca_number}, tel={tel_no}, source={source}")
-
-        # --- Fetch dynamic submenus ---
         try:
+
+            # --- Query parameters ---
+            date_str = request.args.get("date")
+            start_date_str = request.args.get("start_date")
+            end_date_str = request.args.get("end_date")
+            month_str = request.args.get("month")
+            last_hour = request.args.get("last_hour", "false").lower() == "true"
+            division_name = request.args.get("division_name")
+            ca_number = request.args.get("ca_number")
+            tel_no = request.args.get("tel_no")
+            source = request.args.get("source")
+            menu_option = request.args.get("menu_option")
+
+            page = max(int(request.args.get("page", 1)), 1)
+            per_page = int(request.args.get("per_page", 5))
+
+            logger.info(f"Menu analysis request - menu_option: {menu_option}, filters: division={division_name}, ca={ca_number}, tel={tel_no}, source={source}")
+
+            # --- Fetch dynamic submenus ---
             submenu_url = f"{flask_url}/submenus-internal"
             submenu_response = requests.get(submenu_url, timeout=10)
             submenu_response.raise_for_status()

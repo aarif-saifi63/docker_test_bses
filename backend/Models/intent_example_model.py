@@ -17,11 +17,14 @@ class IntentExampleV(Base):
         Save the intent example instance to the database.
         """
         db = SessionLocal()
-        db.add(self)
-        db.commit()
-        db.refresh(self)
-        return self.id
+        try:
+            db.add(self)
+            db.commit()
+            db.refresh(self)
+            return self.id
 
+        finally:
+            db.close()
     @staticmethod
     def find_one(**kwargs):
         """
@@ -29,8 +32,11 @@ class IntentExampleV(Base):
         Example: IntentExampleV.find_one(example="Show my bill")
         """
         db = SessionLocal()
-        return db.query(IntentExampleV).filter_by(**kwargs).first()
+        try:
+            return db.query(IntentExampleV).filter_by(**kwargs).first()
 
+        finally:
+            db.close()
     @staticmethod
     def update_one(filter_query, update_query):
         """
@@ -42,16 +48,19 @@ class IntentExampleV(Base):
             )
         """
         db = SessionLocal()
-        session = db.query(IntentExampleV).filter_by(**filter_query).first()
-        if session:
-            for k, v in update_query.items():
-                if hasattr(session, k):
-                    setattr(session, k, v)
-            db.commit()
-            db.refresh(session)
-            return True
-        return False
+        try:
+            session = db.query(IntentExampleV).filter_by(**filter_query).first()
+            if session:
+                for k, v in update_query.items():
+                    if hasattr(session, k):
+                        setattr(session, k, v)
+                db.commit()
+                db.refresh(session)
+                return True
+            return False
     
+        finally:
+            db.close()
     @staticmethod
     def find_by_intent(intent_id):
         with SessionLocal() as db:

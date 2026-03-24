@@ -32,35 +32,44 @@ class Session(Base):
 
     def save(self):
         db = SessionLocal()
-        db.add(self)
-        db.commit()
-        db.refresh(self)
-        return self.id
+        try:
+            db.add(self)
+            db.commit()
+            db.refresh(self)
+            return self.id
+        finally:
+            db.close()
 
     @staticmethod
     def find_one(**kwargs):
         db = SessionLocal()
-        return db.query(Session).filter_by(**kwargs).first()
+        try:
+            return db.query(Session).filter_by(**kwargs).first()
+        finally:
+            db.close()
 
     @staticmethod
     def update_one(filter_query, update_query):
         db = SessionLocal()
-        session = db.query(Session).filter_by(**filter_query).first()
-        if session:
-            if "$push" in update_query:  # emulate Mongo's $push
-                if not session.chat:
-                    session.chat = []
-                # reassign so SQLAlchemy detects the change
-                session.chat = session.chat + [update_query["$push"]["chat"]]
+        try:
+            session = db.query(Session).filter_by(**filter_query).first()
+            if session:
+                if "$push" in update_query:  # emulate Mongo's $push
+                    if not session.chat:
+                        session.chat = []
+                    # reassign so SQLAlchemy detects the change
+                    session.chat = session.chat + [update_query["$push"]["chat"]]
 
-            if "$set" in update_query:
-                for k, v in update_query["$set"].items():
-                    setattr(session, k, v)
+                if "$set" in update_query:
+                    for k, v in update_query["$set"].items():
+                        setattr(session, k, v)
 
-            session.updated_at = datetime.utcnow()
-            db.commit()
-            return True
-        return False
+                session.updated_at = datetime.utcnow()
+                db.commit()
+                return True
+            return False
+        finally:
+            db.close()
 
     @staticmethod
     def get_division_by_user_id(user_id: str):

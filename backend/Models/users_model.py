@@ -25,11 +25,14 @@ class User(Base):
         Save the user instance to the database.
         """
         db = SessionLocal()
-        db.add(self)
-        db.commit()
-        db.refresh(self)
-        return self.id
+        try:
+            db.add(self)
+            db.commit()
+            db.refresh(self)
+            return self.id
 
+        finally:
+            db.close()
     @staticmethod
     def find_one(**kwargs):
         """
@@ -37,8 +40,11 @@ class User(Base):
         Example: User.find_one(name="BSES Yamuna Registered English")
         """
         db = SessionLocal()
-        return db.query(User).filter_by(**kwargs).first()
+        try:
+            return db.query(User).filter_by(**kwargs).first()
 
+        finally:
+            db.close()
     @staticmethod
     def update_one(filter_query, update_query):
         """
@@ -50,12 +56,16 @@ class User(Base):
             )
         """
         db = SessionLocal()
-        session = db.query(User).filter_by(**filter_query).first()
-        if session:
-            for k, v in update_query.items():
-                if hasattr(session, k):
-                    setattr(session, k, v)
-            db.commit()
-            db.refresh(session)
-            return True
-        return False
+        try:
+            session = db.query(User).filter_by(**filter_query).first()
+            if session:
+                for k, v in update_query.items():
+                    if hasattr(session, k):
+                        setattr(session, k, v)
+                db.commit()
+                db.refresh(session)
+                return True
+            return False
+
+        finally:
+            db.close()

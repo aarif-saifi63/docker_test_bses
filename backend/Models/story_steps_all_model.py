@@ -19,11 +19,14 @@ class StoryStepsAll(Base):
         Save the story step instance to the database.
         """
         db = SessionLocal()
-        db.add(self)
-        db.commit()
-        db.refresh(self)
-        return self.id
+        try:
+            db.add(self)
+            db.commit()
+            db.refresh(self)
+            return self.id
 
+        finally:
+            db.close()
     @staticmethod
     def find_one(**kwargs):
         """
@@ -31,8 +34,11 @@ class StoryStepsAll(Base):
         Example: StoryStepsAll.find_one(story_id=1)
         """
         db = SessionLocal()
-        return db.query(StoryStepsAll).filter_by(**kwargs).first()
+        try:
+            return db.query(StoryStepsAll).filter_by(**kwargs).first()
 
+        finally:
+            db.close()
     @staticmethod
     def update_one(filter_query, update_query):
         """
@@ -44,12 +50,16 @@ class StoryStepsAll(Base):
             )
         """
         db = SessionLocal()
-        session = db.query(StoryStepsAll).filter_by(**filter_query).first()
-        if session:
-            for k, v in update_query.items():
-                if hasattr(session, k):
-                    setattr(session, k, v)
-            db.commit()
-            db.refresh(session)
-            return True
-        return False
+        try:
+            session = db.query(StoryStepsAll).filter_by(**filter_query).first()
+            if session:
+                for k, v in update_query.items():
+                    if hasattr(session, k):
+                        setattr(session, k, v)
+                db.commit()
+                db.refresh(session)
+                return True
+            return False
+
+        finally:
+            db.close()

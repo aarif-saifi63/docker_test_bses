@@ -32,15 +32,21 @@ class Session(Base):
 
     def save(self):
         db = SessionLocal()
-        db.add(self)
-        db.commit()
-        db.refresh(self)
-        return self.id
+        try:
+            db.add(self)
+            db.commit()
+            db.refresh(self)
+            return self.id
+        finally:
+            db.close()
 
     @staticmethod
     def find_one(**kwargs):
         db = SessionLocal()
-        return db.query(Session).filter_by(**kwargs).first()
+        try:
+            return db.query(Session).filter_by(**kwargs).first()
+        finally:
+            db.close()
 
     @staticmethod
     def update_one(filter_query, update_query):

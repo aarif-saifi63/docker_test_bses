@@ -189,44 +189,47 @@ def update_mapping_users():
 
         db = SessionLocal()
 
-        # Step 1: Fetch existing user-specific permissions
-        existing_mappings = db.query(UserPermissionMapping)\
-            .filter_by(user_details_id=user_details_id)\
-            .all()
-        existing_permission_ids = {m.permission_id for m in existing_mappings}
+        try:
+            # Step 1: Fetch existing user-specific permissions
+            existing_mappings = db.query(UserPermissionMapping)\
+                .filter_by(user_details_id=user_details_id)\
+                .all()
+            existing_permission_ids = {m.permission_id for m in existing_mappings}
 
-        # Step 2: Delete unchecked permissions
-        permissions_to_delete = [
-            perm.get("id") for perm in user_permissions
-            if perm.get("has_permission") is False and perm.get("id") in existing_permission_ids
-        ]
-        if permissions_to_delete:
-            db.query(UserPermissionMapping)\
-                .filter(
-                    UserPermissionMapping.user_details_id == user_details_id,
-                    UserPermissionMapping.permission_id.in_(permissions_to_delete)
-                ).delete(synchronize_session=False)
+            # Step 2: Delete unchecked permissions
+            permissions_to_delete = [
+                perm.get("id") for perm in user_permissions
+                if perm.get("has_permission") is False and perm.get("id") in existing_permission_ids
+            ]
+            if permissions_to_delete:
+                db.query(UserPermissionMapping)\
+                    .filter(
+                        UserPermissionMapping.user_details_id == user_details_id,
+                        UserPermissionMapping.permission_id.in_(permissions_to_delete)
+                    ).delete(synchronize_session=False)
 
-        # Step 3: Add new permissions (has_permission=True)
-        for perm in user_permissions:
-            perm_id = perm.get("id")
-            has_perm = perm.get("has_permission", True)
+            # Step 3: Add new permissions (has_permission=True)
+            for perm in user_permissions:
+                perm_id = perm.get("id")
+                has_perm = perm.get("has_permission", True)
 
-            if has_perm and perm_id not in existing_permission_ids:
-                mapping = UserPermissionMapping(
-                    user_details_id=user_details_id,
-                    user_role_id=user_role_id,  # required for DB
-                    permission_id=perm_id
-                )
-                db.add(mapping)
+                if has_perm and perm_id not in existing_permission_ids:
+                    mapping = UserPermissionMapping(
+                        user_details_id=user_details_id,
+                        user_role_id=user_role_id,  # required for DB
+                        permission_id=perm_id
+                    )
+                    db.add(mapping)
 
-        db.commit()
-        db.close()
+            db.commit()
 
-        return jsonify(
-            status=True,
-            message=f"User permissions updated successfully for user {user_details_id}"
-        ), 200
+            return jsonify(
+                status=True,
+                message=f"User permissions updated successfully for user {user_details_id}"
+            ), 200
+
+        finally:
+            db.close()
 
     except Exception as e:
         return jsonify(status=False, message=f"An error occurred: something went wrong"), 500

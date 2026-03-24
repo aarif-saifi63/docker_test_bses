@@ -16,43 +16,62 @@ class UserRole(Base):
 
     def save(self):
         db = SessionLocal()
-        db.add(self)
-        db.commit()
-        db.refresh(self)
-        return self.id
+        try:
+            db.add(self)
+            db.commit()
+            db.refresh(self)
+            return self.id
 
+        finally:
+            db.close()
     @staticmethod
     def find(**filters):
         db = SessionLocal()
-        return db.query(UserRole).filter_by(**filters).order_by(UserRole.id.desc()).all()
+        try:
+            return db.query(UserRole).filter_by(**filters).order_by(UserRole.id.desc()).all()
 
+        finally:
+            db.close()
     @staticmethod
     def find_one(**filters):
         db = SessionLocal()
-        return db.query(UserRole).filter_by(**filters).first()
+        try:
+            return db.query(UserRole).filter_by(**filters).first()
 
+        finally:
+            db.close()
     @staticmethod
     def find_by_id(role_id):
         db = SessionLocal()
-        return db.query(UserRole).filter_by(id=role_id).first()
+        try:
+            return db.query(UserRole).filter_by(id=role_id).first()
 
+        finally:
+            db.close()
     @staticmethod
     def update(role_id, update_values):
         db = SessionLocal()
-        role = db.query(UserRole).filter_by(id=role_id).first()
-        if role:
-            for key, value in update_values.items():
-                setattr(role, key, value)
-            db.commit()
-            return True
-        return False
+        try:
+            role = db.query(UserRole).filter_by(id=role_id).first()
+            if role:
+                for key, value in update_values.items():
+                    setattr(role, key, value)
+                db.commit()
+                return True
+            return False
 
+        finally:
+            db.close()
     @staticmethod
     def delete(role_id):
         db = SessionLocal()
-        role = db.query(UserRole).filter_by(id=role_id).first()
-        if role:
-            db.delete(role)
-            db.commit()
-            return True
-        return False
+        try:
+            role = db.query(UserRole).filter_by(id=role_id).first()
+            if role:
+                db.delete(role)
+                db.commit()
+                return True
+            return False
+
+        finally:
+            db.close()

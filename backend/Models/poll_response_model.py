@@ -24,34 +24,47 @@ class PollResponse(Base):
     # --- Save the record ---
     def save(self):
         db = SessionLocal()
-        db.add(self)
-        db.commit()
-        db.refresh(self)
-        return self.id
+        try:
+            db.add(self)
+            db.commit()
+            db.refresh(self)
+            return self.id
 
+        finally:
+            db.close()
     # --- Find a single record ---
     @staticmethod
     def find_one(**kwargs):
         db = SessionLocal()
-        return db.query(PollResponse).filter_by(**kwargs).first()
+        try:
+            return db.query(PollResponse).filter_by(**kwargs).first()
 
+        finally:
+            db.close()
     # --- Update a record ---
     @staticmethod
     def update_one(filter_query, update_query):
         db = SessionLocal()
-        session = db.query(PollResponse).filter_by(**filter_query).first()
-        if session:
-            for k, v in update_query.items():
-                if hasattr(session, k):
-                    setattr(session, k, v)
-            session.updated_at = current_time_ist()
-            db.commit()
-            db.refresh(session)
-            return True
-        return False
+        try:
+            session = db.query(PollResponse).filter_by(**filter_query).first()
+            if session:
+                for k, v in update_query.items():
+                    if hasattr(session, k):
+                        setattr(session, k, v)
+                session.updated_at = current_time_ist()
+                db.commit()
+                db.refresh(session)
+                return True
+            return False
 
+        finally:
+            db.close()
     # --- Get all records ---
     @staticmethod
     def get_all():
         db = SessionLocal()
-        return db.query(PollResponse).all()
+        try:
+            return db.query(PollResponse).all()
+
+        finally:
+            db.close()

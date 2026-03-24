@@ -32,26 +32,30 @@ class UserDetails(Base):
 
     def save(self):
         db = SessionLocal()
-        db.add(self)
-        db.commit()
-        db.refresh(self)
-        db.close()
-        return self.id
-    
+        try:
+            db.add(self)
+            db.commit()
+            db.refresh(self)
+            return self.id
+        finally:
+            db.close()
+
     @staticmethod
     def find_one(id):
         db = SessionLocal()
-        user = db.query(UserDetails).filter_by(id=id).first()
-        db.close()
-        return user
+        try:
+            return db.query(UserDetails).filter_by(id=id).first()
+        finally:
+            db.close()
 
     @staticmethod
     def find_by_email(email_id):
         db = SessionLocal()
-        user = db.query(UserDetails).filter_by(email_id=email_id).first()
-        db.close()
-        return user
-    
+        try:
+            return db.query(UserDetails).filter_by(email_id=email_id).first()
+        finally:
+            db.close()
+
     @staticmethod
     def find_by_email_en(email_id):
         print("Finding user by email:", email_id)
@@ -59,29 +63,34 @@ class UserDetails(Base):
         if isinstance(encrypted_email, bytes):
             encrypted_email = encrypted_email.decode()
         print("Encrypted email for search:", encrypted_email)
-        
         db = SessionLocal()
-        user = db.query(UserDetails).filter_by(email_id=encrypted_email).first()
-        print("User found:", user)
-        db.close()
-        return user
+        try:
+            user = db.query(UserDetails).filter_by(email_id=encrypted_email).first()
+            print("User found:", user)
+            return user
+        finally:
+            db.close()
 
     @staticmethod
     def find_all():
         db = SessionLocal()
-        users = db.query(UserDetails).all()
-        db.close()
-        return users
+        try:
+            return db.query(UserDetails).all()
+        finally:
+            db.close()
     
     @staticmethod
     def update(user_id, update_values):
         db = SessionLocal()
-        user = db.query(UserDetails).filter_by(id=user_id).first()
-        if user:
-            for key, value in update_values.items():
-                setattr(user, key, value)
-            user.updated_at = datetime.now(pytz.timezone("Asia/Kolkata"))
-            db.commit()
-            db.refresh(user)
-            return user
-        return None
+        try:
+            user = db.query(UserDetails).filter_by(id=user_id).first()
+            if user:
+                for key, value in update_values.items():
+                    setattr(user, key, value)
+                user.updated_at = datetime.now(pytz.timezone("Asia/Kolkata"))
+                db.commit()
+                db.refresh(user)
+                return user
+            return None
+        finally:
+            db.close()

@@ -60,34 +60,34 @@ def add_ad():
             }), 400
 
         db = SessionLocal()
-
-        ad_name = request.form.get("ad_name")
-        ad_type = request.form.get("ad_type")
-        chatbot_options = request.form.get("chatbot_options")
-        division_list = request.form.get("divisions")
-        start_time = request.form.get("start_time")
-        end_time = request.form.get("end_time")
-        is_active = request.form.get("is_active", "true").lower() == "true"
-
-        # ===== Input Validation =====
-
-        is_valid, msg = InputValidator.validate_name(ad_name, "ad_name")
-        if not is_valid:
-            return jsonify({"status": False, "message": msg}), 400
-
-        if not ad_name:
-            return jsonify({"status": False, "message": "ad_name is required"}), 400
-        if not ad_type:
-            return jsonify({"status": False, "message": "ad_type is required"}), 400
-        if not chatbot_options:
-            return jsonify({"status": False, "message": "chatbot_options is required"}), 400
-        if ad_type != "on_chatbot_launch" and not division_list:
-            return jsonify({"status": False, "message": "divisions is required"}), 400
-        if not start_time or not end_time:
-            return jsonify({"status": False, "message": "start_time and end_time are required"}), 400
-
-        # ===== Parse and localize time fields =====
         try:
+
+            ad_name = request.form.get("ad_name")
+            ad_type = request.form.get("ad_type")
+            chatbot_options = request.form.get("chatbot_options")
+            division_list = request.form.get("divisions")
+            start_time = request.form.get("start_time")
+            end_time = request.form.get("end_time")
+            is_active = request.form.get("is_active", "true").lower() == "true"
+
+            # ===== Input Validation =====
+
+            is_valid, msg = InputValidator.validate_name(ad_name, "ad_name")
+            if not is_valid:
+                return jsonify({"status": False, "message": msg}), 400
+
+            if not ad_name:
+                return jsonify({"status": False, "message": "ad_name is required"}), 400
+            if not ad_type:
+                return jsonify({"status": False, "message": "ad_type is required"}), 400
+            if not chatbot_options:
+                return jsonify({"status": False, "message": "chatbot_options is required"}), 400
+            if ad_type != "on_chatbot_launch" and not division_list:
+                return jsonify({"status": False, "message": "divisions is required"}), 400
+            if not start_time or not end_time:
+                return jsonify({"status": False, "message": "start_time and end_time are required"}), 400
+
+            # ===== Parse and localize time fields =====
             start_time = datetime.fromisoformat(start_time)
             end_time = datetime.fromisoformat(end_time)
 

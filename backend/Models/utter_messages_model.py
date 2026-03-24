@@ -64,11 +64,14 @@ class UtterMessage(Base):
         Save the UtterMessage instance to the database.
         """
         db = SessionLocal()
-        db.add(self)
-        db.commit()
-        db.refresh(self)
-        return self.uid  # Return UUID (useful for API references)
+        try:
+            db.add(self)
+            db.commit()
+            db.refresh(self)
+            return self.uid  # Return UUID (useful for API references)
 
+        finally:
+            db.close()
     @staticmethod
     def find_one(**kwargs):
         """
@@ -76,8 +79,11 @@ class UtterMessage(Base):
         Example: UtterMessage.find_one(action_name="action_greet", language="en")
         """
         db = SessionLocal()
-        return db.query(UtterMessage).filter_by(**kwargs).first()
+        try:
+            return db.query(UtterMessage).filter_by(**kwargs).first()
 
+        finally:
+            db.close()
     @staticmethod
     def find_all(**kwargs):
         """
@@ -85,13 +91,16 @@ class UtterMessage(Base):
         Example: UtterMessage.find_all(language="en")
         """
         db = SessionLocal()
-        return (
-            db.query(UtterMessage)
-            .filter_by(**kwargs)
-            .order_by(UtterMessage.sequence)
-            .all()
-        )
+        try:
+            return (
+                db.query(UtterMessage)
+                .filter_by(**kwargs)
+                .order_by(UtterMessage.sequence)
+                .all()
+            )
 
+        finally:
+            db.close()
     @staticmethod
     def update_one(filter_query, update_query):
         """
@@ -103,16 +112,19 @@ class UtterMessage(Base):
             )
         """
         db = SessionLocal()
-        record = db.query(UtterMessage).filter_by(**filter_query).first()
-        if record:
-            for k, v in update_query.items():
-                if hasattr(record, k):
-                    setattr(record, k, v)
-            db.commit()
-            db.refresh(record)
-            return True
-        return False
+        try:
+            record = db.query(UtterMessage).filter_by(**filter_query).first()
+            if record:
+                for k, v in update_query.items():
+                    if hasattr(record, k):
+                        setattr(record, k, v)
+                db.commit()
+                db.refresh(record)
+                return True
+            return False
 
+        finally:
+            db.close()
     @staticmethod
     def delete_one(**kwargs):
         """
@@ -120,9 +132,13 @@ class UtterMessage(Base):
         Example: UtterMessage.delete_one(uid="uuid-here")
         """
         db = SessionLocal()
-        record = db.query(UtterMessage).filter_by(**kwargs).first()
-        if record:
-            db.delete(record)
-            db.commit()
-            return True
-        return False
+        try:
+            record = db.query(UtterMessage).filter_by(**kwargs).first()
+            if record:
+                db.delete(record)
+                db.commit()
+                return True
+            return False
+
+        finally:
+            db.close()

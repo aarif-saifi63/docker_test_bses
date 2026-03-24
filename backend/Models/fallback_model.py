@@ -14,11 +14,14 @@ class FallbackV(Base):
         Save the fallback instance to the database.
         """
         db = SessionLocal()
-        db.add(self)
-        db.commit()
-        db.refresh(self)
-        return self.id
+        try:
+            db.add(self)
+            db.commit()
+            db.refresh(self)
+            return self.id
 
+        finally:
+            db.close()
     @staticmethod
     def find_one(**kwargs):
         """
@@ -26,8 +29,11 @@ class FallbackV(Base):
         Example: FallbackV.find_one(id=1)
         """
         db = SessionLocal()
-        return db.query(FallbackV).filter_by(**kwargs).first()
+        try:
+            return db.query(FallbackV).filter_by(**kwargs).first()
 
+        finally:
+            db.close()
     @staticmethod
     def update_one(filter_query, update_query):
         """
@@ -39,12 +45,15 @@ class FallbackV(Base):
             )
         """
         db = SessionLocal()
-        record = db.query(FallbackV).filter_by(**filter_query).first()
-        if record:
-            for k, v in update_query.items():
-                if hasattr(record, k):
-                    setattr(record, k, v)
-            db.commit()
-            db.refresh(record)
-            return True
-        return False
+        try:
+            record = db.query(FallbackV).filter_by(**filter_query).first()
+            if record:
+                for k, v in update_query.items():
+                    if hasattr(record, k):
+                        setattr(record, k, v)
+                db.commit()
+                db.refresh(record)
+                return True
+            return False
+        finally:
+            db.close()

@@ -1,6 +1,14 @@
 import os
 import threading
+import logging
 from flask import Flask, jsonify, send_file, request, make_response
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logging.getLogger("db.pool").setLevel(logging.INFO)
 from flask_cors import CORS
 from Controllers.rsa_controller import get_public_key
 from Controllers.submenu_fallback_controller import create_submenu_fallback, delete_submenu_fallback, get_all_submenu_categories, get_all_submenu_fallbacks, get_submenu_fallback_by_category, update_submenu_fallback

@@ -23,8 +23,8 @@ def create_fallback():
 
 
 def get_all_fallbacks():
+    db = SessionLocal()
     try:
-        db = SessionLocal()
         fallbacks = db.query(FallbackV).all()
 
         result = [
@@ -35,10 +35,12 @@ def get_all_fallbacks():
 
     except Exception as e:
         return jsonify({"error": "something went wrong"}), 500
-    
+    finally:
+        db.close()
+
 def get_all_global_fallbacks():
+    db = SessionLocal()
     try:
-        db = SessionLocal()
         fallbacks = db.query(FallbackV).all()
 
         result = [
@@ -49,6 +51,8 @@ def get_all_global_fallbacks():
 
     except Exception as e:
         return jsonify({"error": "something went wrong"}), 500
+    finally:
+        db.close()
 
 
 
@@ -105,8 +109,8 @@ def update_fallback(fallback_id):
 
 
 def delete_fallback(fallback_id):
+    db = SessionLocal()
     try:
-        db = SessionLocal()
         fallback = db.query(FallbackV).filter_by(id=fallback_id).first()
         if not fallback:
             return jsonify({"error": "Fallback not found"}), 404
@@ -117,3 +121,5 @@ def delete_fallback(fallback_id):
 
     except Exception as e:
         return jsonify({"error": "something went wrong"}), 500
+    finally:
+        db.close()

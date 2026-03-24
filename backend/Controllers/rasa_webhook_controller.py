@@ -363,80 +363,80 @@ def webhook():
         #     "धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)"
         # ]
         db_session = SessionLocal()
+        try:
 
-        thank_eng = db_session.query(UtterMessage).filter(
-            UtterMessage.id == 10,
-        ).first()
+            thank_eng = db_session.query(UtterMessage).filter(
+                UtterMessage.id == 10,
+            ).first()
 
-        thank_hin = db_session.query(UtterMessage).filter(
-            UtterMessage.id == 11,
-        ).first()
+            thank_hin = db_session.query(UtterMessage).filter(
+                UtterMessage.id == 11,
+            ).first()
 
-        main_menu_texts = [
-            thank_eng.text,
-            thank_hin.text
-        ]
-
-
-        # main_menu_texts = [
-        #     "Thank you. Would you like to return to the main menu? Select Yes or type ‘menu’ or ‘hi’ to continue.",
-        #     "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए ‘हाँ’, ‘menu’ या ‘hi’ टाइप करें।"
-        # ]
+            main_menu_texts = [
+                thank_eng.text,
+                thank_hin.text
+            ]
 
 
-        for item in rasa_response_json:
-            text = item.get("text", "")
+            # main_menu_texts = [
+            #     "Thank you. Would you like to return to the main menu? Select Yes or type ‘menu’ or ‘hi’ to continue.",
+            #     "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए ‘हाँ’, ‘menu’ या ‘hi’ टाइप करें।"
+            # ]
 
-            # Check for standalone user type text (exact match with lowercase)
-            if text.strip() == "new":
-                type_of_user = "new"
-                continue  # Skip adding this to heading
-            elif text.strip() == "registered":
-                type_of_user = "registered"
-                continue  # Skip adding this to heading
 
-            lines = text.splitlines()
+            for item in rasa_response_json:
+                text = item.get("text", "")
 
-            for line in lines:
-                stripped_line = line.strip()
+                # Check for standalone user type text (exact match with lowercase)
+                if text.strip() == "new":
+                    type_of_user = "new"
+                    continue  # Skip adding this to heading
+                elif text.strip() == "registered":
+                    type_of_user = "registered"
+                    continue  # Skip adding this to heading
 
-                if not stripped_line:
-                    continue
+                lines = text.splitlines()
 
-                if stripped_line in main_menu_texts:
-                    main_menu_heading = stripped_line
-                elif stripped_line.endswith('menu b'):
-                    # remove "menu" and add only "Yes" or "No"
-                    main_menu_buttons.append(stripped_line.replace('menu', '').replace('b', '').strip())
-                elif stripped_line.endswith(' i'):
-                    icons.append(stripped_line[:-1].strip())
-                elif stripped_line.endswith(' b'):
-                    buttons.append(stripped_line[:-1].strip())
-                else:
-                    heading.append(stripped_line)
+                for line in lines:
+                    stripped_line = line.strip()
+
+                    if not stripped_line:
+                        continue
+
+                    if stripped_line in main_menu_texts:
+                        main_menu_heading = stripped_line
+                    elif stripped_line.endswith('menu b'):
+                        # remove "menu" and add only "Yes" or "No"
+                        main_menu_buttons.append(stripped_line.replace('menu', '').replace('b', '').strip())
+                    elif stripped_line.endswith(' i'):
+                        icons.append(stripped_line[:-1].strip())
+                    elif stripped_line.endswith(' b'):
+                        buttons.append(stripped_line[:-1].strip())
+                    else:
+                        heading.append(stripped_line)
                     
 
-        # After the for loops and before creating the response dict
-        # if len(heading) > 1 and heading[1].strip() == "Sorry, I didn't understand that. Can you rephrase?":
-        #     heading.pop(1)
+            # After the for loops and before creating the response dict
+            # if len(heading) > 1 and heading[1].strip() == "Sorry, I didn't understand that. Can you rephrase?":
+            #     heading.pop(1)
 
-        print(initial, "======================== initial")
+            print(initial, "======================== initial")
 
-        print(fallback.initial_msg, "======================== fallback initial")
+            print(fallback.initial_msg, "======================== fallback initial")
 
-        # Only remove duplicate fallback message for GLOBAL fallback, not submenu fallback
-        # Submenu fallback messages should be kept in the response
-        if len(heading) > 1 and heading[1].strip() == initial and not is_submenu_fallback:
-            heading.pop(1)
-            print("Removed duplicate global fallback message from heading")
-        elif is_submenu_fallback:
-            print("Keeping submenu fallback message in heading")
+            # Only remove duplicate fallback message for GLOBAL fallback, not submenu fallback
+            # Submenu fallback messages should be kept in the response
+            if len(heading) > 1 and heading[1].strip() == initial and not is_submenu_fallback:
+                heading.pop(1)
+                print("Removed duplicate global fallback message from heading")
+            elif is_submenu_fallback:
+                print("Keeping submenu fallback message in heading")
 
 
-        # Check all messages (heading, buttons, icons) against utter_messages table
-        utter_message_ids = []
+            # Check all messages (heading, buttons, icons) against utter_messages table
+            utter_message_ids = []
 
-        try:
             # Collect all text items to check
             texts_to_check = []
 
@@ -753,35 +753,35 @@ def run_flow():
                     heading.append(stripped_line)
 
         db_session = SessionLocal()
-
-        lang_update_eng = db_session.query(UtterMessage).filter(
-            UtterMessage.id == 2,
-        ).first()
-
-        lang_update_hin = db_session.query(UtterMessage).filter(
-            UtterMessage.id == 7,
-        ).first()
-
-
-        # # Filter out unwanted success messages from heading
-        unwanted_headings = {
-            # "Language has been changed successfully",
-            lang_update_eng,
-            lang_update_hin
-        }
-
-        # unwanted_headings = {
-        #     # "Language has been changed successfully",
-        #     "Language updated successfully",
-        #     "भाषा सफलतापूर्वक बदल दी गई है"
-        # }
-
-        heading = [h for h in heading if h not in unwanted_headings]
-
-        # Check all messages (heading, buttons, icons) against utter_messages table
-        utter_message_ids = []
-        
         try:
+
+            lang_update_eng = db_session.query(UtterMessage).filter(
+                UtterMessage.id == 2,
+            ).first()
+
+            lang_update_hin = db_session.query(UtterMessage).filter(
+                UtterMessage.id == 7,
+            ).first()
+
+
+            # # Filter out unwanted success messages from heading
+            unwanted_headings = {
+                # "Language has been changed successfully",
+                lang_update_eng,
+                lang_update_hin
+            }
+
+            # unwanted_headings = {
+            #     # "Language has been changed successfully",
+            #     "Language updated successfully",
+            #     "भाषा सफलतापूर्वक बदल दी गई है"
+            # }
+
+            heading = [h for h in heading if h not in unwanted_headings]
+
+            # Check all messages (heading, buttons, icons) against utter_messages table
+            utter_message_ids = []
+        
             # Collect all text items to check
             texts_to_check = []
 
@@ -882,75 +882,75 @@ def run_flow_submenu_fallback():
 
 
         db_session = SessionLocal()
-
-        thank_eng = db_session.query(UtterMessage).filter(
-            UtterMessage.id == 10,
-        ).first()
-
-        thank_hin = db_session.query(UtterMessage).filter(
-            UtterMessage.id == 11,
-        ).first()
-
-        main_menu_texts = [
-            thank_eng.text,
-            thank_hin.text
-        ]
-
-        # main_menu_texts = [
-        #     "Thank you. Would you like to return to the main menu? Select Yes or type 'menu' or 'hi' to continue.",
-        #     "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए 'हाँ', 'menu' या 'hi' टाइप करें।"
-        # ]
-
-        for item in rasa_response_json:
-            text = item.get("text", "")
-            lines = text.splitlines()
-
-            for line in lines:
-                stripped_line = line.strip()
-                if not stripped_line:
-                    continue
-
-                if stripped_line in main_menu_texts:
-                    main_menu_heading = stripped_line
-                elif stripped_line.endswith('menu b'):
-                    # remove "menu" and add only "Yes" or "No"
-                    main_menu_buttons.append(stripped_line.replace('menu', '').replace('b', '').strip())
-                elif stripped_line.endswith(' i'):
-                    icons.append(stripped_line[:-1].strip())
-                elif stripped_line.endswith(' b'):
-                    buttons.append(stripped_line[:-1].strip())
-                else:
-                    heading.append(stripped_line)
-
-        lang_update_eng = db_session.query(UtterMessage).filter(
-            UtterMessage.id == 2,
-        ).first()
-
-        lang_update_hin = db_session.query(UtterMessage).filter(
-            UtterMessage.id == 7,
-        ).first()
-
-
-        # # Filter out unwanted success messages from heading
-        unwanted_headings = {
-            # "Language has been changed successfully",
-            lang_update_eng,
-            lang_update_hin
-        }
-
-        # # Filter out unwanted success messages from heading
-        # unwanted_headings = {
-        #     # "Language has been changed successfully",
-        #     "Language updated successfully",
-        #     "भाषा सफलतापूर्वक बदल दी गई है"
-        # }
-
-        heading = [h for h in heading if h not in unwanted_headings]
-
-        # Check all messages (heading, buttons, icons) against utter_messages table
-        utter_message_ids = []
-
         try:
+
+            thank_eng = db_session.query(UtterMessage).filter(
+                UtterMessage.id == 10,
+            ).first()
+
+            thank_hin = db_session.query(UtterMessage).filter(
+                UtterMessage.id == 11,
+            ).first()
+
+            main_menu_texts = [
+                thank_eng.text,
+                thank_hin.text
+            ]
+
+            # main_menu_texts = [
+            #     "Thank you. Would you like to return to the main menu? Select Yes or type 'menu' or 'hi' to continue.",
+            #     "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए 'हाँ', 'menu' या 'hi' टाइप करें।"
+            # ]
+
+            for item in rasa_response_json:
+                text = item.get("text", "")
+                lines = text.splitlines()
+
+                for line in lines:
+                    stripped_line = line.strip()
+                    if not stripped_line:
+                        continue
+
+                    if stripped_line in main_menu_texts:
+                        main_menu_heading = stripped_line
+                    elif stripped_line.endswith('menu b'):
+                        # remove "menu" and add only "Yes" or "No"
+                        main_menu_buttons.append(stripped_line.replace('menu', '').replace('b', '').strip())
+                    elif stripped_line.endswith(' i'):
+                        icons.append(stripped_line[:-1].strip())
+                    elif stripped_line.endswith(' b'):
+                        buttons.append(stripped_line[:-1].strip())
+                    else:
+                        heading.append(stripped_line)
+
+            lang_update_eng = db_session.query(UtterMessage).filter(
+                UtterMessage.id == 2,
+            ).first()
+
+            lang_update_hin = db_session.query(UtterMessage).filter(
+                UtterMessage.id == 7,
+            ).first()
+
+
+            # # Filter out unwanted success messages from heading
+            unwanted_headings = {
+                # "Language has been changed successfully",
+                lang_update_eng,
+                lang_update_hin
+            }
+
+            # # Filter out unwanted success messages from heading
+            # unwanted_headings = {
+            #     # "Language has been changed successfully",
+            #     "Language updated successfully",
+            #     "भाषा सफलतापूर्वक बदल दी गई है"
+            # }
+
+            heading = [h for h in heading if h not in unwanted_headings]
+
+            # Check all messages (heading, buttons, icons) against utter_messages table
+            utter_message_ids = []
+
             # Collect all text items to check
             texts_to_check = []
 
@@ -1117,36 +1117,36 @@ def register_run_flow():
                     heading.append(stripped_line)
 
         db_session = SessionLocal()
-
-        lang_update_eng = db_session.query(UtterMessage).filter(
-            UtterMessage.id == 2,
-        ).first()
-
-        lang_update_hin = db_session.query(UtterMessage).filter(
-            UtterMessage.id == 7,
-        ).first()
-
-
-        # # Filter out unwanted success messages from heading
-        unwanted_headings = {
-            # "Language has been changed successfully",
-            lang_update_eng,
-            lang_update_hin
-        }
-
-        # # Filter out unwanted success messages from heading
-        # unwanted_headings = {
-        #     # "Language has been changed successfully",
-        #     "Language updated successfully",
-        #     "भाषा सफलतापूर्वक बदल दी गई है"
-        # }
-
-        heading = [h for h in heading if h not in unwanted_headings]
-
-        # Check all messages (heading, buttons, icons) against utter_messages table
-        utter_message_ids = []
-        
         try:
+
+            lang_update_eng = db_session.query(UtterMessage).filter(
+                UtterMessage.id == 2,
+            ).first()
+
+            lang_update_hin = db_session.query(UtterMessage).filter(
+                UtterMessage.id == 7,
+            ).first()
+
+
+            # # Filter out unwanted success messages from heading
+            unwanted_headings = {
+                # "Language has been changed successfully",
+                lang_update_eng,
+                lang_update_hin
+            }
+
+            # # Filter out unwanted success messages from heading
+            # unwanted_headings = {
+            #     # "Language has been changed successfully",
+            #     "Language updated successfully",
+            #     "भाषा सफलतापूर्वक बदल दी गई है"
+            # }
+
+            heading = [h for h in heading if h not in unwanted_headings]
+
+            # Check all messages (heading, buttons, icons) against utter_messages table
+            utter_message_ids = []
+        
             # Collect all text items to check
             texts_to_check = []
 
@@ -1258,75 +1258,75 @@ def register_run_flow_submenu_fallback():
         main_menu_buttons = []
 
         db_session = SessionLocal()
-
-        thank_eng = db_session.query(UtterMessage).filter(
-            UtterMessage.id == 10,
-        ).first()
-
-        thank_hin = db_session.query(UtterMessage).filter(
-            UtterMessage.id == 11,
-        ).first()
-
-        main_menu_texts = [
-            thank_eng.text,
-            thank_hin.text
-        ]
-
-        # main_menu_texts = [
-        #     "Thank you. Would you like to return to the main menu? Select Yes or type 'menu' or 'hi' to continue.",
-        #     "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए 'हाँ', 'menu' या 'hi' टाइप करें।"
-        # ]
-
-        for item in rasa_response_json:
-            text = item.get("text", "")
-            lines = text.splitlines()
-
-            for line in lines:
-                stripped_line = line.strip()
-                if not stripped_line:
-                    continue
-
-                if stripped_line in main_menu_texts:
-                    main_menu_heading = stripped_line
-                elif stripped_line.endswith('menu b'):
-                    # remove "menu" and add only "Yes" or "No"
-                    main_menu_buttons.append(stripped_line.replace('menu', '').replace('b', '').strip())
-                elif stripped_line.endswith(' i'):
-                    icons.append(stripped_line[:-1].strip())
-                elif stripped_line.endswith(' b'):
-                    buttons.append(stripped_line[:-1].strip())
-                else:
-                    heading.append(stripped_line)
-
-        lang_update_eng = db_session.query(UtterMessage).filter(
-            UtterMessage.id == 2,
-        ).first()
-
-        lang_update_hin = db_session.query(UtterMessage).filter(
-            UtterMessage.id == 7,
-        ).first()
-
-
-        # # Filter out unwanted success messages from heading
-        unwanted_headings = {
-            # "Language has been changed successfully",
-            lang_update_eng,
-            lang_update_hin
-        }
-
-        # # Filter out unwanted success messages from heading
-        # unwanted_headings = {
-        #     # "Language has been changed successfully",
-        #     "Language updated successfully",
-        #     "भाषा सफलतापूर्वक बदल दी गई है"
-        # }
-
-        heading = [h for h in heading if h not in unwanted_headings]
-
-        # Check all messages (heading, buttons, icons) against utter_messages table
-        utter_message_ids = []
-
         try:
+
+            thank_eng = db_session.query(UtterMessage).filter(
+                UtterMessage.id == 10,
+            ).first()
+
+            thank_hin = db_session.query(UtterMessage).filter(
+                UtterMessage.id == 11,
+            ).first()
+
+            main_menu_texts = [
+                thank_eng.text,
+                thank_hin.text
+            ]
+
+            # main_menu_texts = [
+            #     "Thank you. Would you like to return to the main menu? Select Yes or type 'menu' or 'hi' to continue.",
+            #     "धन्यवाद। क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? जारी रखने के लिए 'हाँ', 'menu' या 'hi' टाइप करें।"
+            # ]
+
+            for item in rasa_response_json:
+                text = item.get("text", "")
+                lines = text.splitlines()
+
+                for line in lines:
+                    stripped_line = line.strip()
+                    if not stripped_line:
+                        continue
+
+                    if stripped_line in main_menu_texts:
+                        main_menu_heading = stripped_line
+                    elif stripped_line.endswith('menu b'):
+                        # remove "menu" and add only "Yes" or "No"
+                        main_menu_buttons.append(stripped_line.replace('menu', '').replace('b', '').strip())
+                    elif stripped_line.endswith(' i'):
+                        icons.append(stripped_line[:-1].strip())
+                    elif stripped_line.endswith(' b'):
+                        buttons.append(stripped_line[:-1].strip())
+                    else:
+                        heading.append(stripped_line)
+
+            lang_update_eng = db_session.query(UtterMessage).filter(
+                UtterMessage.id == 2,
+            ).first()
+
+            lang_update_hin = db_session.query(UtterMessage).filter(
+                UtterMessage.id == 7,
+            ).first()
+
+
+            # # Filter out unwanted success messages from heading
+            unwanted_headings = {
+                # "Language has been changed successfully",
+                lang_update_eng,
+                lang_update_hin
+            }
+
+            # # Filter out unwanted success messages from heading
+            # unwanted_headings = {
+            #     # "Language has been changed successfully",
+            #     "Language updated successfully",
+            #     "भाषा सफलतापूर्वक बदल दी गई है"
+            # }
+
+            heading = [h for h in heading if h not in unwanted_headings]
+
+            # Check all messages (heading, buttons, icons) against utter_messages table
+            utter_message_ids = []
+
             # Collect all text items to check
             texts_to_check = []
 

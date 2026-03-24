@@ -22,40 +22,56 @@ class Language(Base):
 
     def save(self):
         db = SessionLocal()
-        db.add(self)
-        db.commit()
-        db.refresh(self)
-        return self.id
+        try:
+            db.add(self)
+            db.commit()
+            db.refresh(self)
+            return self.id
 
+        finally:
+            db.close()
     @staticmethod
     def find(**kwargs):
         db = SessionLocal()
-        return db.query(Language).filter_by(**kwargs).all()
+        try:
+            return db.query(Language).filter_by(**kwargs).all()
 
+        finally:
+            db.close()
     @staticmethod
     def find_one(**kwargs):
         db = SessionLocal()
-        return db.query(Language).filter_by(**kwargs).first()
+        try:
+            return db.query(Language).filter_by(**kwargs).first()
 
+        finally:
+            db.close()
     @staticmethod
     def update(language_id, update_values):
         db = SessionLocal()
-        language = db.query(Language).filter_by(id=language_id).first()
-        if language:
-            for key, value in update_values.items():
-                if hasattr(language, key):
-                    setattr(language, key, value)
-            language.updated_at = current_time_ist()
-            db.commit()
-            return True
-        return False
+        try:
+            language = db.query(Language).filter_by(id=language_id).first()
+            if language:
+                for key, value in update_values.items():
+                    if hasattr(language, key):
+                        setattr(language, key, value)
+                language.updated_at = current_time_ist()
+                db.commit()
+                return True
+            return False
 
+        finally:
+            db.close()
     @staticmethod
     def delete(language_id):
         db = SessionLocal()
-        language = db.query(Language).filter_by(id=language_id).first()
-        if language:
-            db.delete(language)
-            db.commit()
-            return True
-        return False
+        try:
+            language = db.query(Language).filter_by(id=language_id).first()
+            if language:
+                db.delete(language)
+                db.commit()
+                return True
+            return False
+
+        finally:
+            db.close()

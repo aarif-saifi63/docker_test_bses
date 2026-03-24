@@ -233,19 +233,17 @@ def delete_submenu_fallback(category):
     Path Parameter:
     - category: The category name
     """
+    db = SessionLocal()
     try:
-        db = SessionLocal()
         fallback = db.query(SubmenuFallbackV).filter_by(category=category).first()
 
         if not fallback:
-            db.close()
             return jsonify({
                 "error": f"Submenu fallback with category '{category}' not found"
             }), 404
 
         db.delete(fallback)
         db.commit()
-        db.close()
 
         return jsonify({
             "message": "Submenu fallback deleted successfully"
@@ -253,6 +251,8 @@ def delete_submenu_fallback(category):
 
     except Exception as e:
         return jsonify({"error": "something went wrong"}), 500
+    finally:
+        db.close()
 
 
 def get_all_submenu_categories():

@@ -16,38 +16,47 @@ class API_Key_Master(Base):
     menu_option = Column(String, nullable=True)
     api_url = Column(String, nullable=True)
     api_name = Column(String, nullable=True)
-    api_headers = Column(JSON, nullable=True)  
+    api_headers = Column(JSON, nullable=True)
     api_hit = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=current_time_ist)
     updated_at = Column(DateTime, default=current_time_ist, onupdate=current_time_ist)
 
     def save(self):
         db = SessionLocal()
-        db.add(self)
-        db.commit()
-        db.refresh(self)
-        return self.id
+        try:
+            db.add(self)
+            db.commit()
+            db.refresh(self)
+            return self.id
+        finally:
+            db.close()
 
     @staticmethod
     def find_one(**kwargs):
         db = SessionLocal()
-        return db.query(API_Key_Master).filter_by(**kwargs).first()
+        try:
+            return db.query(API_Key_Master).filter_by(**kwargs).first()
+        finally:
+            db.close()
 
     @staticmethod
     def update_one(filter_query, update_query):
         db = SessionLocal()
-        session = db.query(API_Key_Master).filter_by(**filter_query).first()
-        if session:
-            if "$push" in update_query:  # emulate Mongo's $push
-                if not session.api_hit:
-                    session.api_hit = []
-                session.api_hit = session.api_hit + [update_query["$push"]["api_hit"]]
+        try:
+            session = db.query(API_Key_Master).filter_by(**filter_query).first()
+            if session:
+                if "$push" in update_query:  # emulate Mongo's $push
+                    if not session.api_hit:
+                        session.api_hit = []
+                    session.api_hit = session.api_hit + [update_query["$push"]["api_hit"]]
 
-            if "$set" in update_query:
-                for k, v in update_query["$set"].items():
-                    setattr(session, k, v)
+                if "$set" in update_query:
+                    for k, v in update_query["$set"].items():
+                        setattr(session, k, v)
 
-            session.updated_at = current_time_ist()   # ✅ keep timezone consistent
-            db.commit()
-            return True
-        return False
+                session.updated_at = current_time_ist()   # ✅ keep timezone consistent
+                db.commit()
+                return True
+            return False
+        finally:
+            db.close()

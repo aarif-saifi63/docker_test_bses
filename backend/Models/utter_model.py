@@ -19,11 +19,14 @@ class UtterV(Base):
         Save the action instance to the database.
         """
         db = SessionLocal()
-        db.add(self)
-        db.commit()
-        db.refresh(self)
-        return self.id
+        try:
+            db.add(self)
+            db.commit()
+            db.refresh(self)
+            return self.id
 
+        finally:
+            db.close()
     @staticmethod
     def find_one(**kwargs):
         """
@@ -31,8 +34,11 @@ class UtterV(Base):
         Example: UtterV.find_one(name="start_refund")
         """
         db = SessionLocal()
-        return db.query(UtterV).filter_by(**kwargs).first()
+        try:
+            return db.query(UtterV).filter_by(**kwargs).first()
 
+        finally:
+            db.close()
     @staticmethod
     def update_one(filter_query, update_query):
         """
@@ -44,12 +50,16 @@ class UtterV(Base):
             )
         """
         db = SessionLocal()
-        session = db.query(UtterV).filter_by(**filter_query).first()
-        if session:
-            for k, v in update_query.items():
-                if hasattr(session, k):
-                    setattr(session, k, v)
-            db.commit()
-            db.refresh(session)
-            return True
-        return False
+        try:
+            session = db.query(UtterV).filter_by(**filter_query).first()
+            if session:
+                for k, v in update_query.items():
+                    if hasattr(session, k):
+                        setattr(session, k, v)
+                db.commit()
+                db.refresh(session)
+                return True
+            return False
+
+        finally:
+            db.close()

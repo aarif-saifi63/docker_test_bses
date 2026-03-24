@@ -93,18 +93,21 @@ class TokenManager:
         self.jwt_token = token
         self.jwt_expiry = self._extract_expiry(token)
         db_session = SessionLocal()
-        # Save or update in Postgres
-        existing = db_session.query(BSES_Token).first()
-        if existing:
-            existing.bses_jwt_token = self.jwt_token
-            existing.bses_jwt_token_expiry = self.jwt_expiry
-        else:
-            new_token = BSES_Token(
-                bses_jwt_token=self.jwt_token,
-                bses_jwt_token_expiry=self.jwt_expiry
-            )
-            db_session.add(new_token)
-        db_session.commit()
+        try:
+            # Save or update in Postgres
+            existing = db_session.query(BSES_Token).first()
+            if existing:
+                existing.bses_jwt_token = self.jwt_token
+                existing.bses_jwt_token_expiry = self.jwt_expiry
+            else:
+                new_token = BSES_Token(
+                    bses_jwt_token=self.jwt_token,
+                    bses_jwt_token_expiry=self.jwt_expiry
+                )
+                db_session.add(new_token)
+            db_session.commit()
+        finally:
+            db_session.close()
 
     def _refresh_delhiv2_token(self):
         print("Refreshing delhiv2 Token...")
@@ -152,18 +155,21 @@ class TokenManager:
         self.delhiv2_token = token
         self.delhiv2_expiry = self._extract_expiry(token)
         db_session = SessionLocal()
-        # Update in Postgres
-        existing = db_session.query(BSES_Token).first()
-        if existing:
-            existing.bses_delhiv2_token = self.delhiv2_token
-            existing.bses_delhiv2_token_expiry = self.delhiv2_expiry
-        else:
-            new_token = BSES_Token(
-                bses_delhiv2_token=self.delhiv2_token,
-                bses_delhiv2_token_expiry=self.delhiv2_expiry
-            )
-            db_session.add(new_token)
-        db_session.commit()
+        try:
+            # Update in Postgres
+            existing = db_session.query(BSES_Token).first()
+            if existing:
+                existing.bses_delhiv2_token = self.delhiv2_token
+                existing.bses_delhiv2_token_expiry = self.delhiv2_expiry
+            else:
+                new_token = BSES_Token(
+                    bses_delhiv2_token=self.delhiv2_token,
+                    bses_delhiv2_token_expiry=self.delhiv2_expiry
+                )
+                db_session.add(new_token)
+            db_session.commit()
+        finally:
+            db_session.close()
 
     def _parse_token(self, xml_response):
         tree = ET.fromstring(xml_response)

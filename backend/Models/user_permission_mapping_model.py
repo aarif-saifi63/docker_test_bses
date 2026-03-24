@@ -19,47 +19,65 @@ class UserPermissionMapping(Base):
 
     def save(self):
         db = SessionLocal()
-        db.add(self)
-        db.commit()
-        db.refresh(self)
-        return self.id
+        try:
+            db.add(self)
+            db.commit()
+            db.refresh(self)
+            return self.id
 
+        finally:
+            db.close()
     @staticmethod
     def find(**filters):
         db = SessionLocal()
-        return db.query(UserPermissionMapping).filter_by(**filters).order_by(UserPermissionMapping.id.desc()).all()
+        try:
+            return db.query(UserPermissionMapping).filter_by(**filters).order_by(UserPermissionMapping.id.desc()).all()
 
+        finally:
+            db.close()
     @staticmethod
     def find_one(**filters):
         db = SessionLocal()
-        return db.query(UserPermissionMapping).filter_by(**filters).first()
+        try:
+            return db.query(UserPermissionMapping).filter_by(**filters).first()
 
+        finally:
+            db.close()
     @staticmethod
     def find_by_id(mapping_id):
         db = SessionLocal()
-        return db.query(UserPermissionMapping).filter_by(id=mapping_id).first()
+        try:
+            return db.query(UserPermissionMapping).filter_by(id=mapping_id).first()
 
+        finally:
+            db.close()
     @staticmethod
     def update(mapping_id, update_values):
         db = SessionLocal()
-        mapping = db.query(UserPermissionMapping).filter_by(id=mapping_id).first()
-        if mapping:
-            for key, value in update_values.items():
-                setattr(mapping, key, value)
-            db.commit()
-            return True
-        return False
+        try:
+            mapping = db.query(UserPermissionMapping).filter_by(id=mapping_id).first()
+            if mapping:
+                for key, value in update_values.items():
+                    setattr(mapping, key, value)
+                db.commit()
+                return True
+            return False
 
+        finally:
+            db.close()
     @staticmethod
     def delete(mapping_id):
         db = SessionLocal()
-        mapping = db.query(UserPermissionMapping).filter_by(id=mapping_id).first()
-        if mapping:
-            db.delete(mapping)
-            db.commit()
-            return True
-        return False
+        try:
+            mapping = db.query(UserPermissionMapping).filter_by(id=mapping_id).first()
+            if mapping:
+                db.delete(mapping)
+                db.commit()
+                return True
+            return False
 
+        finally:
+            db.close()
     @staticmethod
     def get_permissions_for_user(user_details_id, role_id=None):
         """
@@ -68,32 +86,35 @@ class UserPermissionMapping(Base):
         2. User-specific overrides/additional
         """
         db = SessionLocal()
+        try:
 
-        # Role-based permissions
-        role_permissions = []
-        if role_id:
-            role_permissions = (
+            # Role-based permissions
+            role_permissions = []
+            if role_id:
+                role_permissions = (
+                    db.query(PermissionMatrix.permission_name, PermissionMatrix.module, PermissionMatrix.crud_action)
+                    .join(UserPermissionMapping, PermissionMatrix.id == UserPermissionMapping.permission_id)
+                    .filter(UserPermissionMapping.user_role_id == role_id)
+                    .all()
+                )
+
+            # User-specific permissions
+            user_permissions = (
                 db.query(PermissionMatrix.permission_name, PermissionMatrix.module, PermissionMatrix.crud_action)
                 .join(UserPermissionMapping, PermissionMatrix.id == UserPermissionMapping.permission_id)
-                .filter(UserPermissionMapping.user_role_id == role_id)
+                .filter(UserPermissionMapping.user_details_id == user_details_id)
                 .all()
             )
 
-        # User-specific permissions
-        user_permissions = (
-            db.query(PermissionMatrix.permission_name, PermissionMatrix.module, PermissionMatrix.crud_action)
-            .join(UserPermissionMapping, PermissionMatrix.id == UserPermissionMapping.permission_id)
-            .filter(UserPermissionMapping.user_details_id == user_details_id)
-            .all()
-        )
+            # Merge role and user-specific, avoid duplicates
+            merged = { (r[0], r[1], r[2]): r for r in role_permissions + user_permissions }
+            return [
+                {"permission_name": r[0], "module": r[1], "crud_action": r[2]}
+                for r in merged.values()
+            ]
 
-        # Merge role and user-specific, avoid duplicates
-        merged = { (r[0], r[1], r[2]): r for r in role_permissions + user_permissions }
-        return [
-            {"permission_name": r[0], "module": r[1], "crud_action": r[2]}
-            for r in merged.values()
-        ]
-
+        finally:
+            db.close()
     @staticmethod
     def get_permissions_by_role(role_id):
         """
@@ -101,18 +122,22 @@ class UserPermissionMapping(Base):
         Each permission includes: permission_name, module, crud_action
         """
         db = SessionLocal()
-        results = (
-            db.query(
-                PermissionMatrix.permission_name,
-                PermissionMatrix.module,
-                PermissionMatrix.crud_action
+        try:
+            results = (
+                db.query(
+                    PermissionMatrix.permission_name,
+                    PermissionMatrix.module,
+                    PermissionMatrix.crud_action
+                )
+                .join(UserPermissionMapping, PermissionMatrix.id == UserPermissionMapping.permission_id)
+                .filter(UserPermissionMapping.user_role_id == role_id)
+                .all()
             )
-            .join(UserPermissionMapping, PermissionMatrix.id == UserPermissionMapping.permission_id)
-            .filter(UserPermissionMapping.user_role_id == role_id)
-            .all()
-        )
-        # Convert to a structured list of dicts
-        return [
-            {"permission_name": r[0], "module": r[1], "crud_action": r[2]}
-            for r in results
-        ] if results else []
+            # Convert to a structured list of dicts
+            return [
+                {"permission_name": r[0], "module": r[1], "crud_action": r[2]}
+                for r in results
+            ] if results else []
+
+        finally:
+            db.close()

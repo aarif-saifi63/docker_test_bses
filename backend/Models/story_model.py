@@ -27,11 +27,14 @@ class Story(Base):
         Save the story instance to the database.
         """
         db = SessionLocal()
-        db.add(self)
-        db.commit()
-        db.refresh(self)
-        return self.id
+        try:
+            db.add(self)
+            db.commit()
+            db.refresh(self)
+            return self.id
 
+        finally:
+            db.close()
     @staticmethod
     def find_one(**kwargs):
         """
@@ -39,8 +42,11 @@ class Story(Base):
         Example: Story.find_one(story_name="refund_flow")
         """
         db = SessionLocal()
-        return db.query(Story).filter_by(**kwargs).first()
+        try:
+            return db.query(Story).filter_by(**kwargs).first()
 
+        finally:
+            db.close()
     @staticmethod
     def update_one(filter_query, update_query):
         """
@@ -52,12 +58,16 @@ class Story(Base):
             )
         """
         db = SessionLocal()
-        session = db.query(Story).filter_by(**filter_query).first()
-        if session:
-            for k, v in update_query.items():
-                if hasattr(session, k):
-                    setattr(session, k, v)
-            db.commit()
-            db.refresh(session)
-            return True
-        return False
+        try:
+            session = db.query(Story).filter_by(**filter_query).first()
+            if session:
+                for k, v in update_query.items():
+                    if hasattr(session, k):
+                        setattr(session, k, v)
+                db.commit()
+                db.refresh(session)
+                return True
+            return False
+
+        finally:
+            db.close()

@@ -33,11 +33,14 @@ class IntentV(Base):
         Save the intent instance to the database.
         """
         db = SessionLocal()
-        db.add(self)
-        db.commit()
-        db.refresh(self)
-        return self.id
+        try:
+            db.add(self)
+            db.commit()
+            db.refresh(self)
+            return self.id
 
+        finally:
+            db.close()
     # @staticmethod
     # def find_one(**kwargs):
     #     """
@@ -58,16 +61,19 @@ class IntentV(Base):
             )
         """
         db = SessionLocal()
-        session = db.query(IntentV).filter_by(**filter_query).first()
-        if session:
-            for k, v in update_query.items():
-                if hasattr(session, k):
-                    setattr(session, k, v)
-            db.commit()
-            db.refresh(session)
-            return True
-        return False
+        try:
+            session = db.query(IntentV).filter_by(**filter_query).first()
+            if session:
+                for k, v in update_query.items():
+                    if hasattr(session, k):
+                        setattr(session, k, v)
+                db.commit()
+                db.refresh(session)
+                return True
+            return False
     
+        finally:
+            db.close()
     @staticmethod
     def find(search=None, page=1, limit=10):
         with SessionLocal() as db:

@@ -22,43 +22,62 @@ class PermissionMatrix(Base):
 
     def save(self):
         db = SessionLocal()
-        db.add(self)
-        db.commit()
-        db.refresh(self)
-        return self.id
+        try:
+            db.add(self)
+            db.commit()
+            db.refresh(self)
+            return self.id
 
+        finally:
+            db.close()
     @staticmethod
     def find(**filters):
         db = SessionLocal()
-        return db.query(PermissionMatrix).filter_by(**filters).order_by(PermissionMatrix.id.desc()).all()
+        try:
+            return db.query(PermissionMatrix).filter_by(**filters).order_by(PermissionMatrix.id.desc()).all()
 
+        finally:
+            db.close()
     @staticmethod
     def find_one(**filters):
         db = SessionLocal()
-        return db.query(PermissionMatrix).filter_by(**filters).first()
+        try:
+            return db.query(PermissionMatrix).filter_by(**filters).first()
 
+        finally:
+            db.close()
     @staticmethod
     def find_by_id(permission_id):
         db = SessionLocal()
-        return db.query(PermissionMatrix).filter_by(id=permission_id).first()
+        try:
+            return db.query(PermissionMatrix).filter_by(id=permission_id).first()
 
+        finally:
+            db.close()
     @staticmethod
     def update(permission_id, update_values):
         db = SessionLocal()
-        permission = db.query(PermissionMatrix).filter_by(id=permission_id).first()
-        if permission:
-            for key, value in update_values.items():
-                setattr(permission, key, value)
-            db.commit()
-            return True
-        return False
+        try:
+            permission = db.query(PermissionMatrix).filter_by(id=permission_id).first()
+            if permission:
+                for key, value in update_values.items():
+                    setattr(permission, key, value)
+                db.commit()
+                return True
+            return False
 
+        finally:
+            db.close()
     @staticmethod
     def delete(permission_id):
         db = SessionLocal()
-        permission = db.query(PermissionMatrix).filter_by(id=permission_id).first()
-        if permission:
-            db.delete(permission)
-            db.commit()
-            return True
-        return False
+        try:
+            permission = db.query(PermissionMatrix).filter_by(id=permission_id).first()
+            if permission:
+                db.delete(permission)
+                db.commit()
+                return True
+            return False
+
+        finally:
+            db.close()

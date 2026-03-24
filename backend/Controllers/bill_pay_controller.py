@@ -87,8 +87,8 @@ def save_duplicate_bill_chat():
     
 
 def dashboard_pay_bill():
+    db = SessionLocal()
     try:
-        db = SessionLocal()
         all_sessions = db.query(Session).all()
 
         pay_bill_count = 0
@@ -116,12 +116,14 @@ def dashboard_pay_bill():
     except Exception as e:
         print("Dashboard Pay Bill Error:", e)
         return jsonify({'error': 'Something went wrong'}), 500
+    finally:
+        db.close()
     
 
 
 def dashboard_download_duplicate_bill():
+    db = SessionLocal()
     try:
-        db = SessionLocal()
         all_sessions = db.query(Session).all()
 
         pay_bill_count = 0
@@ -154,3 +156,5 @@ def dashboard_download_duplicate_bill():
     except Exception as e:
         print("Dashboard Pay Bill Error:", e)
         return jsonify({'error': 'Something went wrong'}), 500
+    finally:
+        db.close()

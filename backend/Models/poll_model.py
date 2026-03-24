@@ -69,7 +69,10 @@ class Poll(Base):
     @staticmethod
     def find_one(**kwargs):
         db = SessionLocal()
-        return db.query(Poll).filter_by(**kwargs).first()
+        try:
+            return db.query(Poll).filter_by(**kwargs).first()
+        finally:
+            db.close()
 
     @staticmethod
     def update_one(filter_query, update_query):
@@ -133,9 +136,9 @@ class Poll(Base):
     @staticmethod
     def get_active_poll(division=None):
         db = SessionLocal()
-
-        print(division, "===================== division in poll model")
         try:
+
+            print(division, "===================== division in poll model")
             now = current_time_ist()
             if now.tzinfo:
                 now = now.replace(tzinfo=None)

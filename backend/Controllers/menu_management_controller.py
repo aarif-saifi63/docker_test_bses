@@ -528,9 +528,9 @@ UPLOAD_BASE_PATH = "Media/BSES_ICONS"
 
 def create_menu_with_submenu():
     db = SessionLocal()
-    uploaded_files = []  # Track uploaded files for cleanup on failure
-
     try:
+        uploaded_files = []  # Track uploaded files for cleanup on failure
+
         # SECURITY: Validate multipart request using centralized security module
         is_valid, error_message = validate_multipart_request()
         if not is_valid:

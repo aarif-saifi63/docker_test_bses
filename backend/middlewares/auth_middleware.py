@@ -307,12 +307,14 @@ def token_required(f):
             if error_msg == "INACTIVITY_TIMEOUT":
                 try:
                     db = SessionLocal()
-                    data = verify_access_token(token)
-                    if data:
-                        expiry = datetime.utcfromtimestamp(data["exp"])
-                        db.add(TokenBlacklist(token=token, expires_at=expiry))
-                        db.commit()
-                    db.close()
+                    try:
+                        data = verify_access_token(token)
+                        if data:
+                            expiry = datetime.utcfromtimestamp(data["exp"])
+                            db.add(TokenBlacklist(token=token, expires_at=expiry))
+                            db.commit()
+                    finally:
+                        db.close()
                 except Exception:
                     pass
                 response = make_response(jsonify({

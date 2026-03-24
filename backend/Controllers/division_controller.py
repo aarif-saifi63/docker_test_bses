@@ -4,8 +4,8 @@ from database import SessionLocal
 
 
 def get_divisions():
+    db = SessionLocal()
     try:
-        db = SessionLocal()
         divisions = db.query(Divisions).all()
 
         if not divisions:
@@ -23,3 +23,5 @@ def get_divisions():
 
     except Exception as e:
         return jsonify({"error": "something went wrong"}), 500
+    finally:
+        db.close()

@@ -76,8 +76,10 @@ def register_user_detail():
             return jsonify(status=False, message="Password and confirm password do not match"), 400
 
         db = SessionLocal()
-        role = db.query(UserRole).filter_by(id=role_id).first()
-        db.close()
+        try:
+            role = db.query(UserRole).filter_by(id=role_id).first()
+        finally:
+            db.close()
         if not role:
             return jsonify(status=False, message="Invalid role_id"), 400
         
@@ -648,17 +650,17 @@ def refresh_token():
         # blacklist tokens, invalidate active session, clear cookies.
         try:
             db = SessionLocal()
-            if old_access_token:
-                try:
-                    access_data = verify_access_token(old_access_token)
-                    if access_data:
-                        expiry = datetime.utcfromtimestamp(access_data["exp"])
-                        db.add(TokenBlacklist(token=old_access_token, expires_at=expiry))
-                except Exception:
-                    pass
-                access_token_hash = hash_token(old_access_token)
-                ActiveSession.invalidate_session(access_token_hash)
             try:
+                if old_access_token:
+                    try:
+                        access_data = verify_access_token(old_access_token)
+                        if access_data:
+                            expiry = datetime.utcfromtimestamp(access_data["exp"])
+                            db.add(TokenBlacklist(token=old_access_token, expires_at=expiry))
+                    except Exception:
+                        pass
+                    access_token_hash = hash_token(old_access_token)
+                    ActiveSession.invalidate_session(access_token_hash)
                 db.add(TokenBlacklist(token=refresh_cookie, expires_at=datetime.utcnow()))
             except Exception:
                 pass

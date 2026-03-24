@@ -27,49 +27,71 @@ class Admin(Base):
 
     def save(self):
         db = SessionLocal()
-        db.add(self)
-        db.commit()
-        db.refresh(self)
-        return self.id
+        try:
+            db.add(self)
+            db.commit()
+            db.refresh(self)
+            return self.id
 
+        finally:
+            db.close()
     @staticmethod
     def find(**kwargs):
         db = SessionLocal()
-        return db.query(Admin).filter_by(**kwargs).all()
+        try:
+            return db.query(Admin).filter_by(**kwargs).all()
 
+        finally:
+            db.close()
     @staticmethod
     def find_one(**kwargs):
         db = SessionLocal()
-        return db.query(Admin).filter_by(**kwargs).first()
+        try:
+            return db.query(Admin).filter_by(**kwargs).first()
 
+        finally:
+            db.close()
     @staticmethod
     def update(user_id, update_values):
         db = SessionLocal()
-        user = db.query(Admin).filter_by(id=user_id).first()
-        if user:
-            for key, value in update_values.items():
-                setattr(user, key, value)
-            user.updated_at = current_time_ist()
-            db.commit()
-            return True
-        return False
+        try:
+            user = db.query(Admin).filter_by(id=user_id).first()
+            if user:
+                for key, value in update_values.items():
+                    setattr(user, key, value)
+                user.updated_at = current_time_ist()
+                db.commit()
+                return True
+            return False
 
+        finally:
+            db.close()
     @staticmethod
     def find_by_email(email_id):
         db = SessionLocal()
-        return db.query(Admin).filter_by(email_id=email_id).first()
+        try:
+            return db.query(Admin).filter_by(email_id=email_id).first()
 
+        finally:
+            db.close()
     @staticmethod
     def find_by_user_id(user_id):
         db = SessionLocal()
-        return db.query(Admin).filter_by(id=user_id).first()
+        try:
+            return db.query(Admin).filter_by(id=user_id).first()
 
+        finally:
+            db.close()
     @staticmethod
     def delete(user_id):
         db = SessionLocal()
-        user = db.query(Admin).filter_by(id=user_id).first()
-        if user:
-            db.delete(user)
-            db.commit()
-            return True
-        return False
+        try:
+            user = db.query(Admin).filter_by(id=user_id).first()
+            if user:
+                db.delete(user)
+                db.commit()
+                return True
+            return False
+
+        finally:
+            db.close()

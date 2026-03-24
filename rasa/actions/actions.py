@@ -4,6 +4,15 @@
 # See this guide on how to implement these action:
 # https://rasa.com/docs/rasa/custom-actions
 
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logging.getLogger("db.pool").setLevel(logging.INFO)
+
 from typing import Any, Text, Dict, List
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher

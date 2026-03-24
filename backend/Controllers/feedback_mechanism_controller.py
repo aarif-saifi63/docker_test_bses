@@ -269,6 +269,7 @@ def get_feedback_questions():
     
 
 def submit_feedback():
+    db = None
     try:
         data = request.get_json()
 
@@ -386,3 +387,6 @@ def submit_feedback():
 
     except Exception as e:
         return jsonify({"error": "something went wrong"}), 500
+    finally:
+        if db:
+            db.close()
