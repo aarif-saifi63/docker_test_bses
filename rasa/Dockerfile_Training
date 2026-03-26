@@ -2,7 +2,7 @@ FROM python:3.10.12-bullseye
 WORKDIR /app
 COPY .  /app
 USER root
-RUN pip install --upgrade pip \
+RUN pip install pip \
     && pip3 install -r rasa_training_requirements.txt \
     && pip3 install gunicorn gevent
 EXPOSE 8001

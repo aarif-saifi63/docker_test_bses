@@ -61,7 +61,7 @@ services:
     ports:
       - "5005:5005"
     environment:
-      # SANIC_WORKERS: 4
+      SANIC_WORKERS: 2
       RASA_ACTIONS_URL: "http://rasa_actions:5055"
       BACKEND_URL: "http://backend:3000"
       REDIS_HOST: redis
@@ -83,6 +83,7 @@ services:
     depends_on:
       - redis      
     environment:
+      ACTION_SERVER_SANIC_WORKERS: 2
       BACKEND_URL: "http://backend:3000"
       REDIS_HOST: redis
       REDIS_PORT: 6379      

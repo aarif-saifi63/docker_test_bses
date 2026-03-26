@@ -59,10 +59,20 @@ def send_dynamic_messages(dispatcher, action_name, message_type, lang="en"):
     Fetches utter messages dynamically from backend using action_name and language.
     """
     try:
-        api_url = f"{FLASK_BASE_URL}/get_utter_messages?message_type={message_type}&lang={lang}"
-        response = requests.get(api_url, timeout=5)
-        response.raise_for_status()
-        data = response.json()
+        CACHE_KEY = f"utter_messages_cache:{message_type}:{lang}"
+        cached = redis_client.get(CACHE_KEY)
+        if cached:
+            data = json.loads(cached)
+        else:
+            # Without cache:
+            # api_url = f"{FLASK_BASE_URL}/get_utter_messages?message_type={message_type}&lang={lang}"
+            # response = requests.get(api_url, timeout=5)
+            # response.raise_for_status()
+            # data = response.json()
+            response = requests.get(f"{FLASK_BASE_URL}/get_utter_messages?message_type={message_type}&lang={lang}", timeout=5)
+            response.raise_for_status()
+            data = response.json()
+            redis_client.set(CACHE_KEY, json.dumps(data))
 
         print(data, "================ send")
 

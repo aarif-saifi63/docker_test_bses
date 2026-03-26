@@ -5,6 +5,15 @@ from utils.input_validator import InputValidator
 from database import SessionLocal
 from Models.utter_messages_model import UtterMessage
 import requests
+import redis
+import os
+
+_redis = redis.Redis(
+    host=os.getenv('REDIS_HOST', 'redis'),
+    port=int(os.getenv('REDIS_PORT', 6379)),
+    db=0,
+    decode_responses=True
+)
 
 
 # utter_message_bp = Blueprint("utter_message_bp", __name__, url_prefix="/utter_messages")
@@ -81,6 +90,7 @@ def create_utter_message():
         db.commit()
         db.refresh(new_utter)
 
+        _redis.delete(f"utter_messages_cache:{new_utter.message_type}:{new_utter.language}")
         return jsonify({
             "status": "success",
             "message": "Utter message created successfully",
@@ -427,6 +437,7 @@ def update_utter_message(uid):
         db.commit()
         db.refresh(utter)
 
+        _redis.delete(f"utter_messages_cache:{utter.message_type}:{utter.language}")
         return jsonify({
             "status": "success",
             "message": "Utter message updated successfully",
@@ -457,9 +468,12 @@ def delete_utter_message(uid):
                 "message": "Utter message not found"
             }), 404
 
+        msg_type = record.message_type
+        lang = record.language
         db.delete(record)
         db.commit()
 
+        _redis.delete(f"utter_messages_cache:{msg_type}:{lang}")
         return jsonify({
             "status": "success",
             "message": "Utter message deleted successfully"
