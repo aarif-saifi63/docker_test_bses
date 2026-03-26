@@ -18,8 +18,10 @@ from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
 from rasa_sdk.events import SlotSet, UserUtteranceReverted, EventType
 from rasa_sdk.events import Restarted, ConversationPaused
+import json
 import requests
 import asyncio
+import redis
 from concurrent.futures import ThreadPoolExecutor
 from rasa_sdk.interfaces import Tracker
 from typing import Any, Text, Dict, List
@@ -40,7 +42,14 @@ from utils.helper import API_GetMeterReadingSchedule, area_outage, complaint_sta
 # Load .env file
 load_dotenv()
 
-# FLASK_BASE_URL = "http://192.168.20.47:3000"  
+redis_client = redis.Redis(
+    host=os.getenv('REDIS_HOST', 'redis'),
+    port=int(os.getenv('REDIS_PORT', 6379)),
+    db=0,
+    decode_responses=True
+)
+
+# FLASK_BASE_URL = "http://192.168.20.47:3000"
 FLASK_BASE_URL = os.getenv("BACKEND_URL")  
 # FLASK_BASE_URL = f"{os.getenv('BASE_URL')}:{os.getenv('BACKEND_PORT')}"
 
@@ -187,30 +196,28 @@ class Language_type(Action):
         return "action_language"
     
     def run(self, dispatcher, tracker, domain):
+        CACHE_KEY = "visible_languages_cache"
         try:
-            # Fetch visible languages from your Flask API
-            response = requests.get(f"{FLASK_BASE_URL}/visible-languages", timeout=(3, 10))
-            data = response.json()
-            
-            # data = get_visible_languages()
+            # Check Redis cache first; populated on first call, invalidated by admin on language change
+            cached = redis_client.get(CACHE_KEY)
+            if cached:
+                data = json.loads(cached)
+            else:
+                response = requests.get(f"{FLASK_BASE_URL}/visible-languages", timeout=(3, 10))
+                data = response.json()
+                redis_client.set(CACHE_KEY, json.dumps(data))
 
             # Send the initial message
             dispatcher.utter_message(text='''Please select your language
 
     कृपया अपनी भाषा चुनें''')
 
-            # Check if data exists and contains languages
-            if data.get("status") and "data" in data:
-                languages = data["data"]
-                if languages:
-                    for lang in languages:
-                        # Add 'b' after each language name
-                        dispatcher.utter_message(text=f"{lang['name']} b")
-                else:
-                    dispatcher.utter_message(text="No visible languages found.")
+            if data.get("status") and data.get("data"):
+                for lang in data["data"]:
+                    dispatcher.utter_message(text=f"{lang['name']} b")
             else:
                 dispatcher.utter_message(text="Unable to fetch languages at this time.")
-            return[]
+            return []
         except Exception as e:
             print(f"Error fetching visible languages: {e}")
             dispatcher.utter_message(text="Something went wrong while fetching languages.")
@@ -326,16 +333,22 @@ class Register_consumer_options_english(Action):
     ) -> List[Dict[Text, Any]]:
         
         user_id = 2  # Later from tracker slot
-        api_url = f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}"
-
-        # api_url = get_user_menus(user_id)
-
-
+        CACHE_KEY = f"user_menus_cache:{user_id}"
+        # api_url = f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}"
 
         try:
-            response = requests.get(api_url, timeout=5)
-            response.raise_for_status()
-            data = response.json()
+            cached = redis_client.get(CACHE_KEY)
+            if cached:
+                data = json.loads(cached)
+            else:
+                response = requests.get(f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}", timeout=5)
+                response.raise_for_status()
+                data = response.json()
+                redis_client.set(CACHE_KEY, json.dumps(data))
+            # Without cache:
+            # response = requests.get(api_url, timeout=5)
+            # response.raise_for_status()
+            # data = response.json()
 
             menus = data.get("menus", [])
             if not menus:
@@ -409,14 +422,22 @@ class Register_consumer_options_hindi(Action):
     ) -> List[Dict[Text, Any]]:
 
         user_id = 4  # Later from tracker.get_slot("user_id")
-        api_url = f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}"
-        # api_url = get_user_menus(user_id)
+        CACHE_KEY = f"user_menus_cache:{user_id}"
+        # api_url = f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}"
 
         try:
-            # --- Fetch menu data dynamically from Flask API ---
-            response = requests.get(api_url, timeout=5)
-            response.raise_for_status()
-            data = response.json()
+            cached = redis_client.get(CACHE_KEY)
+            if cached:
+                data = json.loads(cached)
+            else:
+                response = requests.get(f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}", timeout=5)
+                response.raise_for_status()
+                data = response.json()
+                redis_client.set(CACHE_KEY, json.dumps(data))
+            # Without cache:
+            # response = requests.get(api_url, timeout=5)
+            # response.raise_for_status()
+            # data = response.json()
 
             menus = data.get("menus", [])
             if not menus:
@@ -483,14 +504,22 @@ class New_consumer_options_english(Action):
     ) -> List[Dict[Text, Any]]:
 
         user_id = 6  # Later can be dynamic from tracker.get_slot("user_id")
-        api_url = f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}"
-        # api_url = get_user_menus(user_id)
+        CACHE_KEY = f"user_menus_cache:{user_id}"
+        # api_url = f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}"
 
         try:
-            # --- Fetch menu data from Flask API ---
-            response = requests.get(api_url, timeout=5)
-            response.raise_for_status()
-            data = response.json()
+            cached = redis_client.get(CACHE_KEY)
+            if cached:
+                data = json.loads(cached)
+            else:
+                response = requests.get(f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}", timeout=5)
+                response.raise_for_status()
+                data = response.json()
+                redis_client.set(CACHE_KEY, json.dumps(data))
+            # Without cache:
+            # response = requests.get(api_url, timeout=5)
+            # response.raise_for_status()
+            # data = response.json()
 
             menus = data.get("menus", [])
             if not menus:
@@ -608,14 +637,22 @@ class New_consumer_options_hindi(Action):
     ) -> List[Dict[Text, Any]]:
 
         user_id = 8  # Later can be dynamic using tracker.get_slot("user_id")
-        api_url = f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}"
-        # api_url = get_user_menus(user_id)
+        CACHE_KEY = f"user_menus_cache:{user_id}"
+        # api_url = f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}"
 
         try:
-            # --- Fetch menu data from Flask API ---
-            response = requests.get(api_url, timeout=5)
-            response.raise_for_status()
-            data = response.json()
+            cached = redis_client.get(CACHE_KEY)
+            if cached:
+                data = json.loads(cached)
+            else:
+                response = requests.get(f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}", timeout=5)
+                response.raise_for_status()
+                data = response.json()
+                redis_client.set(CACHE_KEY, json.dumps(data))
+            # Without cache:
+            # response = requests.get(api_url, timeout=5)
+            # response.raise_for_status()
+            # data = response.json()
 
             menus = data.get("menus", [])
             if not menus:
@@ -1782,34 +1819,29 @@ class Change_Language_module(Action):
         return "action_change_language"
     
     def run(self, dispatcher, tracker, domain):
+        CACHE_KEY = "visible_languages_cache"
         try:
-            response = requests.get(f"{FLASK_BASE_URL}/visible-languages", timeout=(3, 10))
-            data = response.json()
+            # Check Redis cache first; invalidated by admin on language change
+            cached = redis_client.get(CACHE_KEY)
+            if cached:
+                data = json.loads(cached)
+            else:
+                response = requests.get(f"{FLASK_BASE_URL}/visible-languages", timeout=(3, 10))
+                data = response.json()
+                redis_client.set(CACHE_KEY, json.dumps(data))
 
-            # data = get_visible_languages()
-
-    #         dispatcher.utter_message(text='''Please select your preferred language
-
-    # कृपया अपनी पसंदीदा भाषा चुनें''')
-            # dispatcher.utter_message(text='Please select your preferred language')
             send_dynamic_messages(dispatcher, "", "change_language_en", lang="en")
-            # dispatcher.utter_message(text='कृपया अपनी पसंदीदा भाषा चुनें')
             send_dynamic_messages(dispatcher, "", "change_language_hi", lang="hi")
-            # Check if data exists and contains languages
-            if data.get("status") and "data" in data:
-                languages = data["data"]
-                if languages:
-                    for lang in languages:
-                        # Add 'b' after each language name
-                        dispatcher.utter_message(text=f"{lang['name']} b")
-                else:
-                    dispatcher.utter_message(text="No visible languages found.")
+
+            if data.get("status") and data.get("data"):
+                for lang in data["data"]:
+                    dispatcher.utter_message(text=f"{lang['name']} b")
             else:
                 dispatcher.utter_message(text="Unable to fetch languages at this time.")
-            return[Restarted()]
+            return [Restarted()]
         except Exception as e:
             print(f"Error fetching visible languages: {e}")
-        dispatcher.utter_message(text="Something went wrong while fetching languages.")
+            dispatcher.utter_message(text="Something went wrong while fetching languages.")
     
 
 ## Visually Impaired

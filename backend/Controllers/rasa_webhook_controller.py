@@ -1,6 +1,7 @@
 
 from datetime import datetime
 from dotenv import load_dotenv
+import json
 import os
 import requests
 import redis
@@ -1507,12 +1508,19 @@ def handle_fallback():
         # Update attempts to reflect the increment
         attempts += 1
 
-        # Fetch fallback messages from database
-        fallback = FallbackV.find_one(id=1)
-
-        if fallback:
-            initial = fallback.initial_msg
-            final = fallback.final_msg
+        # Fetch fallback messages (cached in Redis)
+        FALLBACK_CACHE_KEY = "fallback_cache:1"
+        cached_fallback = redis_client.get(FALLBACK_CACHE_KEY)
+        if cached_fallback:
+            fb_data = json.loads(cached_fallback)
+            initial = fb_data["initial_msg"]
+            final = fb_data["final_msg"]
+        else:
+            fallback = FallbackV.find_one(id=1)
+            if fallback:
+                initial = fallback.initial_msg
+                final = fallback.final_msg
+                redis_client.set(FALLBACK_CACHE_KEY, json.dumps({"initial_msg": initial, "final_msg": final}))
 
         # If count exceeds 2 (i.e., 3rd consecutive fallback), send final message
         if attempts > FALLBACK_LIMIT:

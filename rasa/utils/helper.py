@@ -1980,7 +1980,16 @@ def is_prepaid_ca_valid(ca_number: str) -> dict:
 
 
 
+VISIBLE_LANGUAGES_CACHE_KEY = "visible_languages_cache"
+
 def get_visible_languages():
+    import json
+
+    # Try cache first
+    cached = redis_client.get(VISIBLE_LANGUAGES_CACHE_KEY)
+    if cached:
+        return json.loads(cached)
+
     db: Session = SessionLocal()
     try:
         langs = (
@@ -1990,18 +1999,17 @@ def get_visible_languages():
             .all()
         )
 
-        # Convert to list of dicts
         langs_list = [
             {"id": lang.id, "name": lang.name, "is_visible": lang.is_visible}
             for lang in langs
         ]
-
-        # Move "English" to the first position if present
         langs_list.sort(key=lambda x: 0 if x["name"].lower() == "english" else 1)
 
-        return {"status": True, "data": langs_list}
+        result = {"status": True, "data": langs_list}
+        redis_client.set(VISIBLE_LANGUAGES_CACHE_KEY, json.dumps(result))
+        return result
     except Exception as e:
-        return {"status": False, "error": "something went wrong"}, 500
+        return {"status": False, "error": "something went wrong"}
     finally:
         db.close()
 

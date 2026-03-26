@@ -1,6 +1,8 @@
 
 import json
 import uuid
+import redis
+import os
 from utils.input_validator import InputValidator
 from utils.file_security_helper import FileSecurityHelper
 import magic
@@ -18,7 +20,6 @@ from Models.sub_menu_option_model import SubMenuOptionV
 from Models.users_model import User
 from Models.utter_model import UtterV
 from database import SessionLocal
-import os
 import logging
 from flask import request, jsonify
 from sqlalchemy.orm import joinedload
@@ -34,6 +35,13 @@ import logging
 
 
 logger = logging.getLogger(__name__)
+
+_redis = redis.Redis(
+    host=os.getenv('REDIS_HOST', 'redis'),
+    port=int(os.getenv('REDIS_PORT', 6379)),
+    db=0,
+    decode_responses=True
+)
 
 
 def get_user_menu_data():
@@ -1005,6 +1013,7 @@ def create_menu_with_submenu():
                         "story": {"id": story.id, "name": story.story_name},
                     })
 
+            _redis.delete(f"user_menus_cache:{user_id}")
             return jsonify({
                 "message": "Updated successfully" if menu_id else "Created successfully",
                 "status": True,
@@ -1584,9 +1593,11 @@ def delete_submenu(submenu_id):
             db.delete(intent)
 
         # ORM delete triggers DB cascades for all related data
+        submenu_user_id = submenu.user_id
         db.delete(submenu)
         db.commit()
 
+        _redis.delete(f"user_menus_cache:{submenu_user_id}")
         return jsonify({
             "message": f"Submenu {submenu_id} and all related records deleted successfully"
         }), 200
@@ -1618,9 +1629,11 @@ def delete_menu(menu_id):
                 db.delete(intent)
 
         # ✅ Step 2. Delete the menu (ORM + DB will cascade submenus and their related records)
+        menu_user_id = menu.user_id
         db.delete(menu)
         db.commit()
 
+        _redis.delete(f"user_menus_cache:{menu_user_id}")
         return jsonify({
             "message": f"Menu {menu_id} and all related submenus, actions, utters, stories, and intents deleted successfully"
         }), 200
@@ -1738,6 +1751,7 @@ def update_menu_sequence():
 
         db.commit()
 
+        _redis.delete(f"user_menus_cache:{user_id}")
         return jsonify({"status": True, "message": "Menu and submenu sequences updated successfully"}), 200
 
     except SQLAlchemyError as e:

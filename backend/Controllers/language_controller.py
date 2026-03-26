@@ -5,6 +5,16 @@ from utils.input_validator import InputValidator
 from database import SessionLocal
 from datetime import datetime
 import pytz
+import redis
+import os
+
+_redis = redis.Redis(
+    host=os.getenv('REDIS_HOST', 'redis'),
+    port=int(os.getenv('REDIS_PORT', 6379)),
+    db=0,
+    decode_responses=True
+)
+VISIBLE_LANGUAGES_CACHE_KEY = "visible_languages_cache"
 
 IST = pytz.timezone("Asia/Kolkata")
 
@@ -54,6 +64,7 @@ def create_language():
         db.add(language)
         db.commit()
         db.refresh(language)
+        _redis.delete(VISIBLE_LANGUAGES_CACHE_KEY)
 
         return jsonify({
             "message": "Language created successfully",
@@ -155,6 +166,7 @@ def update_language(language_id):
         language.updated_at = current_time_ist()
         db.commit()
         db.refresh(language)
+        _redis.delete(VISIBLE_LANGUAGES_CACHE_KEY)
 
         return jsonify({
             "message": "Language updated successfully",
@@ -174,6 +186,7 @@ def delete_language(language_id):
     try:
         success = Language.delete(language_id)
         if success:
+            _redis.delete(VISIBLE_LANGUAGES_CACHE_KEY)
             return jsonify({"message": "Language deleted successfully", "status": True})
         else:
             return jsonify({"error": "Language not found", "status": False}), 404

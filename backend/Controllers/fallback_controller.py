@@ -2,6 +2,16 @@ from flask import jsonify, request
 from Models.fallback_model import FallbackV
 from utils.input_validator import InputValidator
 from database import SessionLocal
+import redis
+import os
+
+_redis = redis.Redis(
+    host=os.getenv('REDIS_HOST', 'redis'),
+    port=int(os.getenv('REDIS_PORT', 6379)),
+    db=0,
+    decode_responses=True
+)
+FALLBACK_CACHE_KEY = "fallback_cache:1"
 
 
 def create_fallback():
@@ -16,6 +26,7 @@ def create_fallback():
         fallback = FallbackV(initial_msg=initial_msg, final_msg=final_msg)
         fallback.save()
 
+        _redis.delete(FALLBACK_CACHE_KEY)
         return jsonify({"message": "Fallback created successfully", "id": fallback.id}), 201
 
     except Exception as e:
@@ -102,6 +113,7 @@ def update_fallback(fallback_id):
         if not success:
             return jsonify({"error": "Fallback not found or not updated"}), 404
 
+        _redis.delete(FALLBACK_CACHE_KEY)
         return jsonify({"message": "Fallback updated successfully"}), 200
 
     except Exception as e:
@@ -117,6 +129,7 @@ def delete_fallback(fallback_id):
 
         db.delete(fallback)
         db.commit()
+        _redis.delete(FALLBACK_CACHE_KEY)
         return jsonify({"message": "Fallback deleted successfully"}), 200
 
     except Exception as e:
