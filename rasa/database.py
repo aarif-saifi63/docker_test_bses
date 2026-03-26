@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.pool import NullPool  # noqa: F401 (kept for reference)
 from dotenv import load_dotenv
 import os
 import logging
@@ -16,19 +17,32 @@ DATABASE_URL = os.getenv('DATABASE_CONNECTION_STRING')
 # engine = create_engine(DATABASE_URL, echo=True)
 
 # Create engine with connection pool settings
+# Connecting through PgBouncer (transaction mode):
+# pool_size here = SQLAlchemy → PgBouncer connections (cheap)
+# PgBouncer maintains only 50 real PostgreSQL connections total
+# engine = create_engine(
+#     DATABASE_URL,
+#     echo=False,
+#     pool_size=10,              # SQLAlchemy → PgBouncer connections for rasa_actions
+#     max_overflow=5,            # Burst slots
+#     pool_timeout=30,
+#     pool_recycle=1800,
+#     pool_pre_ping=True,
+# )
+
 engine = create_engine(
-    DATABASE_URL,
-    echo=False,                # Set to True only for local debugging
-    pool_size=50,              # Rasa action server uses fewer concurrent DB calls
-    max_overflow=5,            # Extra burst connections if pool is full
-    pool_timeout=30,           # Fail fast rather than queue up (was 30s)
-    pool_recycle=1800,         # Recycle connections every 30 min (avoid stale connections)
-    pool_pre_ping=True         # Check connections before using them
+    DATABASE_URL,   # points to PgBouncer host:6432
+    echo=False,
+    poolclass=NullPool,
 )
 
 
+
 def _pool_status():
+    # NullPool creates/destroys a connection per request — no pool state to track
     pool = engine.pool
+    if not hasattr(pool, 'checkedout'):
+        return None, None, None, None
     checked_out = pool.checkedout()
     checked_in = pool.checkedin()
     overflow = pool.overflow()
@@ -39,6 +53,9 @@ def _pool_status():
 @event.listens_for(engine, "checkout")
 def on_checkout(dbapi_conn, connection_record, connection_proxy):
     checked_out, checked_in, overflow, size = _pool_status()
+    if checked_out is None:
+        logger.debug("[POOL CHECKOUT] NullPool — new connection created")
+        return
     logger.info(
         "[POOL CHECKOUT] checked_out=%d  checked_in=%d  overflow=%d  pool_size=%d",
         checked_out, checked_in, overflow, size,
@@ -53,6 +70,9 @@ def on_checkout(dbapi_conn, connection_record, connection_proxy):
 @event.listens_for(engine, "checkin")
 def on_checkin(dbapi_conn, connection_record):
     checked_out, checked_in, overflow, size = _pool_status()
+    if checked_out is None:
+        logger.debug("[POOL CHECKIN] NullPool — connection closed")
+        return
     logger.info(
         "[POOL CHECKIN]   checked_out=%d  checked_in=%d  overflow=%d  pool_size=%d",
         checked_out, checked_in, overflow, size,

@@ -17,35 +17,49 @@ class TokenManager:
         self.jwt_expiry = None
         self.delhiv2_expiry = None
         self.lock = threading.Lock()
+        self._jwt_refresh_lock = threading.Lock()
+        self._delhiv2_refresh_lock = threading.Lock()
 
     def get_token(self, token_type="jwt"):
+        # Step 1: Check cache/DB under lock (fast, no network I/O)
         with self.lock:
             if token_type == "jwt":
-                # Step 1: If not cached, try DB
                 if not self.jwt_token:
                     db_token = BSES_Token.find_one()
                     if db_token and db_token.bses_jwt_token and not self._is_expired(db_token.bses_jwt_token_expiry):
                         self.jwt_token = db_token.bses_jwt_token
                         self.jwt_expiry = db_token.bses_jwt_token_expiry
-
-                # Step 2: Refresh if missing or expired
-                if not self.jwt_token or self._is_expired(self.jwt_expiry):
-                    self._refresh_jwt_token()
-
-                return self.jwt_token
-
+                need_refresh = not self.jwt_token or self._is_expired(self.jwt_expiry)
             elif token_type == "delhiv2":
-                # Step 1: If not cached, try DB
                 if not self.delhiv2_token:
                     db_token = BSES_Token.find_one()
                     if db_token and db_token.bses_delhiv2_token and not self._is_expired(db_token.bses_delhiv2_token_expiry):
                         self.delhiv2_token = db_token.bses_delhiv2_token
                         self.delhiv2_expiry = db_token.bses_delhiv2_token_expiry
+                need_refresh = not self.delhiv2_token or self._is_expired(self.delhiv2_expiry)
+            else:
+                need_refresh = False
 
-                # Step 2: Refresh if missing or expired
-                if not self.delhiv2_token or self._is_expired(self.delhiv2_expiry):
-                    self._refresh_delhiv2_token()
+        # Step 2: Refresh OUTSIDE the lock so other threads are not blocked during network call
+        if need_refresh:
+            refresh_lock = self._jwt_refresh_lock if token_type == "jwt" else self._delhiv2_refresh_lock
+            with refresh_lock:
+                # Double-check: another thread may have already refreshed while we waited
+                with self.lock:
+                    if token_type == "jwt":
+                        still_needs = not self.jwt_token or self._is_expired(self.jwt_expiry)
+                    else:
+                        still_needs = not self.delhiv2_token or self._is_expired(self.delhiv2_expiry)
+                if still_needs:
+                    if token_type == "jwt":
+                        self._refresh_jwt_token()
+                    else:
+                        self._refresh_delhiv2_token()
 
+        with self.lock:
+            if token_type == "jwt":
+                return self.jwt_token
+            elif token_type == "delhiv2":
                 return self.delhiv2_token
 
     def _is_expired(self, expiry_time):
@@ -84,7 +98,7 @@ class TokenManager:
         </soap:Body>
         </soap:Envelope>"""
 
-        res = requests.post(url, headers=headers, data=payload)
+        res = requests.post(url, headers=headers, data=payload, timeout=(10, 30))
         res.raise_for_status()
         response_text = res.text
 
@@ -146,7 +160,7 @@ class TokenManager:
         </soap:Body>
         </soap:Envelope>"""
 
-        res = requests.post(url, headers=headers, data=payload)
+        res = requests.post(url, headers=headers, data=payload, timeout=(10, 30))
         res.raise_for_status()
         response_text = res.text
 

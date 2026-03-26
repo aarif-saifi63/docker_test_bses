@@ -123,8 +123,10 @@ def webhook():
         print("Is Menu Visible:", is_menu_visible)
         print("User Type from Payload:", user_type_from_payload)
 
+        db = SessionLocal()
+
         # Send message to Rasa
-        rasa_response = requests.post(f"{RASA_API_URL}/webhooks/rest/webhook", json={'sender': sender_id, 'message': user_message})
+        rasa_response = requests.post(f"{RASA_API_URL}/webhooks/rest/webhook", json={'sender': sender_id, 'message': user_message}, timeout=(5, 60))
         rasa_response_json = rasa_response.json()
         print("Rasa Response:", rasa_response_json)
 
@@ -134,7 +136,7 @@ def webhook():
         print(rasa_response_json and rasa_response_json[0].get("text", "").strip(), "=============== fallback")
 
         # Fetch record with ID = 1
-        fallback = FallbackV.find_one(id=1)
+        fallback = db.query(FallbackV).filter_by(id=1).first()
 
         if fallback:
             initial = fallback.initial_msg
@@ -155,7 +157,8 @@ def webhook():
 
             response_intent = requests.post(
                 f"{RASA_API_URL}/model/parse",
-                json={"text": user_message}
+                json={"text": user_message},
+                timeout=(5, 30)
             )
 
             data = response_intent.json()
@@ -307,11 +310,10 @@ def webhook():
 
                             # Get intent details and first example
                             if detected_intent:
-                                db_session = SessionLocal()
                                 try:
-                                    intent_record = db_session.query(IntentV).filter(IntentV.name == detected_intent).first()
+                                    intent_record = db.query(IntentV).filter(IntentV.name == detected_intent).first()
                                     if intent_record:
-                                        first_example = db_session.query(IntentExampleV).filter(
+                                        first_example = db.query(IntentExampleV).filter(
                                             IntentExampleV.intent_id == intent_record.id
                                         ).first()
 
@@ -321,8 +323,6 @@ def webhook():
                                             print(f"Stored intent name and example for response")
                                 except Exception as e:
                                     print(f"Error fetching intent example: {e}")
-                                finally:
-                                    db_session.close()
 
                         # Replace the Rasa response with our custom submenu fallback message
                         initial = submenu_fallback_message
@@ -362,14 +362,13 @@ def webhook():
         #     "Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)",
         #     "धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)"
         # ]
-        db_session = SessionLocal()
         try:
 
-            thank_eng = db_session.query(UtterMessage).filter(
+            thank_eng = db.query(UtterMessage).filter(
                 UtterMessage.id == 10,
             ).first()
 
-            thank_hin = db_session.query(UtterMessage).filter(
+            thank_hin = db.query(UtterMessage).filter(
                 UtterMessage.id == 11,
             ).first()
 
@@ -454,7 +453,7 @@ def webhook():
 
             # Check each text against utter_messages table
             for text in texts_to_check:
-                utter_record = db_session.query(UtterMessage).filter(
+                utter_record = db.query(UtterMessage).filter(
                     UtterMessage.text == text,
                     # UtterMessage.is_active == True
                 ).first()
@@ -464,8 +463,6 @@ def webhook():
                     print(f"Found utter_message_id {utter_record.id} for text: {text}")
         except Exception as e:
             print(f"Error checking utter messages: {e}")
-        finally:
-            db_session.close()
 
         response = {
             'response': {
@@ -480,15 +477,15 @@ def webhook():
 
         # ad = Advertisement.find_one(ad_name="Payment Offers")
 
-        lang_update_eng = db_session.query(UtterMessage).filter(
+        lang_update_eng = db.query(UtterMessage).filter(
             UtterMessage.id == 2,
         ).first()
 
-        lang_update_hin = db_session.query(UtterMessage).filter(
+        lang_update_hin = db.query(UtterMessage).filter(
             UtterMessage.id == 7,
         ).first()
 
-        prefer_lang = db_session.query(UtterMessage).filter(
+        prefer_lang = db.query(UtterMessage).filter(
             UtterMessage.id == 55,
         ).first()
 
@@ -520,10 +517,9 @@ def webhook():
             response['response']['main_menu_heading'] = main_menu_heading
 
             # Check main_menu_heading and main_menu_buttons against utter_messages table
-            db_session_menu = SessionLocal()
             try:
                 # Check main_menu_heading
-                main_menu_utter_record = db_session_menu.query(UtterMessage).filter(
+                main_menu_utter_record = db.query(UtterMessage).filter(
                     UtterMessage.text == main_menu_heading.strip(),
                     UtterMessage.is_active == True
                 ).first()
@@ -536,7 +532,7 @@ def webhook():
 
                 # Check main_menu_buttons
                 for button_text in main_menu_buttons:
-                    button_utter_record = db_session_menu.query(UtterMessage).filter(
+                    button_utter_record = db.query(UtterMessage).filter(
                         UtterMessage.text == button_text.strip(),
                         UtterMessage.is_active == True
                     ).first()
@@ -550,20 +546,17 @@ def webhook():
                     response['response']['utter_message_id'] = utter_message_ids
             except Exception as e:
                 print(f"Error checking main_menu items in utter messages: {e}")
-            finally:
-                db_session_menu.close()
 
             response_intent = requests.post(
                 f"{RASA_API_URL}/model/parse",
-                json={"text": user_message}
+                json={"text": user_message},
+                timeout=(5, 30)
             )
 
             data = response_intent.json()
             intent =  data["intent"]["name"]
 
             print(intent, "================================ intent")
-
-            db = SessionLocal()
 
             # --- Step 1: Get submenu_id array from intent_v ---
             intent_record = db.query(IntentV).filter(IntentV.name == intent).first()
@@ -642,8 +635,7 @@ def webhook():
         if submenu_fallback_language:
             response['response']['fallback_language'] = submenu_fallback_language
 
-        # existing_chat = Session.find_one({'user_id': sender_id})
-        existing_chat = Session.find_one(user_id=sender_id)
+        existing_chat = db.query(Session).filter_by(user_id=sender_id).first()
 
         if user_message.lower() in ["ca verified brpl", "otp verified brpl", "order verified brpl", "mobile verified brpl", "email verified brpl"]:
             chat_entry = {
@@ -663,25 +655,22 @@ def webhook():
 
         if existing_chat:
             print(existing_chat, "====================================== existing chat")
-            Session.update_one(
-                {"user_id": sender_id},
-                {
-                    "$push": {"chat": chat_entry},
-                    "$set": {
-                        "updated_at": get_ist_time().isoformat()
-                    }
-                }
-            )
+            if not existing_chat.chat:
+                existing_chat.chat = []
+            existing_chat.chat = existing_chat.chat + [chat_entry]
+            existing_chat.updated_at = get_ist_time()
+            db.commit()
             print(existing_chat, "====================================== existing chat 2")
         else:
             chat_output = Session(
                 user_id=sender_id,
                 chat=[chat_entry],
                 source=source,
-                created_at=get_ist_time().isoformat(),
-                updated_at=get_ist_time().isoformat()
+                created_at=get_ist_time(),
+                updated_at=get_ist_time()
             )
-            chat_output.save()
+            db.add(chat_output)
+            db.commit()
 
         return jsonify(response)
 
@@ -705,7 +694,7 @@ def run_flow():
 
         # Helper function to send message to Rasa
         def send_to_rasa(message):
-            response = requests.post(f"{RASA_API_URL}/webhooks/rest/webhook", json={'sender': sender_id, 'message': message})
+            response = requests.post(f"{RASA_API_URL}/webhooks/rest/webhook", json={'sender': sender_id, 'message': message}, timeout=(5, 60))
             return response.json()
 
         ## Restart the current session for menu flow
@@ -853,7 +842,7 @@ def run_flow_submenu_fallback():
 
         # Helper function to send message to Rasa
         def send_to_rasa(message):
-            response = requests.post(f"{RASA_API_URL}/webhooks/rest/webhook", json={'sender': sender_id, 'message': message})
+            response = requests.post(f"{RASA_API_URL}/webhooks/rest/webhook", json={'sender': sender_id, 'message': message}, timeout=(5, 60))
             return response.json()
 
         ## Restart the current session for menu flow
@@ -1059,7 +1048,7 @@ def register_run_flow():
 
         # Helper function to send message to Rasa
         def send_to_rasa(message):
-            response = requests.post(f"{RASA_API_URL}/webhooks/rest/webhook", json={'sender': sender_id, 'message': message})
+            response = requests.post(f"{RASA_API_URL}/webhooks/rest/webhook", json={'sender': sender_id, 'message': message}, timeout=(5, 60))
             return response.json()
 
         ## Restart the current session for menu flow
@@ -1220,7 +1209,7 @@ def register_run_flow_submenu_fallback():
 
         # Helper function to send message to Rasa
         def send_to_rasa(message):
-            response = requests.post(f"{RASA_API_URL}/webhooks/rest/webhook", json={'sender': sender_id, 'message': message})
+            response = requests.post(f"{RASA_API_URL}/webhooks/rest/webhook", json={'sender': sender_id, 'message': message}, timeout=(5, 60))
             return response.json()
 
         ## Restart the current session for menu flow
@@ -1432,7 +1421,7 @@ def ca_number_register_run_flow():
 
         # Helper function to send message to Rasa
         def send_to_rasa(message):
-            response = requests.post(f"{RASA_API_URL}/webhooks/rest/webhook", json={'sender': sender_id, 'message': message + " BRPL"})
+            response = requests.post(f"{RASA_API_URL}/webhooks/rest/webhook", json={'sender': sender_id, 'message': message + " BRPL"}, timeout=(5, 60))
             return response.json()
 
         # Step 1: Run 'subsidiary' (no return)

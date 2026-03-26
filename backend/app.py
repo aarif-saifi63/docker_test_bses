@@ -144,7 +144,7 @@ app.route('/chatbot/logout', methods=['POST'])(chatbot_logout)
 ## Rasa Webhook Services (Public - for chatbot)
 
 @app.route('/webhook', methods=['POST'])
-@chatbot_token_required
+# @chatbot_token_required
 def protected_webhook():
     return webhook()
 

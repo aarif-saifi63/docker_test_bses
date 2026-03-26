@@ -9,6 +9,7 @@ from Model.division_model import Divisions
 from Model.session_model import Session
 import xmltodict
 from database import SessionLocal
+from Model.language_model import Language
 from token_manager import token_manager
 import xml.etree.ElementTree as ET
 from utils.save_api_count import save_api_key_count
@@ -72,7 +73,7 @@ def validate_ca(sender_id, ca_number):
         }
 
         try:
-            response = requests.post(url, headers=headers, data=payload)
+            response = requests.post(url, headers=headers, data=payload, timeout=(10, 30))
             response_text = response.text
         except Exception as e:
             print("======================== SOAP API error:", e)
@@ -371,8 +372,8 @@ def send_otp(sender_id):
 
         # Send OTP through API
         try:
-            response = requests.post(url, headers=headers, data=payload)
-        
+            response = requests.post(url, headers=headers, data=payload, timeout=(10, 30))
+
             response.raise_for_status()
             response_text = response.text
 
@@ -461,7 +462,7 @@ def get_pdf_bill(ca_number):
 
         try:
             # Step 1: Get the PDF link
-            response = requests.post(CONSUMPTION_HISTORY_URL, data=soap_body, headers=headers)
+            response = requests.post(CONSUMPTION_HISTORY_URL, data=soap_body, headers=headers, timeout=(10, 30))
             response.raise_for_status()
             response_text = response.text
 
@@ -523,7 +524,7 @@ def API_GetMeterReadingSchedule(ca_number):
         payload = {"CANO": ca_number}
 
         # Call external API
-        response = requests.post(url, headers=headers, json=payload, verify=False)  # verify=False to ignore SSL
+        response = requests.post(url, headers=headers, json=payload, verify=False, timeout=(10, 30))
         response.raise_for_status()
         response_text = response.text
 
@@ -616,7 +617,8 @@ def get_order_status(order_number):
                 'SOAPAction': order_status_soap_action,
                 'Authorization': f'Bearer {token_manager.get_token("jwt")}'
             },
-            data=soap_body
+            data=soap_body,
+            timeout=(10, 30)
         )
         response.raise_for_status()
         response_text = response.text
@@ -809,7 +811,7 @@ def get_payment_history(ca_number):
         }
 
         try:
-            response = requests.post(SOAP_URL, headers=headers, data=create_soap_request(ca_number))
+            response = requests.post(SOAP_URL, headers=headers, data=create_soap_request(ca_number), timeout=(5, 30))
             response.raise_for_status()
             response_text = response.text
 
@@ -924,7 +926,7 @@ def get_bill_history(ca_number):
 
         try:
 
-            response = requests.post(SOAP_URL, headers=headers, data=create_soap_request(ca_number))
+            response = requests.post(SOAP_URL, headers=headers, data=create_soap_request(ca_number), timeout=(10, 30))
             response.raise_for_status()
             response_text = response.text
 
@@ -1045,7 +1047,7 @@ def update_missing_email(ca_number, email):
     }
 
     try:
-        response = requests.post(SOAP_URL_EBILL, data=soap_body, headers=headers)
+        response = requests.post(SOAP_URL_EBILL, data=soap_body, headers=headers, timeout=(10, 30))
         response.raise_for_status()
         response_text = response.text
 
@@ -1132,7 +1134,7 @@ def registration_ebill(ca_number):
         }
 
         try:
-            response = requests.post(EBILL_REGISTRATION_SOAP_URL, data=soap_body, headers=headers)
+            response = requests.post(EBILL_REGISTRATION_SOAP_URL, data=soap_body, headers=headers, timeout=(10, 30))
             response.raise_for_status()
             response_text = response.text
 
@@ -1188,7 +1190,7 @@ def area_outage(ca_number):
         }
 
         # Send SOAP request
-        response = requests.post(url, data=soap_body, headers=AREA_OUTAGE_HEADERS, verify=False)
+        response = requests.post(url, data=soap_body, headers=AREA_OUTAGE_HEADERS, verify=False, timeout=(10, 30))
         response.raise_for_status()
         response_text = response.text
 
@@ -1305,7 +1307,7 @@ def register_ncc(sender_id, ca_number, mobile_no):
             "SOAPAction": current_complaint_soap_action
         }
 
-        response = requests.post(CURRENT_COMPLAINT_SOAP_URL, data=soap_payload, headers=headers)
+        response = requests.post(CURRENT_COMPLAINT_SOAP_URL, data=soap_payload, headers=headers, timeout=(10, 30))
         response.raise_for_status()
         response_text = response.text
         save_api_key_count("Register Complaint","Registration of No Current Complaint", soap_payload, response_text)
@@ -1413,7 +1415,7 @@ def validate_mobile(mobile_number, sender_id):
     }
 
     # Make the request
-    response = requests.post(url, headers=headers, data=payload)
+    response = requests.post(url, headers=headers, data=payload, timeout=(10, 30))
     response.raise_for_status()
     response_text = response.text
 
@@ -1531,7 +1533,7 @@ def insert_mobapp_data(mobile_no, language):
         url = record.api_url
 
         # Send SOAP request
-        response = requests.post(url, data=soap_body, headers=headers)
+        response = requests.post(url, data=soap_body, headers=headers, timeout=(10, 30))
         response.raise_for_status()
         response_text = response.text
 
@@ -1642,7 +1644,7 @@ def get_outlet_data(latitude, longitude, filter_code):
             "SOAPAction": outlet_soap_action
         }
 
-        response = requests.post(SOAP_URL_OUTLET, data=SOAP_BODY_OUTLET, headers=headers)
+        response = requests.post(SOAP_URL_OUTLET, data=SOAP_BODY_OUTLET, headers=headers, timeout=(10, 30))
         response.raise_for_status()
         response_text = response.text
 
@@ -1772,7 +1774,7 @@ def complaint_status(ca_number, sender_id):
         }
 
         try:
-            response = requests.post(Complaint_Status_SOAP_URL, data=soap_body, headers=headers, timeout=30)
+            response = requests.post(Complaint_Status_SOAP_URL, data=soap_body, headers=headers, timeout=(10, 30))
             response.raise_for_status()
             response_text = response.text
 
@@ -1929,7 +1931,7 @@ def is_prepaid_ca_valid(ca_number: str) -> dict:
 
         try:
             try:
-                response = requests.post(url, headers=headers, data=body, timeout=30)
+                response = requests.post(url, headers=headers, data=body, timeout=(10, 30))
                 response.raise_for_status()
                 response_text = response.text
             except Exception as e:
@@ -1974,3 +1976,34 @@ def is_prepaid_ca_valid(ca_number: str) -> dict:
 
     finally:
         db.close()
+
+
+
+
+def get_visible_languages():
+    db: Session = SessionLocal()
+    try:
+        langs = (
+            db.query(Language)
+            .filter(Language.is_visible == True)
+            .distinct()
+            .all()
+        )
+
+        # Convert to list of dicts
+        langs_list = [
+            {"id": lang.id, "name": lang.name, "is_visible": lang.is_visible}
+            for lang in langs
+        ]
+
+        # Move "English" to the first position if present
+        langs_list.sort(key=lambda x: 0 if x["name"].lower() == "english" else 1)
+
+        return {"status": True, "data": langs_list}
+    except Exception as e:
+        return {"status": False, "error": "something went wrong"}, 500
+    finally:
+        db.close()
+
+
+

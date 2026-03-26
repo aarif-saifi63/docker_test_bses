@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo,useRef } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -49,9 +49,27 @@ export default function UtterMessagesPage() {
     }
   };
 
+  const isSearchMount = useRef(true);
+ 
   useEffect(() => {
     fetchUtterMessages(page, search);
   }, [page]);
+ 
+  useEffect(() => {
+    if (isSearchMount.current) {
+      isSearchMount.current = false;
+      return;
+    }
+    const debounceTimer = setTimeout(() => {
+      if (page !== 1) {
+        setPage(1); // [page] effect will call fetchUtterMessages automatically
+      } else {
+        fetchUtterMessages(1, search); // page already 1, call directly
+      }
+    }, 500);
+ 
+    return () => clearTimeout(debounceTimer);
+  }, [search]);
 
   // Debounce search to avoid too many API calls
   useEffect(() => {

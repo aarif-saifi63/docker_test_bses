@@ -19,12 +19,23 @@ from rasa_sdk.executor import CollectingDispatcher
 from rasa_sdk.events import SlotSet, UserUtteranceReverted, EventType
 from rasa_sdk.events import Restarted, ConversationPaused
 import requests
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from rasa_sdk.interfaces import Tracker
 from typing import Any, Text, Dict, List
 from dotenv import load_dotenv
 import os
+
+# Thread pool for blocking BSES SOAP API calls.
+# Runs I/O in background threads so the Sanic event loop stays responsive.
+_bses_executor = ThreadPoolExecutor(max_workers=20, thread_name_prefix="bses_api")
+
+async def _run_in_executor(func, *args):
+    """Run a blocking function in the BSES thread pool without blocking the event loop."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(_bses_executor, func, *args)
 from Model.session_model import Session
-from utils.helper import API_GetMeterReadingSchedule, area_outage, complaint_status, get_bill_history, get_order_status, get_outlet_data, get_payment_history, get_pdf_bill, insert_mobapp_data, is_prepaid_ca_valid, register_ncc, registration_ebill, send_otp, update_email_in_db, update_missing_email, validate_ca, validate_mobile
+from utils.helper import API_GetMeterReadingSchedule, area_outage, complaint_status, get_bill_history, get_order_status, get_outlet_data, get_payment_history, get_pdf_bill, get_visible_languages, insert_mobapp_data, is_prepaid_ca_valid, register_ncc, registration_ebill, send_otp, update_email_in_db, update_missing_email, validate_ca, validate_mobile
 
 # Load .env file
 load_dotenv()
@@ -178,8 +189,10 @@ class Language_type(Action):
     def run(self, dispatcher, tracker, domain):
         try:
             # Fetch visible languages from your Flask API
-            response = requests.get(f"{FLASK_BASE_URL}/visible-languages")
+            response = requests.get(f"{FLASK_BASE_URL}/visible-languages", timeout=(3, 10))
             data = response.json()
+            
+            # data = get_visible_languages()
 
             # Send the initial message
             dispatcher.utter_message(text='''Please select your language
@@ -315,6 +328,8 @@ class Register_consumer_options_english(Action):
         user_id = 2  # Later from tracker slot
         api_url = f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}"
 
+        # api_url = get_user_menus(user_id)
+
 
 
         try:
@@ -395,6 +410,7 @@ class Register_consumer_options_hindi(Action):
 
         user_id = 4  # Later from tracker.get_slot("user_id")
         api_url = f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}"
+        # api_url = get_user_menus(user_id)
 
         try:
             # --- Fetch menu data dynamically from Flask API ---
@@ -468,6 +484,7 @@ class New_consumer_options_english(Action):
 
         user_id = 6  # Later can be dynamic from tracker.get_slot("user_id")
         api_url = f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}"
+        # api_url = get_user_menus(user_id)
 
         try:
             # --- Fetch menu data from Flask API ---
@@ -592,6 +609,7 @@ class New_consumer_options_hindi(Action):
 
         user_id = 8  # Later can be dynamic using tracker.get_slot("user_id")
         api_url = f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}"
+        # api_url = get_user_menus(user_id)
 
         try:
             # --- Fetch menu data from Flask API ---
@@ -806,7 +824,7 @@ class Prepaid_Meter_Recharge_english(Action):
     def name(self):
         return "action_prepaid_meter_recharge_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
 #         dispatcher.utter_message(text="""Please click the link below check the balance or to recharge  your prepaid meter:
 
 # https://www.bsesdelhi.com/web/brpl/prepaid-meter-recharge
@@ -821,7 +839,7 @@ class Prepaid_Meter_Recharge_english(Action):
 
         print(ca_number, "===================== ca number prepaid meter recharge")
 
-        data = is_prepaid_ca_valid(ca_number)
+        data = await _run_in_executor(is_prepaid_ca_valid, ca_number)
 
         print(data, "===================== prepaid meter recharge data")
 
@@ -846,7 +864,7 @@ class Prepaid_Meter_Recharge_hindi(Action):
     def name(self):
         return "action_prepaid_meter_recharge_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
 #         dispatcher.utter_message(text="""कृपया शेष राशि देखने या अपने प्रीपेड मीटर को रिचार्ज करने के लिए नीचे दिए गए लिंक पर क्लिक करें:  
 
 # https://www.bsesdelhi.com/web/brpl/prepaid-meter-recharge
@@ -859,7 +877,7 @@ class Prepaid_Meter_Recharge_hindi(Action):
 
         ca_number = extract_ca_number(ca)
 
-        data = is_prepaid_ca_valid(ca_number)
+        data = await _run_in_executor(is_prepaid_ca_valid, ca_number)
 
         if data.get("status") == False:
             dispatcher.utter_message(text="यह प्रीपेड CA नंबर नहीं है।")
@@ -1066,7 +1084,7 @@ class ActionSendOTP(Action):
     def name(self):
         return "action_send_otp"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
 
         ca_validation = tracker.latest_message.get('text')
@@ -1078,7 +1096,7 @@ class ActionSendOTP(Action):
             return [SlotSet("retry_count", 0)]
         # response = requests.post(f"{FLASK_BASE_URL}/send_otp", json={"sender_id": sender_id})
         # data = response.json()
-        data = send_otp(sender_id)
+        data = await _run_in_executor(send_otp, sender_id)
 
         if data.get("status") == "sent":
             dispatcher.utter_message(text="A 6-digit One-Time Password (OTP) has been sent to the registered mobile number.")
@@ -1765,8 +1783,10 @@ class Change_Language_module(Action):
     
     def run(self, dispatcher, tracker, domain):
         try:
-            response = requests.get(f"{FLASK_BASE_URL}/visible-languages")
+            response = requests.get(f"{FLASK_BASE_URL}/visible-languages", timeout=(3, 10))
             data = response.json()
+
+            # data = get_visible_languages()
 
     #         dispatcher.utter_message(text='''Please select your preferred language
 
@@ -1973,7 +1993,7 @@ class Meter_Reading_Schedule_english(Action):
     def name(self):
         return "action_meter_reading_schedule_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         data = response.json()
@@ -1982,7 +2002,7 @@ class Meter_Reading_Schedule_english(Action):
 
         ca_number = extract_ca_number(ca)
 
-        data2 = API_GetMeterReadingSchedule(ca_number)
+        data2 = await _run_in_executor(API_GetMeterReadingSchedule, ca_number)
 
         # reading_data = requests.post(f"{FLASK_BASE_URL}/meter_reading", json={"ca_number": ca_number})
         # data2 = reading_data.json()
@@ -2009,7 +2029,7 @@ class Meter_Reading_Schedule_hindi(Action):
         return "action_meter_reading_schedule_hindi"
     
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         data = response.json()
@@ -2018,7 +2038,7 @@ class Meter_Reading_Schedule_hindi(Action):
 
         ca_number = extract_ca_number(ca)
 
-        data2 = API_GetMeterReadingSchedule(ca_number)
+        data2 = await _run_in_executor(API_GetMeterReadingSchedule, ca_number)
 
         # reading_data = requests.post(f"{FLASK_BASE_URL}/meter_reading", json={"ca_number": ca_number})
         # data2 = reading_data.json()
@@ -2187,8 +2207,8 @@ def extract_ca_number(text):
 class payment_history_module_english(Action):
     def name(self) -> Text:
         return "action_payment_history_english"
-    
-    def run(self, dispatcher, tracker, domain):
+
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         data = response.json()
@@ -2197,7 +2217,7 @@ class payment_history_module_english(Action):
         ca_number = extract_ca_number(ca)
         # ca_number = "123456789"
 
-        data2 = get_payment_history(ca_number)
+        data2 = await _run_in_executor(get_payment_history, ca_number)
 
         # reading_data = requests.post(f"{FLASK_BASE_URL}/get_payment_history", json={"ca_number": ca_number})
         # data2 = reading_data.json()
@@ -2261,7 +2281,7 @@ class payment_history_module_hindi(Action):
     def name(self) -> Text:
         return "action_payment_history_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         data = response.json()
@@ -2269,7 +2289,7 @@ class payment_history_module_hindi(Action):
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
 
-        data2 = get_payment_history(ca_number)
+        data2 = await _run_in_executor(get_payment_history, ca_number)
 
         # reading_data = requests.post(f"{FLASK_BASE_URL}/get_payment_history", json={"ca_number": ca_number})
         # data2 = reading_data.json()
@@ -2333,8 +2353,8 @@ class payment_history_module_hindi(Action):
 class bill_history_module_english(Action):
     def name(self) -> Text:
         return "action_bill_history_english"
-    
-    def run(self, dispatcher, tracker, domain):
+
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         data = response.json()
@@ -2343,7 +2363,7 @@ class bill_history_module_english(Action):
         ca_number = extract_ca_number(ca)
         # ca_number = "123456789"
 
-        data2 = get_bill_history(ca_number)
+        data2 = await _run_in_executor(get_bill_history, ca_number)
 
         # reading_data = requests.post(f"{FLASK_BASE_URL}/get_bill_history", json={"ca_number": ca_number})
         # data2 = reading_data.json()
@@ -2415,7 +2435,7 @@ class bill_history_module_hindi(Action):
     def name(self) -> Text:
         return "action_bill_history_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         data = response.json()
@@ -2423,7 +2443,7 @@ class bill_history_module_hindi(Action):
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
 
-        data2 = get_bill_history(ca_number)
+        data2 = await _run_in_executor(get_bill_history, ca_number)
 
         # reading_data = requests.post(f"{FLASK_BASE_URL}/get_bill_history", json={"ca_number": ca_number})
         # data2 = reading_data.json()
@@ -2525,8 +2545,8 @@ from datetime import datetime
 class payment_status_module_english(Action):
     def name(self) -> Text:
         return "action_check_for_payment_status_english"
-    
-    def run(self, dispatcher, tracker, domain):
+
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         data = response.json()
@@ -2535,7 +2555,7 @@ class payment_status_module_english(Action):
         ca_number = extract_ca_number(ca)
         # ca_number = "123456789"
 
-        data2 = get_payment_history(ca_number)
+        data2 = await _run_in_executor(get_payment_history, ca_number)
 
         # reading_data = requests.post(f"{FLASK_BASE_URL}/get_payment_history", json={"ca_number": ca_number})
         # data2 = reading_data.json()
@@ -2658,8 +2678,8 @@ class payment_status_module_english(Action):
 class payment_status_module_hindi(Action):
     def name(self) -> Text:
         return "action_check_for_payment_status_hindi"
-    
-    def run(self, dispatcher, tracker, domain):
+
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         data = response.json()
@@ -2667,7 +2687,7 @@ class payment_status_module_hindi(Action):
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
 
-        data2 = get_payment_history(ca_number)
+        data2 = await _run_in_executor(get_payment_history, ca_number)
 
         # reading_data = requests.post(f"{FLASK_BASE_URL}/get_payment_history", json={"ca_number": ca_number})
         # data2 = reading_data.json()
@@ -2763,8 +2783,8 @@ class payment_status_module_hindi(Action):
 class consumption_history_module_english(Action):
     def name(self) -> Text:
         return "action_consumption_history_english"
-    
-    def run(self, dispatcher, tracker, domain):
+
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         data = response.json()
@@ -2773,7 +2793,7 @@ class consumption_history_module_english(Action):
         ca_number = extract_ca_number(ca)
         # ca_number = "123456789"
 
-        data2 = get_pdf_bill(ca_number)
+        data2 = await _run_in_executor(get_pdf_bill, ca_number)
 
         # reading_data = requests.post(f"{FLASK_BASE_URL}/get_consumption_history_pdf", json={"ca_number": ca_number})
         # data2 = reading_data.json()
@@ -2801,8 +2821,8 @@ class consumption_history_module_english(Action):
 class consumption_history_module_hindi(Action):
     def name(self) -> Text:
         return "action_consumption_history_hindi"
-    
-    def run(self, dispatcher, tracker, domain):
+
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         data = response.json()
@@ -2810,7 +2830,7 @@ class consumption_history_module_hindi(Action):
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
 
-        data2 = get_pdf_bill(ca_number)
+        data2 = await _run_in_executor(get_pdf_bill, ca_number)
 
         # reading_data = requests.post(f"{FLASK_BASE_URL}/get_consumption_history_pdf", json={"ca_number": ca_number})
         # data2 = reading_data.json()
@@ -2985,18 +3005,18 @@ def extract_location_info(text):
 class branches_lang_long_module(Action):
     def name(self) -> Text:
         return "action_branches_lang_long"
-    
-    def run(self, dispatcher, tracker, domain):
+
+    async def run(self, dispatcher, tracker, domain):
         text = tracker.latest_message.get("text")
         latitude, longitude, filter_code = extract_location_info(text)
 
         try:
             # response = requests.post(
-            #     f"{FLASK_BASE_URL}/get_outlet_data", 
+            #     f"{FLASK_BASE_URL}/get_outlet_data",
             #     json={"latitude": latitude, "longitude": longitude, "filter_code": filter_code}
             # )
             # data = response.json()
-            data = get_outlet_data(latitude, longitude, filter_code)
+            data = await _run_in_executor(get_outlet_data, latitude, longitude, filter_code)
         except Exception as e:
             dispatcher.utter_message(text="Error locating nearby branches. Please share your location again.")
             print("Exception:", e)
@@ -3108,17 +3128,17 @@ class branches_lang_long_module_hindi(Action):
     def name(self) -> Text:
         return "action_branches_lang_long_hindi"
     
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         text = tracker.latest_message.get("text")
         latitude, longitude, filter_code = extract_location_info(text)
 
         try:
             # response = requests.post(
-            #     f"{FLASK_BASE_URL}/get_outlet_data", 
+            #     f"{FLASK_BASE_URL}/get_outlet_data",
             #     json={"latitude": latitude, "longitude": longitude, "filter_code": filter_code}
             # )
             # data = response.json()
-            data = get_outlet_data(latitude, longitude, filter_code)
+            data = await _run_in_executor(get_outlet_data, latitude, longitude, filter_code)
         except Exception as e:
             dispatcher.utter_message(text="निकटतम शाखाओं का पता लगाने में त्रुटि हुई। कृपया अपना लोकेशन फिर से साझा करें।")
             print("Exception:", e)
@@ -3324,14 +3344,14 @@ class Opt_For_Ebill_Email_Registration_Yes_english(Action):
     def name(self):
         return "action_opt_for_ebill_registration_yes_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         data = response.json()
 
         ca_number = data.get("ca_number")
 
-        data1 = registration_ebill(ca_number)
+        data1 = await _run_in_executor(registration_ebill, ca_number)
  
         # response_data = requests.post(f"{FLASK_BASE_URL}/registration_ebill", json={"ca_number": ca_number})
         # data1 = response_data.json()
@@ -3493,14 +3513,14 @@ class Opt_For_Ebill_Email_Registration_Yes_hindi(Action):
     def name(self):
         return "action_opt_for_ebill_registration_yes_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         data = response.json()
 
         ca_number = data.get("ca_number")
 
-        data1 = registration_ebill(ca_number)
+        data1 = await _run_in_executor(registration_ebill, ca_number)
  
         # response_data = requests.post(f"{FLASK_BASE_URL}/registration_ebill", json={"ca_number": ca_number})
         # data1 = response_data.json()
@@ -3563,7 +3583,7 @@ class Complaint_Status_english(Action):
     def name(self):
         return "action_complaint_status_english"
 
-    def run(self, dispatcher, tracker, domain):  
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         print("======================== action_complaint_status_english")
         # Fetch CA number from your database or API
@@ -3578,7 +3598,7 @@ class Complaint_Status_english(Action):
             return []
 
         # Call complaint_status API
-        data1 = complaint_status(ca_number, sender_id)
+        data1 = await _run_in_executor(complaint_status, ca_number, sender_id)
         # response_data = requests.post(f"{FLASK_BASE_URL}/complaint_status", json={"ca_number": ca_number, "sender_id": sender_id})
         # data1 = response_data.json()
 
@@ -3640,7 +3660,8 @@ class Complaint_Status_hindi(Action):
     def name(self):
         return "action_complaint_status_hindi"
 
-    def run(self, dispatcher, tracker, domain):  
+
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         print("======================== action_complaint_status_hindi")
         # Fetch CA number from your database or API
@@ -3655,7 +3676,7 @@ class Complaint_Status_hindi(Action):
             return []
 
         # Call complaint_status API
-        data1 = complaint_status(ca_number, sender_id)
+        data1 = await _run_in_executor(complaint_status, ca_number, sender_id)
         # response_data = requests.post(f"{FLASK_BASE_URL}/complaint_status", json={"ca_number": ca_number, "sender_id": sender_id})
         # data1 = response_data.json()
 
@@ -3805,15 +3826,15 @@ class No_Current_Complaint_english(Action):
     def name(self):
         return "action_no_current_complaint_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         data = response.json()
 
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
-        
-        data1 = area_outage(ca_number)
+
+        data1 = await _run_in_executor(area_outage, ca_number)
         
         # response_data = requests.post(f"{FLASK_BASE_URL}/area_outage", json={"ca_number": ca_number})
         # data1 = response_data.json()
@@ -3839,7 +3860,7 @@ class No_Current_Complaint_Register_english(Action):
     def name(self):
         return "action_no_current_complaint_register_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         data = response.json()
@@ -3852,7 +3873,7 @@ class No_Current_Complaint_Register_english(Action):
 
         tel_no = data1.get("tel_no")
 
-        data2 = register_ncc(sender_id, ca_number, tel_no)
+        data2 = await _run_in_executor(register_ncc, sender_id, ca_number, tel_no)
         
         # response_data = requests.post(f"{FLASK_BASE_URL}/register_complaint", json={"sender_id": sender_id, "ca_number": ca_number, "mobile_no": tel_no})
         # data2 = response_data.json()
@@ -3920,15 +3941,15 @@ class No_Current_Complaint_hindi(Action):
     def name(self):
         return "action_no_current_complaint_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         data = response.json()
 
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
-        
-        data1 = area_outage(ca_number)
+
+        data1 = await _run_in_executor(area_outage, ca_number)
 
         # response_data = requests.post(f"{FLASK_BASE_URL}/area_outage", json={"ca_number": ca_number})
         # data1 = response_data.json()
@@ -3954,7 +3975,7 @@ class No_Current_Complaint_Register_hindi(Action):
     def name(self):
         return "action_no_current_complaint_register_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         data = response.json()
@@ -3967,7 +3988,7 @@ class No_Current_Complaint_Register_hindi(Action):
 
         tel_no = data1.get("tel_no")
 
-        data2 = register_ncc(sender_id, ca_number, tel_no)
+        data2 = await _run_in_executor(register_ncc, sender_id, ca_number, tel_no)
         
         # response_data = requests.post(f"{FLASK_BASE_URL}/register_complaint", json={"sender_id": sender_id, "ca_number": ca_number, "mobile_no": tel_no})
         # data2 = response_data.json()
@@ -4443,13 +4464,16 @@ class ActionCustomFallback(Action):
         print("============================ action_custom_fallback")
         return "action_custom_fallback"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         print("============================ action_custom_fallback")
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/fallback", json={"sender_id": sender_id})
-        data = response.json()
-
-        dispatcher.utter_message(text=data.get('action'))
+        try:
+            response = requests.post(f"{FLASK_BASE_URL}/fallback", json={"sender_id": sender_id}, timeout=(3, 10))
+            data = response.json()
+            dispatcher.utter_message(text=data.get('action'))
+        except Exception as e:
+            print(f"Fallback endpoint error: {e}")
+            dispatcher.utter_message(text="Sorry, I wasn't able to understand that. Please try again.")
 
         return [UserUtteranceReverted()]
     

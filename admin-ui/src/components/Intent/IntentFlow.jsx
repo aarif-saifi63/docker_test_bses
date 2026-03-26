@@ -68,9 +68,28 @@ const IntentFlow = () => {
     }
   };
 
+
+  const isSearchMount = useRef(true);
+ 
   useEffect(() => {
     fetchIntents(page, search);
   }, [page]);
+ 
+  useEffect(() => {
+    if (isSearchMount.current) {
+      isSearchMount.current = false;
+      return;
+    }
+    const debounceTimer = setTimeout(() => {
+      if (page !== 1) {
+        setPage(1); // [page] effect will call fetchIntents automatically
+      } else {
+        fetchIntents(1, search); // page already 1, call directly
+      }
+    }, 500);
+ 
+    return () => clearTimeout(debounceTimer);
+  }, [search]);
 
   // Debounce search to avoid too many API calls
   useEffect(() => {

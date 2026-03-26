@@ -57,7 +57,7 @@ def validate_ca():
             }
 
             # Make the SOAP request
-            response = requests.post(url, headers=headers, data=payload)
+            response = requests.post(url, headers=headers, data=payload, timeout=(10, 30))
             # response.raise_for_status()
             response_text = response.text
 

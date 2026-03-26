@@ -6,18 +6,13 @@ python3 init_db.py
 
 PORT="${PORT:-3000}"
 GUNICORN_WORKERS="${GUNICORN_WORKERS:-4}"
-GUNICORN_THREADS="${GUNICORN_THREADS:-15}"
 GUNICORN_TIMEOUT="${GUNICORN_TIMEOUT:-120}"
+GUNICORN_WORKER_CONNECTIONS="${GUNICORN_WORKER_CONNECTIONS:-1000}"
 BIND="0.0.0.0:${PORT}"
 
-if [ -z "$GUNICORN_WORKERS" ]; then
-  if command -v nproc >/dev/null 2>&1; then
-    CPU_COUNT=$(nproc)
-  else
-    CPU_COUNT=1
-  fi
-  GUNICORN_WORKERS=$(( CPU_COUNT * 2 + 1 ))
-fi
+# NOTE: With gevent workers, CPU-count-based formulas (2*CPU+1) do NOT apply.
+# Gevent handles concurrency via coroutines, not threads/processes.
+# 2-4 gevent workers is sufficient regardless of CPU count.
 
 if [ -f /app/prestart.sh ]; then
   echo "Running prestart hook"
@@ -25,11 +20,14 @@ if [ -f /app/prestart.sh ]; then
 fi
 
 if [ "${1:-}" = "gunicorn" ] || [ "${1:-}" = "" ]; then
-  exec gunicorn --preload \
+  exec gunicorn \
     --bind "${BIND}" app:app \
     --workers "${GUNICORN_WORKERS}" \
-    --threads "${GUNICORN_THREADS}" \
+    --worker-class gevent \
+    --worker-connections "${GUNICORN_WORKER_CONNECTIONS}" \
     --timeout "${GUNICORN_TIMEOUT}"
 else
   exec "$@"
 fi
+
+
