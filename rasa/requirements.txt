@@ -80,7 +80,7 @@ opt_einsum==3.4.0
 packaging==20.9
 pamqp==3.2.1
 partd==1.4.2
-pillow==11.2.1
+pillow==12.1.1
 pluggy==1.6.0
 portalocker==2.10.1
 prompt-toolkit==3.0.28
