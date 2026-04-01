@@ -26,7 +26,7 @@ colorclass==2.2.2
 coloredlogs==15.0.1
 colorhash==1.2.1
 confluent-kafka==2.10.1
-cryptography==45.0.4
+cryptography==46.0.6
 cycler==0.12.1
 dask==2022.10.2
 dnspython==2.3.0
