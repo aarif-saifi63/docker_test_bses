@@ -109,7 +109,7 @@ rasa==3.6.21
 rasa-sdk==3.6.2
 redis==4.6.0
 regex==2022.10.31
-requests==2.32.4
+requests==2.33.0
 requests-oauthlib==2.0.0
 requests-toolbelt==1.0.0
 rocketchat-API==1.30.0
