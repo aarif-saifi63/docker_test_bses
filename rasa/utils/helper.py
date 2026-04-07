@@ -554,10 +554,13 @@ def API_GetMeterReadingSchedule(ca_number):
         actual_end = result.get("ActualEndDate")
 
         if actual_start and actual_end:
+            from datetime import datetime as _dt
+            start_fmt = _dt.strptime(actual_start.split(' ')[0], "%m/%d/%Y").strftime("%d-%m-%Y")
+            end_fmt = _dt.strptime(actual_end.split(' ')[0], "%m/%d/%Y").strftime("%d-%m-%Y")
             return {
                 "status":True,
                 "found":"True",
-                "message":f"Your meter reading date lies between {actual_start.split(' ')[0]} to {actual_end.split(' ')[0]}."
+                "message":f"Your meter reading date lies between {start_fmt} to {end_fmt}."
             }
         else:
             return {"status":True, "found":False, "message":"No valid meter reading schedule found."}

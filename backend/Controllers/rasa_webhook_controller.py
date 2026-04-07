@@ -164,6 +164,8 @@ def webhook():
 
             data = response_intent.json()
 
+            print(data.get("intent_ranking", [None]), "=========================== Actual intent ranking")
+
             # First intent (same as data["intent"])
             first_intent = data.get("intent_ranking", [None])[0]
 
@@ -355,9 +357,33 @@ def webhook():
         heading = []
         buttons = []
         icons = []
+        info_message = []
         main_menu_heading = None
         main_menu_buttons = []
         type_of_user = None
+
+        # Mapping of exact Rasa response strings to their correctly formatted output versions.
+        INFO_MESSAGE_MAP = {
+            # --- Payment Status ---
+            "Please find below your last payment status. Kindly note that this may not reflect your payment for the current billing month.":
+                "Please find below your last payment status. Kindly note that this may not reflect your payment for the current billing month.",
+            # Hindi: Rasa sends "चालू बिलमाह" (no space) → fix to "चालू बिल माह"
+            "कृपया नीचे अपनी पिछली भुगतान स्थिति देखें। ध्यान दें कि यह चालू बिलमाह के लिए आपके भुगतान को नहीं दर्शाती है।":
+                "कृपया नीचे अपनी पिछली भुगतान स्थिति देखें। ध्यान दें कि यह चालू बिल माह के लिए आपके भुगतान को नहीं दर्शाती है।",
+
+            # --- Bill History (single line from Rasa, double space before "last") ---
+            "Please find below bill history for last 6 months. This does not include the current month. For current month’s bill, please go to the 'Duplicate Bill' option.":
+                "Please find below bill history for last 6 months. This does not include the current month. For current month’s bill, please go to the 'Duplicate Bill' option.",
+            # Hindi: Rasa sends "डुप्लिकेटबिल" (no space) → fix to "डुप्लिकेट बिल"
+            "नीचे पिछले 6 महीनों के बिलों का विवरण दिया गया है। इसमें वर्तमान महीने का बिल शामिल नहीं है। वर्तमान महीने का बिल देखने के लिए, कृपया 'डुप्लिकेटबिल' विकल्प पर जाएं।":
+                "नीचे पिछले 6 महीनों के बिलों का विवरण दिया गया है। इसमें वर्तमान महीने का बिल शामिल नहीं है। वर्तमान महीने का बिल देखने के लिए, कृपया 'डुप्लिकेट बिल' विकल्प पर जाएं।",
+
+            # --- Payment History ---
+            "Please find below payment history for last 6 months. This does not include the current month.":
+                "Please find below payment history for last 6 months. This does not include the current month.",
+            "कृपया नीचे पिछले 6 महीनों का भुगतान इतिहास देखें। इसमें वर्तमान महीने का भुगतान शामिल नहीं है।":
+                "कृपया नीचे पिछले 6 महीनों का भुगतान इतिहास देखें। इसमें वर्तमान महीने का भुगतान शामिल नहीं है।",
+        }
 
         # main_menu_texts = [
         #     "Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)",
@@ -413,9 +439,11 @@ def webhook():
                         icons.append(stripped_line[:-1].strip())
                     elif stripped_line.endswith(' b'):
                         buttons.append(stripped_line[:-1].strip())
+                    elif stripped_line in INFO_MESSAGE_MAP:
+                        info_message.append(INFO_MESSAGE_MAP[stripped_line])
                     else:
                         heading.append(stripped_line)
-                    
+
 
             # After the for loops and before creating the response dict
             # if len(heading) > 1 and heading[1].strip() == "Sorry, I didn't understand that. Can you rephrase?":
@@ -513,6 +541,9 @@ def webhook():
 
         if icons:
             response['response']['icons'] = icons
+
+        if info_message:
+            response['response']['info_message'] = info_message
 
         if main_menu_heading:
             response['response']['main_menu_heading'] = main_menu_heading

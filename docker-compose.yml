@@ -69,11 +69,17 @@ services:
       DATABASE_CONNECTION_STRING: ${DATABASE_CONNECTION_STRING}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      SENTRY_DSN: "https://8ae69f223d0dbf3d5994ea81da6a8d84@o4511150436450304.ingest.us.sentry.io/4511150447263744"
     depends_on:
       - rasa_core
       - redis
     volumes:
       - ./backend/Media:/index/Media
+      - ./profiles:/profiles  # py-spy writes flame graph SVGs here
+    cap_add:
+      - SYS_PTRACE           # required for py-spy to attach to the process
+    security_opt:
+      - seccomp:unconfined   # required for ptrace syscalls inside Docker
     <<: *common-opts
     networks: [ internal_net ]
 
@@ -84,7 +90,7 @@ services:
     ports:
       - "5005:5005"
     environment:
-      SANIC_WORKERS: 6
+      SANIC_WORKERS: 2
       RASA_ACTIONS_URL: "http://rasa_actions:5055"
       BACKEND_URL: "http://backend:3000"
       REDIS_HOST: redis
@@ -110,6 +116,13 @@ services:
       BACKEND_URL: "http://backend:3000"
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      SENTRY_DSN: "https://8ae69f223d0dbf3d5994ea81da6a8d84@o4511150436450304.ingest.us.sentry.io/4511150447263744"
+    volumes:
+      - ./profiles:/profiles  # py-spy writes flame graph SVGs here
+    cap_add:
+      - SYS_PTRACE           # required for py-spy to attach to the process
+    security_opt:
+      - seccomp:unconfined   # required for ptrace syscalls inside Docker
     <<: *common-opts
     networks: [ internal_net ]
 

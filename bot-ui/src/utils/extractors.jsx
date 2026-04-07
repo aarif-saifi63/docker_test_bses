@@ -3,9 +3,9 @@ import React, { useState } from "react";
 import apiClient from "../services/apiClient";
 import { MESSAGE_IDS, hasMessageId } from "../constants/messageIds";
 
-export const STATIC_WELCOME = `Hello ! I'm e-Mitra , yours BSES Rajdhani assistant .To get started , click the Home icon or Main Menu 
+export const STATIC_WELCOME = `Hello! I’m e-Mitra, your BSES Rajdhani assistant. Please select your user type and language to begin. Use the Home icon to restart or the menu (☰) for options. 
 
-नमस्ते ! मैं ई-मित्र हूं, आपका बीएसईएस राजधानी सहायक। आरंभ करने के लिए, होम  के चिन्ह या मुख्य मेनू पर क्लिक करें`;
+नमस्ते! मैं ई-मित्र हूं, आपका बीएसईएस राजधानी सहायक। शुरू करने के लिए अपनी यूज़र टाइप और भाषा चुनें। फिर से शुरू करने के लिए होम आइकन या विकल्पों के लिए मेनू (☰) का उपयोग करें।`;
 
 export const SERVICE_PROVIDERS = ["BSES Rajdhani"];
 

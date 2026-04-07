@@ -1240,8 +1240,17 @@ export default function HomePage() {
             },
           ]);
 
+          if (
+            message.includes("Too many attempts") ||
+            message.includes("बहुत अधिक प्रयास")
+          ) {
+            setDisableAllInputs(true);
+            setAwaitingOrderId(false);
+            awaitingOrderIdRef.current = false;
+          }
+
           // If main menu present, reset flags and exit flow
-          if (resp?.response?.main_menu_heading && resp?.response?.main_menu_buttons) {
+          else if (resp?.response?.main_menu_heading && resp?.response?.main_menu_buttons) {
             showMainMenu(resp.response.main_menu_heading, resp.response.main_menu_buttons);
             setAwaitingOrderId(false);
             awaitingOrderIdRef.current = false;
@@ -2183,6 +2192,16 @@ export default function HomePage() {
         if (!isFaqStyle) {
           setFaqGroups([]);
           setFaqActiveIndex(null);
+
+          if (Array.isArray(data.response?.info_message) && data.response.info_message.length > 0) {
+            newBotMessages.push({
+              id: uuidv4(),
+              sender: "bot",
+              text: data.response.info_message.join("\n\n"),
+              timestamp: new Date(),
+            });
+          }
+
           newBotMessages.push({
             id: uuidv4(),
             sender: "bot",
@@ -2217,6 +2236,15 @@ export default function HomePage() {
               content: allLines,
             };
           });
+          if (Array.isArray(data.response?.info_message) && data.response.info_message.length > 0) {
+            newBotMessages.push({
+              id: uuidv4(),
+              sender: "bot",
+              text: data.response.info_message.join("\n\n"),
+              timestamp: new Date(),
+            });
+          }
+
           newBotMessages.push({
             id: uuidv4(),
             sender: "bot",

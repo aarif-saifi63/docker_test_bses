@@ -215,7 +215,7 @@ def save_api_key_count(menu_option, api_name, payload, response):
                 menu_option=menu_option,
                 api_name=api_name
             ).update({
-                "api_hit": existing_chat.api_hit + [chat_entry],
+                "api_hit": (existing_chat.api_hit or []) + [chat_entry],
                 "updated_at": get_ist_time()
             })
         else:

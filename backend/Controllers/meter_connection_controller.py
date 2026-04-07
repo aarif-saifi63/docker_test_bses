@@ -13,6 +13,18 @@ from Models.api_key_master_model import API_Key_Master
 from datetime import datetime
 import pdfplumber
 import re
+import redis
+import os
+
+redis_client = redis.Redis(
+    host=os.getenv('REDIS_HOST', 'redis'),
+    port=int(os.getenv('REDIS_PORT', 6379)),
+    db=0,
+    decode_responses=True
+)
+
+ORDER_ID_MAX_RETRIES = 3
+ORDER_ID_RETRY_TTL = 600  # 10 minutes
 
 ## Meter Reading API
 # def API_GetMeterReadingSchedule():
@@ -96,6 +108,19 @@ import re
 #         return jsonify(status=False, found=False, message=f"Error: "something went wrong""), 500
     
 
+def _increment_order_id_retry(sender_id):
+    """Increment Redis retry counter for order ID. Returns (retries_left, exceeded)."""
+    redis_key = f"order_id_retry:{sender_id}"
+    attempts = redis_client.incr(redis_key)
+    if attempts == 1:
+        redis_client.expire(redis_key, ORDER_ID_RETRY_TTL)
+    retries_left = max(ORDER_ID_MAX_RETRIES - attempts, 0)
+    return retries_left, attempts >= ORDER_ID_MAX_RETRIES
+
+def _reset_order_id_retry(sender_id):
+    redis_client.delete(f"order_id_retry:{sender_id}")
+
+
 ## New Application Status API
 def get_order_status():
     db = SessionLocal()
@@ -106,19 +131,30 @@ def get_order_status():
 
         if not order_number:
             return jsonify({"error": "Missing order_number"}), 400
-        
+
 
         print("Order Number Received:", order_number)
 
         allowed_prefixes = ("008", "8", "AN", "ON")
         if not order_number.startswith(allowed_prefixes):
             print("Order Number Received 1:", order_number)
+            retries_left, exceeded = _increment_order_id_retry(sender_id)
+            if exceeded:
+                return jsonify({
+                    "valid": False,
+                    "status": False,
+                    "exceeded": True,
+                    "retries_left": 0,
+                    "message": "Too many attempts. Let's start over. Click home button to start over",
+                    "message_hindi": "बहुत अधिक प्रयास हो गए हैं। कृपया होम बटन पर क्लिक करके पुनः शुरू करें।"
+                })
             return jsonify({
-                # "order_status": order_status,
                 "valid": False,
                 "status": False,
-                "message": "The Order ID entered is not valid. Please recheck and try again.",
-                "message_hindi": "आपने जो ऑर्डर आईडी दर्ज की है वह मान्य नहीं है। कृपया दोबारा जांचें और फिर प्रयास करें।"
+                "exceeded": False,
+                "retries_left": retries_left,
+                "message": f"The Order ID entered is not valid. Please recheck and try again. Retries left: {retries_left}",
+                "message_hindi": f"आपने जो ऑर्डर आईडी दर्ज की है वह मान्य नहीं है। कृपया दोबारा जांचें और फिर प्रयास करें। शेष प्रयास: {retries_left}"
             })
         
         print("Order Number Received 2:", order_number)
@@ -176,7 +212,24 @@ def get_order_status():
         save_api_key_count("New Application Status","Get Order Status", soap_body, response_text)
 
         if response.status_code != 200:
-            return jsonify({"message": "The Order ID entered is not valid. Please recheck and try again.", "message_hindi": "आपने जो ऑर्डर आईडी दर्ज की है वह मान्य नहीं है। कृपया दोबारा जांचें और फिर प्रयास करें।", "status": False}), 200
+            retries_left, exceeded = _increment_order_id_retry(sender_id)
+            if exceeded:
+                return jsonify({
+                    "valid": False,
+                    "status": False,
+                    "exceeded": True,
+                    "retries_left": 0,
+                    "message": "Too many attempts. Let's start over. Click home button to start over",
+                    "message_hindi": "बहुत अधिक प्रयास हो गए हैं। कृपया होम बटन पर क्लिक करके पुनः शुरू करें।"
+                }), 200
+            return jsonify({
+                "valid": False,
+                "status": False,
+                "exceeded": False,
+                "retries_left": retries_left,
+                "message": f"The Order ID entered is not valid. Please recheck and try again. Retries left: {retries_left}",
+                "message_hindi": f"आपने जो ऑर्डर आईडी दर्ज की है वह मान्य नहीं है। कृपया दोबारा जांचें और फिर प्रयास करें। शेष प्रयास: {retries_left}"
+            }), 200
 
         # Parse XML to extract ORDER_STATUS
         root = ET.fromstring(response.content)
@@ -193,22 +246,12 @@ def get_order_status():
         order_status = order_status_elem.text if order_status_elem is not None else "N/A"
 
         if order_status is None:
-            # order_status = "There is no status available for the provided Order ID."
-            # return jsonify({"message": "There is no status available for the provided Order ID.", "message_hindi": "इस ऑर्डर आईडी के लिए कोई स्टेटस नहीं मिला।", "status": False}), 200
+            _reset_order_id_retry(sender_id)
 
             thank_eng = db.query(UtterMessage).filter(
                 UtterMessage.id == 10,
             ).first()
 
-            # thank_hin = db.query(UtterMessage).filter(
-            #     UtterMessage.id == 11,
-            # ).first()
-
-            # main_menu_texts = [
-            #     thank_eng.text,
-            #     thank_hin.text
-            # ]
-            
             return jsonify({
                 "order_status": order_status,
                 "valid": False,
@@ -227,7 +270,47 @@ def get_order_status():
         # Determine validity
         is_valid = order_status.upper() != "N/A"
 
+        # --- Deficiency Doc API ---
+        website_status = None
+        def_upload = None
+        try:
+            def_record = db.query(API_Key_Master).filter_by(api_name="Deficiency Doc").first()
+            if def_record:
+                def_headers = def_record.api_headers or {}
+                def_soap_body = f"""<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <CHECK_DSKDEF_VIEWUPLOAD xmlns="http://tempuri.org/">
+      <_sReqNo>{order_number}</_sReqNo>
+    </CHECK_DSKDEF_VIEWUPLOAD>
+  </soap:Body>
+</soap:Envelope>"""
+                def_response = requests.post(
+                    url=def_record.api_url,
+                    headers={
+                        'Content-Type': def_headers.get("Content-Type", "text/xml; charset=utf-8"),
+                        'SOAPAction': def_headers.get("SOAPAction", ""),
+                        'Authorization': f'Bearer {token_manager.get_token("jwt")}'
+                    },
+                    data=def_soap_body
+                )
+                def_root = ET.fromstring(def_response.content)
+                website_status_elem = def_root.find('.//WEBSITE_STATUS')
+                def_upload_elem = def_root.find('.//DEF_UPLOAD')
+                # .text is None when tag is self-closing/empty e.g. <WEBSITE_STATUS />
+                website_status = (website_status_elem.text or "").strip() or None
+                def_upload = (def_upload_elem.text or "").strip() or None
+                print("WEBSITE_STATUS:", website_status)
+                print("DEF_UPLOAD:", def_upload)
+                save_api_key_count("New Application Status", "Deficiency Doc", def_soap_body, def_response.text)
+            else:
+                print("Deficiency Doc API record not found in database")
+        except Exception as def_err:
+            print("Deficiency Doc API error:", def_err)
+        # --- End Deficiency Doc API ---
+
         result = ""
+        result_hindi = ""
 
         result_msg_eng = db.query(UtterMessage).filter(
                 UtterMessage.id == 51,
@@ -236,88 +319,115 @@ def get_order_status():
         result_msg_hin = db.query(UtterMessage).filter(
                 UtterMessage.id == 53,
             ).first()
-
-        if order_status == "Deficiency issued for Technical Feasibility":
-            TYPE_OF_DEFICIENCY = "BTFR"
-            result = f"""{result_msg_eng.text}
-
-            Click here to view deficiency: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
-        elif order_status == "Auto cancelled":
-            TYPE_OF_DEFICIENCY = "AC"
-            result = f"""{result_msg_eng.text}
-            
-            Click here to view deficiency: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
-        elif order_status == "Document Deficiency issued":
-            TYPE_OF_DEFICIENCY = "DR"
-            result = f"""{result_msg_eng.text}
-            
-            Click here to view deficiency: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
-        elif order_status == "Deficiency issued for Commercial Feasibility":
-            TYPE_OF_DEFICIENCY = "CFR"
-            result = f"""{result_msg_eng.text}
-            
-            Click here to view deficiency: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
-        elif order_status == "Deficiency issued for Commercial Feasibility/Technical Feasibility":
-            TYPE_OF_DEFICIENCY = "BTFR+CFR"
-            result = f"""{result_msg_eng.text}
-            
-            Click here to view deficiency: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
         
-        elif order_status == "Deficiency document received and Application under Process":
-            TYPE_OF_DEFICIENCY = "DR"
-            result = f"""{result_msg_eng.text}
-            
-            Click here to view deficiency: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
 
-        elif order_status == "New Connection Processed":
+        if order_status == "New Connection Processed":
             result = "New Connection Processed"
+
+        elif website_status != None and def_upload != None:
+            result = f"""{result_msg_eng.text}
+
+            Click here to view deficiency: {def_upload}"""
 
         else:
             result = order_status
 
-        result_hindi = ""
 
-        if order_status == "Deficiency issued for Technical Feasibility":
-            TYPE_OF_DEFICIENCY = "BTFR"
-            result_hindi = f"""{result_msg_hin.text}
-            
-            कमी देखने के लिए यहाँ क्लिक करें: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
-        elif order_status == "Auto cancelled":
-            TYPE_OF_DEFICIENCY = "AC"
-            result_hindi = f"""{result_msg_hin.text}
-            
-            कमी देखने के लिए यहाँ क्लिक करें: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
-        elif order_status == "Document Deficiency issued":
-            TYPE_OF_DEFICIENCY = "DR"
-            result_hindi = f"""{result_msg_hin.text}
-            
-            कमी देखने के लिए यहाँ क्लिक करें: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
-        elif order_status == "Deficiency issued for Commercial Feasibility":
-            TYPE_OF_DEFICIENCY = "CFR"
-            result_hindi = f"""{result_msg_hin.text}
-            
-            कमी देखने के लिए यहाँ क्लिक करें: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
-        elif order_status == "Deficiency issued for Commercial Feasibility/Technical Feasibility":
-            TYPE_OF_DEFICIENCY = "BTFR+CFR"
-            result_hindi = f"""{result_msg_hin.text}
-            
-            कमी देखने के लिए यहाँ क्लिक करें: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
-
-        elif order_status == "Deficiency document received and Application under Process":
-            TYPE_OF_DEFICIENCY = "DR"
-            result_hindi = f"""{result_msg_hin.text}
-            कमी देखने के लिए यहाँ क्लिक करें: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
-
-        elif order_status == "New Connection Processed":
+        if order_status == "New Connection Processed":
             result_hindi = "नया कनेक्शन प्रोसेस हो गया"
 
-        # elif order_status == "Deficiency document received and Application under Process":
-        #     result_hindi = "कमी (डिफ़िशिएंसी) दस्तावेज़ प्राप्त हो गए हैं और आवेदन प्रक्रिया में है।"
+        elif website_status != None:
+            result_hindi = f"""{result_msg_hin.text}
+
+            कमी देखने के लिए यहाँ क्लिक करें: {def_upload}"""
 
         else:
             result_hindi = order_status
 
+        
+
+        # if order_status == "Deficiency issued for Technical Feasibility":
+        #     TYPE_OF_DEFICIENCY = "BTFR"
+        #     result = f"""{result_msg_eng.text}
+
+        #     Click here to view deficiency: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
+        # elif order_status == "Auto cancelled":
+        #     TYPE_OF_DEFICIENCY = "AC"
+        #     result = f"""{result_msg_eng.text}
+            
+        #     Click here to view deficiency: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
+        # elif order_status == "Document Deficiency issued":
+        #     TYPE_OF_DEFICIENCY = "DR"
+        #     result = f"""{result_msg_eng.text}
+            
+        #     Click here to view deficiency: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
+        # elif order_status == "Deficiency issued for Commercial Feasibility":
+        #     TYPE_OF_DEFICIENCY = "CFR"
+        #     result = f"""{result_msg_eng.text}
+            
+        #     Click here to view deficiency: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
+        # elif order_status == "Deficiency issued for Commercial Feasibility/Technical Feasibility":
+        #     TYPE_OF_DEFICIENCY = "BTFR+CFR"
+        #     result = f"""{result_msg_eng.text}
+            
+        #     Click here to view deficiency: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
+        
+        # elif order_status == "Deficiency document received and Application under Process":
+        #     TYPE_OF_DEFICIENCY = "DR"
+        #     result = f"""{result_msg_eng.text}
+            
+        #     Click here to view deficiency: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
+
+        # elif order_status == "New Connection Processed":
+        #     result = "New Connection Processed"
+
+        # else:
+        #     result = order_status
+
+        # result_hindi = ""
+
+        # if order_status == "Deficiency issued for Technical Feasibility":
+        #     TYPE_OF_DEFICIENCY = "BTFR"
+        #     result_hindi = f"""{result_msg_hin.text}
+            
+        #     कमी देखने के लिए यहाँ क्लिक करें: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
+        # elif order_status == "Auto cancelled":
+        #     TYPE_OF_DEFICIENCY = "AC"
+        #     result_hindi = f"""{result_msg_hin.text}
+            
+        #     कमी देखने के लिए यहाँ क्लिक करें: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
+        # elif order_status == "Document Deficiency issued":
+        #     TYPE_OF_DEFICIENCY = "DR"
+        #     result_hindi = f"""{result_msg_hin.text}
+            
+        #     कमी देखने के लिए यहाँ क्लिक करें: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
+        # elif order_status == "Deficiency issued for Commercial Feasibility":
+        #     TYPE_OF_DEFICIENCY = "CFR"
+        #     result_hindi = f"""{result_msg_hin.text}
+            
+        #     कमी देखने के लिए यहाँ क्लिक करें: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
+        # elif order_status == "Deficiency issued for Commercial Feasibility/Technical Feasibility":
+        #     TYPE_OF_DEFICIENCY = "BTFR+CFR"
+        #     result_hindi = f"""{result_msg_hin.text}
+            
+        #     कमी देखने के लिए यहाँ क्लिक करें: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
+
+        # elif order_status == "Deficiency document received and Application under Process":
+        #     TYPE_OF_DEFICIENCY = "DR"
+        #     result_hindi = f"""{result_msg_hin.text}
+        #     कमी देखने के लिए यहाँ क्लिक करें: https://test.bsesbrpl.co.in/DSK_Web/BRPLDeficiency.aspx?ORDNO={order_number}&TYPE={TYPE_OF_DEFICIENCY}"""
+
+        # elif order_status == "New Connection Processed":
+        #     result_hindi = "नया कनेक्शन प्रोसेस हो गया"
+
+        # # elif order_status == "Deficiency document received and Application under Process":
+        # #     result_hindi = "कमी (डिफ़िशिएंसी) दस्तावेज़ प्राप्त हो गए हैं और आवेदन प्रक्रिया में है।"
+
+        # else:
+        #     result_hindi = order_status
+
         if is_valid == False:
+            _reset_order_id_retry(sender_id)
 
             thank_eng = db.query(UtterMessage).filter(
                 UtterMessage.id == 10,
@@ -391,10 +501,12 @@ def get_order_status():
             }
         )
 
+        _reset_order_id_retry(sender_id)
+
         uttter_message_id = [
             51,53
         ]
-        
+
         return jsonify({
             "order_status": order_status,
             "valid": is_valid,
@@ -409,148 +521,3 @@ def get_order_status():
     finally:
         db.close()
 
-## Consumption History
-
-# def get_pdf_bill():
-#     data = request.json
-#     ca_number = data.get("ca_number")
-
-#     if not ca_number:
-#         return jsonify({"error": "Missing CA number"}), 400
-    
-#     record = API_Key_Master.find_one(api_name="Consumption History PDF")
-
-#     # CONSUMPTION_HISTORY_URL = "https://test.bsesbrpl.co.in/DBTest_Delhiv2/ISUService.asmx"
-
-#     CONSUMPTION_HISTORY_URL = record.api_url
-
-
-#     # Extract values safely
-#     cons_history_headers = record.api_headers or {}
-#     cons_history_content_type = cons_history_headers.get("Content-Type")
-#     cons_history_soap_action = cons_history_headers.get("SOAPAction")
-
-#     # Construct the SOAP XML payload
-#     soap_body = f'''<?xml version="1.0" encoding="utf-8"?>
-# <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-#                xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-#                xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-#   <soap:Body>
-#     <ZBAPI_BILL_DET_API_PDF xmlns="http://tempuri.org/">
-#       <CA_NUMBER>{ca_number}</CA_NUMBER>
-#       <_sMobileNo></_sMobileNo>
-#     </ZBAPI_BILL_DET_API_PDF>
-#   </soap:Body>
-# </soap:Envelope>'''
-
-#     # headers = {
-#     #     "Content-Type": "text/xml; charset=utf-8",
-#     #     "SOAPAction": "http://tempuri.org/ZBAPI_BILL_DET_API_PDF",
-#     #     "Authorization": f'Bearer {token_manager.get_token("delhiv2")}'  # Replace with valid token
-#     # }
-
-#     headers = {
-#         "Content-Type": cons_history_content_type,
-#         "SOAPAction": cons_history_soap_action,
-#         "Authorization": f'Bearer {token_manager.get_token("delhiv2")}'  # Replace with valid token
-#     }
-
-#     try:
-#         # Step 1: Get the PDF link
-#         response = requests.post(CONSUMPTION_HISTORY_URL, data=soap_body, headers=headers)
-#         response.raise_for_status()
-#         response_text = response.text
-
-#         save_api_key_count("Consumption History","Consumption History PDF", soap_body, response_text)
-
-#         root = ET.fromstring(response.text)
-#         namespaces = {
-#             'soap': 'http://schemas.xmlsoap.org/soap/envelope/',
-#             'diffgr': 'urn:schemas-microsoft-com:xml-diffgram-v1'
-#         }
-
-#         output_text = root.find(".//diffgr:diffgram//NewDataSet//Table1//OUT_PUT", namespaces)
-
-#         return jsonify({"message": output_text.text, "status": True}), 200
-    
-#     except Exception as e:
-#         return jsonify({"message": "Error in fetching consumption history", "status": False}), 500
-
-
-# def extract_last_6_months_data(text):
-
-#     # Pattern for lines that begin with a posting date
-#     row_pattern = re.compile(r"^\d{2}\.\d{2}\.\d{4}")
-#     rows = []
-    
-#     # Extract data lines
-#     for line in text.strip().splitlines():
-#         if row_pattern.match(line):
-#             line = re.sub(r'\s*\|\s*', '|', line.strip())
-#             rows.append(line)
-    
-#     # Parse rows
-#     parsed = []
-#     for row in rows:
-#         cols = row.split('|')
-#         if len(cols) >= 17:
-#             bill_month_str = cols[2].strip()
-#             try:
-#                 # Convert BILL-MONTH like "JUL-25" to datetime (e.g. 01-07-2025)
-#                 bill_month_dt = datetime.strptime(bill_month_str, "%b-%y")
-#             except:
-#                 continue  # skip if format is bad
-    
-#             parsed.append({
-#                 "posting_date": cols[0].strip(),
-#                 "bill_month": bill_month_str,
-#                 "bill_month_dt": bill_month_dt,
-#                 "reading_date": cols[3].strip(),
-#                 "kwh": cols[4].strip(),
-#                 "kw": cols[5].strip(),
-#                 "units_billed": cols[8].strip(),
-#                 "total_payable": cols[14].strip(),
-#                 "payment_amount": cols[15].strip(),
-#                 "payment_date": cols[16].strip() if len(cols) > 16 else None
-#             })
-    
-#     # Sort by bill_month descending and keep only latest 6 months
-#     latest_six = sorted(parsed, key=lambda x: x['bill_month_dt'], reverse=True)
-#     latest_six_unique = []
-#     seen_months = set()
-    
-#     for item in latest_six:
-#         if item['bill_month'] not in seen_months:
-#             latest_six_unique.append({k: v for k, v in item.items() if k != 'bill_month_dt'})
-#             seen_months.add(item['bill_month'])
-#         if len(latest_six_unique) == 6:
-#             break
- 
-#     return latest_six_unique
-
-# def parse_bill_month_consumption(month_str):
-#     # print(month_str, "month str===========>>")
-#     month_str = month_str.strip().upper()  # Normalize like "JUL-25"
-#     try:
-#         month_part, year_part = month_str.split("-")
-#         if len(year_part) == 2:  # assume 20xx for 2-digit years
-#             year = int("20" + year_part)
-#         else:
-#             year = int(year_part)
-#         month = datetime.strptime(month_part, "%b").month
-#         return datetime(year, month, 1)
-#     except Exception:
-#         return None
-
-
-# def extract_tables_from_pdf(pdf_path):
-#     """Extract table data from PDF files."""
-#     tables_text = ""
-#     print("extract_tables_from_pdf")
-#     with pdfplumber.open(pdf_path) as pdf:
-#         for page in pdf.pages:
-#             tables = page.extract_tables()
-#             for table in tables:
-#                 for row in table:
-#                     tables_text += " | ".join(row) + "\n"
-#     return tables_text

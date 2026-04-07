@@ -184,8 +184,8 @@ class Subsidiary_type_english(Action):
         print(f"Sender ID: {tracker.sender_id}")
         dispatcher.utter_message(text="Please select user type")
         dispatcher.utter_message(text="कृपया उपयोगकर्ता प्रकार चुनें")
-        dispatcher.utter_message(text="New Consumer / नया उपभोक्ता b")
         dispatcher.utter_message(text="Registered Consumer / पंजीकृत उपभोक्ता b")
+        dispatcher.utter_message(text="New Consumer / नया उपभोक्ता b")
         return []
     
 # class Language_type(Action):
@@ -2292,6 +2292,8 @@ class payment_history_module_english(Action):
 
             dispatcher.utter_message(text="Here is your recent payment history:\n")
 
+            dispatcher.utter_message(text="Please find below payment history for last 6 months. This does not include the current month.")
+
             for idx, entry in enumerate(billing_entries, start=1):
                 bill_month = entry.get("Bill Month", "")
                 invoice_date = entry.get("Date of Invoice", "")
@@ -2309,7 +2311,7 @@ class payment_history_module_english(Action):
     • Payment Date: {payment_date}
     • Units Consumed: {units}
     """
-                # print(message, "================= message")
+                # print(message, "================= message")\
                 dispatcher.utter_message(text=message)
 
                 #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
@@ -2361,6 +2363,8 @@ class payment_history_module_hindi(Action):
                 return [Restarted()]
 
             dispatcher.utter_message(text="यहाँ आपके हाल के भुगतान का विवरण दिया गया है:\n")
+
+            dispatcher.utter_message(text="कृपया नीचे पिछले 6 महीनों का भुगतान इतिहास देखें। इसमें वर्तमान महीने का भुगतान शामिल नहीं है।")
 
             for idx, entry in enumerate(billing_entries, start=1):
                 bill_month = entry.get("Bill Month", "")
@@ -2435,6 +2439,8 @@ class bill_history_module_english(Action):
                 return [Restarted()]
 
             dispatcher.utter_message(text="Here is your recent payment history:\n")
+
+            dispatcher.utter_message(text="Please find below bill history for last 6 months. This does not include the current month. For current month’s bill, please go to the 'Duplicate Bill' option.")
 
             for idx, entry in enumerate(billing_entries, start=1):
                 bill_month = entry.get("Bill Month", "")
@@ -2516,6 +2522,8 @@ class bill_history_module_hindi(Action):
                 return [Restarted()]
 
             dispatcher.utter_message(text="यहाँ आपके हाल के भुगतान का विवरण दिया गया है:\n")
+
+            dispatcher.utter_message(text="नीचे पिछले 6 महीनों के बिलों का विवरण दिया गया है। इसमें वर्तमान महीने का बिल शामिल नहीं है। वर्तमान महीने का बिल देखने के लिए, कृपया 'डुप्लिकेटबिल' विकल्प पर जाएं।")
 
             for idx, entry in enumerate(billing_entries, start=1):
                 bill_month = entry.get("Bill Month", "")
@@ -2629,6 +2637,8 @@ class payment_status_module_english(Action):
                 return [Restarted()]
 
             dispatcher.utter_message(text="Here is your recent payment status:\n")
+
+            dispatcher.utter_message(text="Please find below your last payment status. Kindly note that this may not reflect your payment for the current billing month.")
 
             for idx, entry in enumerate(billing_entries, start=1):
 
@@ -2756,6 +2766,8 @@ class payment_status_module_hindi(Action):
                 return [Restarted()]
 
             dispatcher.utter_message(text="यह रही आपकी हाल की भुगतान स्थिति:\n")
+
+            dispatcher.utter_message(text="कृपया नीचे अपनी पिछली भुगतान स्थिति देखें। ध्यान दें कि यह चालू बिलमाह के लिए आपके भुगतान को नहीं दर्शाती है।")
 
             for idx, entry in enumerate(billing_entries, start=1):
 
