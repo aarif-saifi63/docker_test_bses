@@ -191,34 +191,62 @@ def webhook():
             #     print(f"Second intent: {detected_intent}, Submenu: {submenu_category}, Language: {submenu_language}")
 
             # Check if first intent is fallback
-            if first_intent["name"] == "nlu_fallback":
-                # Only check second intent
-                detected_intent = second_intent["name"]
-                submenu_category, submenu_language = get_submenu_category(detected_intent)
-                print(
-                    f"Second intent: {detected_intent}, "
-                    f"Submenu: {submenu_category}, "
-                    f"Language: {submenu_language}"
-                )
-            else:
-                # Check first intent
-                detected_intent = first_intent["name"]
-                submenu_category, submenu_language = get_submenu_category(detected_intent)
-                print(
-                    f"First intent: {detected_intent}, "
-                    f"Submenu: {submenu_category}, "
-                    f"Language: {submenu_language}"
-                )
+            # if first_intent["name"] == "nlu_fallback":
+            #     # Only check second intent
+            #     detected_intent = second_intent["name"]
+            #     submenu_category, submenu_language = get_submenu_category(detected_intent)
+            #     print(
+            #         f"Second intent: {detected_intent}, "
+            #         f"Submenu: {submenu_category}, "
+            #         f"Language: {submenu_language}"
+            #     )
+            # else:
+            #     # Check first intent
+            #     detected_intent = first_intent["name"]
+            #     submenu_category, submenu_language = get_submenu_category(detected_intent)
+            #     print(
+            #         f"First intent: {detected_intent}, "
+            #         f"Submenu: {submenu_category}, "
+            #         f"Language: {submenu_language}"
+            #     )
 
-                # Check second intent as well
-                if submenu_category is None and second_intent and second_intent["name"] != "nlu_fallback":
-                    detected_intent = second_intent["name"]
-                    submenu_category, submenu_language = get_submenu_category(detected_intent)
+            #     # Check second intent as well
+            #     if submenu_category is None and second_intent and second_intent["name"] != "nlu_fallback":
+            #         detected_intent = second_intent["name"]
+            #         submenu_category, submenu_language = get_submenu_category(detected_intent)
+            #         print(
+            #             f"Second intent: {detected_intent}, "
+            #             f"Submenu: {submenu_category}, "
+            #             f"Language: {submenu_language}"
+            #         )
+
+            # If the top intent is nlu_fallback → global fallback (skip submenu check entirely)
+            if first_intent["name"] == "nlu_fallback":
+                print("First intent is nlu_fallback — using global fallback, skipping submenu check")
+            else:
+                # Sort all intents by confidence descending, exclude nlu_fallback, take top 2
+                intent_ranking = data.get("intent_ranking", [])
+                sorted_intents = sorted(intent_ranking, key=lambda x: x.get("confidence", 0), reverse=True)
+                top_two = [
+                    i for i in sorted_intents
+                    if i["name"] != "nlu_fallback" and i.get("confidence", 0) >= 0.4
+                ][:2]
+
+                for rank, candidate in enumerate(top_two, start=1):
+                    candidate_name = candidate["name"]
+                    cat, lang = get_submenu_category(candidate_name)
                     print(
-                        f"Second intent: {detected_intent}, "
-                        f"Submenu: {submenu_category}, "
-                        f"Language: {submenu_language}"
+                        f"Sorted intent #{rank}: {candidate_name} (conf={candidate.get('confidence', 0):.4f}), "
+                        f"Submenu: {cat}, Language: {lang}"
                     )
+                    if cat:
+                        detected_intent = candidate_name
+                        submenu_category = cat
+                        submenu_language = lang
+                        break
+
+                if submenu_category is None:
+                    print("Neither top-1 nor top-2 sorted intents (conf >= 0.5) matched a submenu — using global fallback")
 
 
             # Handle submenu-specific fallback (only if menu is visible)

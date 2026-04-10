@@ -36,6 +36,21 @@ redis_client = redis.Redis(
 OTP_LIMIT = 3                 # Maximum OTP allowed
 OTP_WINDOW_SECONDS = 600      # 10 minutes
 
+MOBILE_MAX_RETRIES = 3
+MOBILE_RETRY_TTL = 600  # 10 minutes
+
+def _increment_mobile_retry(sender_id):
+    """Increment Redis retry counter for mobile validation. Returns (retries_left, exceeded)."""
+    redis_key = f"mobile_retry:{sender_id}"
+    attempts = redis_client.incr(redis_key)
+    if attempts == 1:
+        redis_client.expire(redis_key, MOBILE_RETRY_TTL)
+    retries_left = max(MOBILE_MAX_RETRIES - attempts, 0)
+    return retries_left, attempts >= MOBILE_MAX_RETRIES
+
+def _reset_mobile_retry(sender_id):
+    redis_client.delete(f"mobile_retry:{sender_id}")
+
 ## OTP validation
 
 def validate_otp():
@@ -343,8 +358,18 @@ def validate_mobile():
         }
 
         # Send OTP API
-        response = requests.post(url, headers=headers, data=payload, timeout=(10, 30))
-        response.raise_for_status()
+        try:
+            response = requests.post(url, headers=headers, data=payload, timeout=(10, 30))
+            response.raise_for_status()
+        except Exception as e:
+            print("======================== soap api error", e)
+            retries_left, exceeded = _increment_mobile_retry(sender_id)
+            if exceeded:
+                _reset_mobile_retry(sender_id)
+                return {"valid": False, "exceeded": True, "retries_left": 0,
+                        "message": "Too many attempts. Let's start over. Click home button to start over."}
+            return {"valid": False, "exceeded": False, "retries_left": retries_left,
+                    "message": f"OTP service is unavailable. Please try again later. Retries left: {retries_left}"}
         response_text = response.text
 
         save_api_key_count("Visually Impaired","Send OTP", payload, response_text)
@@ -362,8 +387,9 @@ def validate_mobile():
             print("Error parsing SOAP response:", e)
 
         if flag == "S":
-            # Store OTP in session\
-            
+            # Store OTP in session
+            _reset_mobile_retry(sender_id)
+
             chat_entry = {
                 "query": mobile_number,
                 # "answer": response,
@@ -385,7 +411,13 @@ def validate_mobile():
             return {"valid": True, "message": "OTP sent successfully"}
 
         else:
-            return {"valid": False, "message": "Please enter a valid 10 digits mobile number."}
+            retries_left, exceeded = _increment_mobile_retry(sender_id)
+            if exceeded:
+                _reset_mobile_retry(sender_id)
+                return {"valid": False, "exceeded": True, "retries_left": 0,
+                        "message": "Too many attempts. Let's start over. Click home button to start over."}
+            return {"valid": False, "exceeded": False, "retries_left": retries_left,
+                    "message": f"Please enter a valid 10 digits mobile number. Retries left: {retries_left}"}
 
     except Exception as e:
         raise e

@@ -11,6 +11,30 @@ from database import SessionLocal
 from token_manager import token_manager
 from Models.api_key_master_model import API_Key_Master
 import xmltodict
+import redis
+import os
+
+redis_client = redis.Redis(
+    host=os.getenv('REDIS_HOST', 'redis'),
+    port=int(os.getenv('REDIS_PORT', 6379)),
+    db=0,
+    decode_responses=True
+)
+
+CA_MAX_RETRIES = 3
+CA_RETRY_TTL = 600  # 10 minutes
+
+def _increment_ca_retry(sender_id):
+    """Increment Redis retry counter for CA validation. Returns (retries_left, exceeded)."""
+    redis_key = f"ca_retry:{sender_id}"
+    attempts = redis_client.incr(redis_key)
+    if attempts == 1:
+        redis_client.expire(redis_key, CA_RETRY_TTL)
+    retries_left = max(CA_MAX_RETRIES - attempts, 0)
+    return retries_left, attempts >= CA_MAX_RETRIES
+
+def _reset_ca_retry(sender_id):
+    redis_client.delete(f"ca_retry:{sender_id}")
 
 def validate_ca():
     db = SessionLocal()
@@ -63,10 +87,13 @@ def validate_ca():
 
         except Exception as e:
             # print("======================== soap api error", e)
-            # encrypted = encrypt_text('{"valid": false, "message":"CA Validation service is unavailable. Please try again later."}')
-            # return jsonify({"data": encrypted})
-            return jsonify(valid=False, message="CA Validation service is unavailable. Please try again later.")
-            # return {"valid": False, "message": "CA Validation service is unavailable. Please try again later."}
+            retries_left, exceeded = _increment_ca_retry(sender_id)
+            if exceeded:
+                _reset_ca_retry(sender_id)
+                return jsonify(valid=False, exceeded=True, retries_left=0,
+                               message="Too many attempts. Let's start over. Click home button to start over.")
+            return jsonify(valid=False, exceeded=False, retries_left=retries_left,
+                           message=f"CA Validation service is unavailable. Please try again later. Retries left: {retries_left}")
 
 
         save_api_key_count("Register User Authentication","CA Number Validation", payload, response_text)
@@ -74,7 +101,13 @@ def validate_ca():
         print(response.status_code, "======================== fasouwrouask")
         if response.status_code == 500:
             print(response.status_code, "======================== fasouwrouask")
-            return jsonify(valid=False, message="Please enter a valid 9 digits CA number.")
+            retries_left, exceeded = _increment_ca_retry(sender_id)
+            if exceeded:
+                _reset_ca_retry(sender_id)
+                return jsonify(valid=False, exceeded=True, retries_left=0,
+                               message="Too many attempts. Let's start over. Click home button to start over.")
+            return jsonify(valid=False, exceeded=False, retries_left=retries_left,
+                           message=f"Please enter a valid 9 digits CA number. Retries left: {retries_left}")
 
         elif response.status_code == 200:
             try:
@@ -96,11 +129,23 @@ def validate_ca():
  
                 if activity == '00000000' and bses_user_type == "BRPL":
                     print(response.status_code, "======================== activity")
-                    return jsonify(valid=False, message="The provided CA number is inactive. Please enter a valid CA number.")
+                    retries_left, exceeded = _increment_ca_retry(sender_id)
+                    if exceeded:
+                        _reset_ca_retry(sender_id)
+                        return jsonify(valid=False, exceeded=True, retries_left=0,
+                                       message="Too many attempts. Let's start over. Click home button to start over.")
+                    return jsonify(valid=False, exceeded=False, retries_left=retries_left,
+                                   message=f"The provided CA number is inactive. Please enter a valid CA number. Retries left: {retries_left}")
 
                 if bses_user_type == "BYPL":
                     print(response.status_code, "======================== fasouwrouask")
-                    return jsonify(valid=False, message="This CA number is registered with BYPL. Kindly enter a valid CA number associated with BRPL.")
+                    retries_left, exceeded = _increment_ca_retry(sender_id)
+                    if exceeded:
+                        _reset_ca_retry(sender_id)
+                        return jsonify(valid=False, exceeded=True, retries_left=0,
+                                       message="Too many attempts. Let's start over. Click home button to start over.")
+                    return jsonify(valid=False, exceeded=False, retries_left=retries_left,
+                                   message=f"This CA number is registered with BYPL. Kindly enter a valid CA number associated with BRPL. Retries left: {retries_left}")
 
                 print(div_code, "=================================== division code")
 
@@ -139,18 +184,24 @@ def validate_ca():
                     }
                 )
 
-                # encrypted = encrypt_text('{"valid": true}')
-                # return jsonify({"data": encrypted})
+                _reset_ca_retry(sender_id)
                 return jsonify(valid=True)
             except KeyError:
-                # encrypted = encrypt_text('{"valid": false, "message":"Please enter a valid 9 digits CA number."}')
-                # print("KeyError ===================", encrypted)
-                # return jsonify({"data": encrypted})
-                return jsonify(valid=False, message="Please enter a valid 9 digits CA number.")
+                retries_left, exceeded = _increment_ca_retry(sender_id)
+                if exceeded:
+                    _reset_ca_retry(sender_id)
+                    return jsonify(valid=False, exceeded=True, retries_left=0,
+                                   message="Too many attempts. Let's start over. Click home button to start over.")
+                return jsonify(valid=False, exceeded=False, retries_left=retries_left,
+                               message=f"Please enter a valid 9 digits CA number. Retries left: {retries_left}")
         else:
-            # encrypted = encrypt_text('{"valid": false, "message":"Please enter a valid 9 digits CA number."}')
-            # return jsonify({"data": encrypted})
-            return jsonify(valid=False, message="Please enter a valid 9 digits CA number.")
+            retries_left, exceeded = _increment_ca_retry(sender_id)
+            if exceeded:
+                _reset_ca_retry(sender_id)
+                return jsonify(valid=False, exceeded=True, retries_left=0,
+                               message="Too many attempts. Let's start over. Click home button to start over.")
+            return jsonify(valid=False, exceeded=False, retries_left=retries_left,
+                           message=f"Please enter a valid 9 digits CA number. Retries left: {retries_left}")
     except Exception as e:
         raise e
     finally:

@@ -829,9 +829,9 @@ def create_menu_with_submenu():
                                 continue
 
                             # Validate example text
-                            is_valid, msg = InputValidator.validate_name(example_text, "example")
-                            if not is_valid:
-                                return jsonify({"status": False, "message": msg}), 400
+                            # is_valid, msg = InputValidator.validate_name(example_text, "example")
+                            # if not is_valid:
+                            #     return jsonify({"status": False, "message": msg}), 400
                             
                             try:
                                 if ex_id and ex_id in existing_examples:

@@ -4,6 +4,8 @@ import random
 import re
 from html import unescape
 import requests
+import aiohttp
+import asyncio
 from Model.api_key_master_model import API_Key_Master
 from Model.division_model import Divisions
 from Model.session_model import Session
@@ -17,6 +19,20 @@ import redis
 from dotenv import load_dotenv
 load_dotenv()
 
+
+async def _soap_post(url, headers, body, *, ssl=True, timeout=30):
+    """Truly async SOAP/HTTP POST using aiohttp. Returns raw bytes (like requests.content)."""
+    data = body.encode("utf-8") if isinstance(body, str) else body
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            url,
+            headers=headers,
+            data=data,
+            timeout=aiohttp.ClientTimeout(total=timeout),
+            ssl=ssl
+        ) as resp:
+            resp.raise_for_status()
+            return await resp.read()
 
 
 # Redis connection
@@ -37,7 +53,7 @@ redis_client = redis.Redis(
 
 ## Validate_ca
 
-def validate_ca(sender_id, ca_number):
+async def validate_ca(sender_id, ca_number):
     db = SessionLocal()
     try:
         # Fetch API details for CA validation
@@ -73,8 +89,8 @@ def validate_ca(sender_id, ca_number):
         }
 
         try:
-            response = requests.post(url, headers=headers, data=payload, timeout=(10, 30))
-            response_text = response.text
+            content = await _soap_post(url, headers, payload, timeout=30)
+            response_text = content.decode("utf-8")
         except Exception as e:
             print("======================== SOAP API error:", e)
             return {"valid": False, "message": "CA Validation service unavailable."}
@@ -82,41 +98,34 @@ def validate_ca(sender_id, ca_number):
         # Log API call
         save_api_key_count("Register User Authentication", "CA Number Validation", payload, response_text)
 
-        # Response handling
-        if response.status_code == 500:
-            return {"valid": False}
+        # Response handling — _soap_post raises on non-200, so we only reach here on success
+        try:
+            parsed_dict = xmltodict.parse(response_text)
+            result_table = parsed_dict['soap:Envelope']['soap:Body']\
+                ['Z_BAPI_DSS_ISU_CA_DISPLAYResponse']['Z_BAPI_DSS_ISU_CA_DISPLAYResult']\
+                ['diffgr:diffgram']['BAPI_RESULT']['ISUSTDTable']
 
-        elif response.status_code == 200:
-            try:
-                parsed_dict = xmltodict.parse(response.text)
-                result_table = parsed_dict['soap:Envelope']['soap:Body']\
-                    ['Z_BAPI_DSS_ISU_CA_DISPLAYResponse']['Z_BAPI_DSS_ISU_CA_DISPLAYResult']\
-                    ['diffgr:diffgram']['BAPI_RESULT']['ISUSTDTable']
+            tel_number = result_table.get('Tel1_Number') or result_table.get('Telephone_No')
+            email = result_table.get('E_Mail')
+            div_code = result_table.get('Reg_Str_Group')
 
-                tel_number = result_table.get('Tel1_Number') or result_table.get('Telephone_No')
-                email = result_table.get('E_Mail')
-                div_code = result_table.get('Reg_Str_Group')
+            # Fetch division name
+            division = db.query(Divisions).filter_by(division_code=div_code).first()
+            division_name = division.division_name if division else None
 
-                # Fetch division name
-                division = db.query(Divisions).filter_by(division_code=div_code).first()
-                division_name = division.division_name if division else None
+            # Update Session record
+            db.query(Session).filter_by(user_id=sender_id).update({
+                "ca_number": ca_number,
+                "tel_no": tel_number,
+                "email": email,
+                **({"division_name": division_name} if division_name else {})
+            })
 
-                # Update Session record
-                db.query(Session).filter_by(user_id=sender_id).update({
-                    "ca_number": ca_number,
-                    "tel_no": tel_number,
-                    "email": email,
-                    **({"division_name": division_name} if division_name else {})
-                })
+            db.commit()
+            return {"valid": True}
 
-                db.commit()
-                return {"valid": True}
-
-            except KeyError:
-                db.rollback()
-                return {"valid": False}
-
-        else:
+        except KeyError:
+            db.rollback()
             return {"valid": False}
 
     except Exception as e:
@@ -298,7 +307,7 @@ OTP_WINDOW_SECONDS = 60  # in 10 minutes
 #         db.close()
 
 
-def send_otp(sender_id):
+async def send_otp(sender_id):
     db = SessionLocal()
     try:
         # Fetch user session
@@ -372,10 +381,8 @@ def send_otp(sender_id):
 
         # Send OTP through API
         try:
-            response = requests.post(url, headers=headers, data=payload, timeout=(10, 30))
-
-            response.raise_for_status()
-            response_text = response.text
+            content = await _soap_post(url, headers, payload, timeout=30)
+            response_text = content.decode("utf-8")
 
         except Exception:
             return {"status": "unsent", "message": response_text}
@@ -412,7 +419,7 @@ def send_otp(sender_id):
 
 ## Consumption History
 
-def get_pdf_bill(ca_number):
+async def get_pdf_bill(ca_number):
     # data = request.json
     # ca_number = data.get("ca_number")
 
@@ -462,13 +469,12 @@ def get_pdf_bill(ca_number):
 
         try:
             # Step 1: Get the PDF link
-            response = requests.post(CONSUMPTION_HISTORY_URL, data=soap_body, headers=headers, timeout=(10, 30))
-            response.raise_for_status()
-            response_text = response.text
+            content = await _soap_post(CONSUMPTION_HISTORY_URL, headers, soap_body, timeout=30)
+            response_text = content.decode("utf-8")
 
             save_api_key_count("Consumption History","Consumption History PDF", soap_body, response_text)
 
-            root = ET.fromstring(response.text)
+            root = ET.fromstring(response_text)
             namespaces = {
                 'soap': 'http://schemas.xmlsoap.org/soap/envelope/',
                 'diffgr': 'urn:schemas-microsoft-com:xml-diffgram-v1'
@@ -488,7 +494,7 @@ def get_pdf_bill(ca_number):
 
 ## Meter Reading
 
-def API_GetMeterReadingSchedule(ca_number):
+async def API_GetMeterReadingSchedule(ca_number):
     db = SessionLocal()
     try:
         # ca_number = request.json.get("ca_number")
@@ -524,16 +530,16 @@ def API_GetMeterReadingSchedule(ca_number):
         payload = {"CANO": ca_number}
 
         # Call external API
-        response = requests.post(url, headers=headers, json=payload, verify=False, timeout=(10, 30))
-        response.raise_for_status()
-        response_text = response.text
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                url, headers=headers, json=payload,
+                timeout=aiohttp.ClientTimeout(total=30), ssl=False
+            ) as resp:
+                resp.raise_for_status()
+                response_text = await resp.text()
+                data = await resp.json(content_type=None)
 
         save_api_key_count("Meter Reading Schedule","Get Meter Reading", payload, response_text)
-
-        if response.status_code != 200:
-            return {"status":False, "found":False, "message":"Unable to fetch data from BSES server"}
-
-        data = response.json()
 
         # Handle cases based on API response
         if data.get("Key") == "No Data Found" or not data.get("Result"):
@@ -573,7 +579,7 @@ def API_GetMeterReadingSchedule(ca_number):
 
 ## New Connection Status
 
-def get_order_status(order_number):
+async def get_order_status(order_number):
     db = SessionLocal()
     try:
         # data = request.json
@@ -613,26 +619,22 @@ def get_order_status(order_number):
         #     data=soap_body
         # )
 
-        response = requests.post(
-            url=record.api_url,
-            headers={
+        content = await _soap_post(
+            record.api_url,
+            {
                 'Content-Type': order_status_content_type,
                 'SOAPAction': order_status_soap_action,
                 'Authorization': f'Bearer {token_manager.get_token("jwt")}'
             },
-            data=soap_body,
-            timeout=(10, 30)
+            soap_body,
+            timeout=30
         )
-        response.raise_for_status()
-        response_text = response.text
+        response_text = content.decode("utf-8")
 
         save_api_key_count("New Application Status","Get Order Status", soap_body, response_text)
 
-        if response.status_code != 200:
-            return {"error": "Failed to fetch data from SOAP service", "status": False}
-
         # Parse XML to extract ORDER_STATUS
-        root = ET.fromstring(response.content)
+        root = ET.fromstring(content)
 
         # Find the ORDER_STATUS element
         namespaces = {
@@ -780,7 +782,7 @@ def create_soap_request(ca_number):
       </soap:Body>
     </soap:Envelope>"""
 
-def get_payment_history(ca_number):
+async def get_payment_history(ca_number):
     # ca_number = request.json.get("ca_number")
     if not ca_number:
         return {"error": "Missing CA number"}
@@ -814,17 +816,13 @@ def get_payment_history(ca_number):
         }
 
         try:
-            response = requests.post(SOAP_URL, headers=headers, data=create_soap_request(ca_number), timeout=(5, 30))
-            response.raise_for_status()
-            response_text = response.text
+            content = await _soap_post(SOAP_URL, headers, create_soap_request(ca_number), timeout=30)
+            response_text = content.decode("utf-8")
 
             save_api_key_count("Payment History","Payment History Data", create_soap_request(ca_number), response_text)
 
-            if response.status_code != 200:
-                return {"error": "SOAP request failed", "status": False}
-
             # Parse XML
-            root = ET.fromstring(response.content)
+            root = ET.fromstring(content)
 
             # Get all bill history entries
             ns = {'diffgr': 'urn:schemas-microsoft-com:xml-diffgram-v1'}
@@ -898,7 +896,7 @@ def format_date(raw_date):
 
 ## Bill History
 
-def get_bill_history(ca_number):
+async def get_bill_history(ca_number):
     # ca_number = request.json.get("ca_number")
     if not ca_number:
         return {"error": "Missing CA number"}
@@ -929,17 +927,13 @@ def get_bill_history(ca_number):
 
         try:
 
-            response = requests.post(SOAP_URL, headers=headers, data=create_soap_request(ca_number), timeout=(10, 30))
-            response.raise_for_status()
-            response_text = response.text
+            content = await _soap_post(SOAP_URL, headers, create_soap_request(ca_number), timeout=30)
+            response_text = content.decode("utf-8")
 
             save_api_key_count("Bill History","Bill History Data", create_soap_request(ca_number), response_text)
 
-            if response.status_code != 200:
-                return {"error": "SOAP request failed", "status": False}
-
             # Parse XML
-            root = ET.fromstring(response.content)
+            root = ET.fromstring(content)
 
             # Get all bill history entries
             ns = {'diffgr': 'urn:schemas-microsoft-com:xml-diffgram-v1'}
@@ -1002,7 +996,7 @@ def get_bill_history(ca_number):
 
 ## Opt for e-bill
 
-def update_missing_email(ca_number, email):
+async def update_missing_email(ca_number, email):
     # data = request.json
     # ca_number = data.get("ca_number")
     # email = data.get("email")
@@ -1050,15 +1044,14 @@ def update_missing_email(ca_number, email):
     }
 
     try:
-        response = requests.post(SOAP_URL_EBILL, data=soap_body, headers=headers, timeout=(10, 30))
-        response.raise_for_status()
-        response_text = response.text
+        content = await _soap_post(SOAP_URL_EBILL, headers, soap_body, timeout=30)
+        response_text = content.decode("utf-8")
 
         save_api_key_count("Opt for e-bill","Update Missing Email", soap_body, response_text)
-        
+
         return {
-            "status_code": response.status_code,
-            "response": response.text,
+            "status_code": 200,
+            "response": response_text,
             "status": True
         }
     except Exception as e:
@@ -1089,7 +1082,7 @@ def update_email_in_db(sender_id, email):
         return {"error": "something went wrong"}
 
 
-def registration_ebill(ca_number):
+async def registration_ebill(ca_number):
     # data = request.json
     # ca_number = data.get("ca_number")
     
@@ -1137,15 +1130,14 @@ def registration_ebill(ca_number):
         }
 
         try:
-            response = requests.post(EBILL_REGISTRATION_SOAP_URL, data=soap_body, headers=headers, timeout=(10, 30))
-            response.raise_for_status()
-            response_text = response.text
+            content = await _soap_post(EBILL_REGISTRATION_SOAP_URL, headers, soap_body, timeout=30)
+            response_text = content.decode("utf-8")
 
             save_api_key_count("Opt for e-bill","E-bill Registration", soap_body, response_text)
 
             return {
-                "status_code": response.status_code,
-                "response": response.text,
+                "status_code": 200,
+                "response": response_text,
                 "status": True
             }
         except Exception as e:
@@ -1158,7 +1150,7 @@ def registration_ebill(ca_number):
 
 ## Register Complaint
 
-def area_outage(ca_number):
+async def area_outage(ca_number):
     db = SessionLocal()
     try:
         # ca_number = request.json.get("ca_number")
@@ -1193,16 +1185,11 @@ def area_outage(ca_number):
         }
 
         # Send SOAP request
-        response = requests.post(url, data=soap_body, headers=AREA_OUTAGE_HEADERS, verify=False, timeout=(10, 30))
-        response.raise_for_status()
-        response_text = response.text
-
-
-        if response.status_code != 200:
-            return {"status": False, "message": "Failed to connect to outage service"}
+        content = await _soap_post(url, AREA_OUTAGE_HEADERS, soap_body, ssl=False, timeout=30)
+        response_text = content.decode("utf-8")
 
         # Parse XML Response
-        root = ET.fromstring(response.content)
+        root = ET.fromstring(content)
         namespace = {"soap": "http://schemas.xmlsoap.org/soap/envelope/"}
 
         save_api_key_count("Register Complaint","Check Area Outage", soap_body, response_text)
@@ -1257,7 +1244,7 @@ CODE = "NC"
 SOURCE = "CHATBOT"
 VENDOR = "CHATBOT"
 
-def register_ncc(sender_id, ca_number, mobile_no):
+async def register_ncc(sender_id, ca_number, mobile_no):
     db = SessionLocal()
     try:
         # Extract user input
@@ -1310,16 +1297,12 @@ def register_ncc(sender_id, ca_number, mobile_no):
             "SOAPAction": current_complaint_soap_action
         }
 
-        response = requests.post(CURRENT_COMPLAINT_SOAP_URL, data=soap_payload, headers=headers, timeout=(10, 30))
-        response.raise_for_status()
-        response_text = response.text
+        content = await _soap_post(CURRENT_COMPLAINT_SOAP_URL, headers, soap_payload, timeout=30)
+        response_text = content.decode("utf-8")
         save_api_key_count("Register Complaint","Registration of No Current Complaint", soap_payload, response_text)
 
-        if response.status_code != 200:
-            return {"error": "Failed to communicate with SOAP service", "status": False}
-
         # Parse XML response
-        root = ET.fromstring(response.text)
+        root = ET.fromstring(response_text)
         namespace = {"soap": "http://schemas.xmlsoap.org/soap/envelope/"}
 
         comment = None
@@ -1370,7 +1353,7 @@ def register_ncc(sender_id, ca_number, mobile_no):
 
 ## Visually Impaired
 
-def validate_mobile(mobile_number, sender_id):
+async def validate_mobile(mobile_number, sender_id):
     # mobile_number = request.json.get("mobile_number")
     # sender_id = request.json.get("sender_id")
 
@@ -1418,9 +1401,8 @@ def validate_mobile(mobile_number, sender_id):
     }
 
     # Make the request
-    response = requests.post(url, headers=headers, data=payload, timeout=(10, 30))
-    response.raise_for_status()
-    response_text = response.text
+    content = await _soap_post(url, headers, payload, timeout=30)
+    response_text = content.decode("utf-8")
 
     save_api_key_count("Visually Impaired","Send OTP", payload, response_text)
 
@@ -1428,7 +1410,7 @@ def validate_mobile(mobile_number, sender_id):
     flag = None
     output = None
     try:
-        root = ET.fromstring(response.text)
+        root = ET.fromstring(response_text)
         ns = {"soap": "http://schemas.xmlsoap.org/soap/envelope/"}
 
         # Find FLAG and OUT_PUT inside the response
@@ -1464,7 +1446,7 @@ def validate_mobile(mobile_number, sender_id):
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
-def insert_mobapp_data(mobile_no, language):
+async def insert_mobapp_data(mobile_no, language):
     db = SessionLocal()
     try:
         # Extract data from request JSON
@@ -1536,14 +1518,13 @@ def insert_mobapp_data(mobile_no, language):
         url = record.api_url
 
         # Send SOAP request
-        response = requests.post(url, data=soap_body, headers=headers, timeout=(10, 30))
-        response.raise_for_status()
-        response_text = response.text
+        content = await _soap_post(url, headers, soap_body, timeout=30)
+        response_text = content.decode("utf-8")
 
         save_api_key_count("Visually Impaired","Alert Data to BRPL CRM", soap_body, response_text)
 
         # Parse the XML response
-        root = ET.fromstring(response.content)
+        root = ET.fromstring(content)
         namespaces = {
             'soap': 'http://schemas.xmlsoap.org/soap/envelope/',
             'ns': 'http://tempuri.org/'
@@ -1603,7 +1584,7 @@ def haversine(lat1, lon1, lat2, lon2):
     distance_meters = R * c
     return round(distance_meters)
 
-def get_outlet_data(latitude, longitude, filter_code):
+async def get_outlet_data(latitude, longitude, filter_code):
     # data = request.json
     # latitude = data.get("latitude")
     # longitude = data.get("longitude")
@@ -1647,14 +1628,10 @@ def get_outlet_data(latitude, longitude, filter_code):
             "SOAPAction": outlet_soap_action
         }
 
-        response = requests.post(SOAP_URL_OUTLET, data=SOAP_BODY_OUTLET, headers=headers, timeout=(10, 30))
-        response.raise_for_status()
-        response_text = response.text
+        content = await _soap_post(SOAP_URL_OUTLET, headers, SOAP_BODY_OUTLET, timeout=30)
+        response_text = content.decode("utf-8")
 
         save_api_key_count("Branches Nearby","BRPL Outlet Data", SOAP_BODY_OUTLET, response_text)
-
-        if response.status_code != 200:
-            return {"error": "Failed to fetch SOAP data"}
 
         namespaces = {
             'soap': 'http://schemas.xmlsoap.org/soap/envelope/',
@@ -1662,7 +1639,7 @@ def get_outlet_data(latitude, longitude, filter_code):
             'msdata': 'urn:schemas-microsoft-com:xml-msdata'
         }
 
-        root = ET.fromstring(response.content)
+        root = ET.fromstring(content)
         tables = root.findall(".//diffgr:diffgram/NewDataSet/Table", namespaces)
 
         filtered_items = []
@@ -1732,7 +1709,7 @@ def get_distance_info(branch_lat, branch_lon, latitude, longitude, item):
 Complaint_Status_KEY = "@$3$2#$"
 Complaint_Status_VENDOR = "Chatbot"
 
-def complaint_status(ca_number, sender_id):
+async def complaint_status(ca_number, sender_id):
     # ca_number = request.json.get("ca_number")
     # sender_id = request.json.get("sender_id")
 
@@ -1777,16 +1754,15 @@ def complaint_status(ca_number, sender_id):
         }
 
         try:
-            response = requests.post(Complaint_Status_SOAP_URL, data=soap_body, headers=headers, timeout=(10, 30))
-            response.raise_for_status()
-            response_text = response.text
+            content = await _soap_post(Complaint_Status_SOAP_URL, headers, soap_body, timeout=30)
+            response_text = content.decode("utf-8")
 
             save_api_key_count("Complaint Status (NCC)","No Current Complaint Status", soap_body, response_text)
 
-            print(response.text, "================================= complaint status response")
+            print(response_text, "================================= complaint status response")
 
             # Parse the XML response
-            root = ET.fromstring(response.text)
+            root = ET.fromstring(response_text)
             ns = {
                 'soap': 'http://schemas.xmlsoap.org/soap/envelope/',
                 'diffgr': 'urn:schemas-microsoft-com:xml-diffgram-v1'
@@ -1892,7 +1868,7 @@ import requests
 import xml.etree.ElementTree as ET
 
 
-def is_prepaid_ca_valid(ca_number: str) -> dict:
+async def is_prepaid_ca_valid(ca_number: str) -> dict:
     db = SessionLocal()
     try:
         # Fetch API details for CA validation
@@ -1934,19 +1910,18 @@ def is_prepaid_ca_valid(ca_number: str) -> dict:
 
         try:
             try:
-                response = requests.post(url, headers=headers, data=body, timeout=(10, 30))
-                response.raise_for_status()
-                response_text = response.text
+                content = await _soap_post(url, headers, body, timeout=30)
+                response_text = content.decode("utf-8")
             except Exception as e:
                 print("Prepaid api error: ============")
-                return {"status": False, "message": "Prepaid Validation service unavailable."}    
+                return {"status": False, "message": "Prepaid Validation service unavailable."}
 
 
             # Log API call
             # save_api_key_count("Prepaid Meter - Check Balance / Recharge", "Validate prepaid meter through ca number", body, response_text)
 
             # Parse XML Response
-            root = ET.fromstring(response.text)
+            root = ET.fromstring(response_text)
 
             # Extract FLAG (ignore namespaces safely)
             flag = None

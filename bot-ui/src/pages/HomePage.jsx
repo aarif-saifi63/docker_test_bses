@@ -87,6 +87,8 @@ export default function HomePage() {
   const [pollId, setPollId] = useState(null);
   const [pollResponses, setPollResponses] = useState([]);
   const timeoutRef = useRef(null);
+  const menuRedirectTimerRef = useRef(null);
+  const resetCounterRef = useRef(0);
   const abortControllerRef = useRef(null);
   const isIntentionalAbortRef = useRef(false);
   const mainMenuHeadingTempRef = useRef(null);
@@ -164,6 +166,13 @@ export default function HomePage() {
   };
 
   const resetChat = async () => {
+    // Invalidate any in-flight menu requests
+    resetCounterRef.current += 1;
+    // Cancel pending menu redirect timer
+    if (menuRedirectTimerRef.current) {
+      clearTimeout(menuRedirectTimerRef.current);
+      menuRedirectTimerRef.current = null;
+    }
     // Cancel all ongoing API requests
     if (abortControllerRef.current) {
       isIntentionalAbortRef.current = true;
@@ -1155,12 +1164,26 @@ export default function HomePage() {
         }, { signal: getAbortSignal() });
 
         const isValid = resp?.valid === true;
-        const message = languageToUse.includes("हिंदी")
-          ? "कृपया एक मान्य 9 अंकों का सीए (CA) नंबर दर्ज करें।"
-          : resp?.message;
+        // const message = languageToUse.includes("हिंदी")
+        //   ? `कृपया एक मान्य 9 अंकों का सीए (CA) नंबर दर्ज करें।${resp?.retries_left != null ? " शेष प्रयास: " + resp.retries_left : ""}`
+        //   : resp?.message;
 
+        const isHindiCA = languageToUse.includes("हिंदी");
+        const message = resp?.exceeded === true
+          ? (isHindiCA
+            ? "बहुत अधिक प्रयास हो गए हैं। कृपया होम बटन पर क्लिक करके पुनः शुरू करें।"
+            : "Too many attempts. Let's start over. Click home button to start over")
+          : (isHindiCA
+            ? `कृपया एक मान्य 9 अंकों का सीए (CA) नंबर दर्ज करें।${resp?.retries_left != null ? " शेष प्रयास: " + resp.retries_left : ""}`
+            : resp?.message);
+ 
         if (!isValid) {
           // Invalid CA Number: show error and stop flow
+          if (resp?.exceeded === true) {
+            setDisableAllInputs(true);
+            setAwaitingCaNumber(false);
+            awaitingCaNumberRef.current = false;
+          }
           setMessages((prev) => [
             ...prev,
             {
@@ -1170,8 +1193,27 @@ export default function HomePage() {
               timestamp: new Date(),
             },
           ]);
+          if (resp?.exceeded === true) triggerAutoMenuRedirect(isHindiCA);
           return; // stop sending further
         }
+ 
+
+        // if (!isValid) {
+
+        //   if (resp?.exceeded === true) setDisableAllInputs(true);
+
+        //   // Invalid CA Number: show error and stop flow|
+        //   setMessages((prev) => [
+        //     ...prev,
+        //     {
+        //       id: uuidv4(),
+        //       sender: "bot",
+        //       text: message,
+        //       timestamp: new Date(),
+        //     },
+        //   ]);
+        //   return; // stop sending further
+        // }
 
         msg = "ca verified";
 
@@ -1247,7 +1289,9 @@ export default function HomePage() {
             setDisableAllInputs(true);
             setAwaitingOrderId(false);
             awaitingOrderIdRef.current = false;
+            triggerAutoMenuRedirect(message.includes("बहुत अधिक प्रयास"));
           }
+
 
           // If main menu present, reset flags and exit flow
           else if (resp?.response?.main_menu_heading && resp?.response?.main_menu_buttons) {
@@ -1307,69 +1351,136 @@ export default function HomePage() {
       lastBotMessage?.includes("कृपया आगे बढ़ने के लिए इसे दर्ज करें।") ||
       hasMessageId(lastBotMessageIds, MESSAGE_IDS.OTP_PROMPT_EN, MESSAGE_IDS.OTP_PROMPT_HI)
     ) {
-      try {
-        let otp = msg.trim();
+      // try {
+      //   let otp = msg.trim();
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: uuidv4(),
-            sender: "user",
-            text: otp,
-            timestamp: new Date(),
-          },
-        ]);
+      //   setMessages((prev) => [
+      //     ...prev,
+      //     {
+      //       id: uuidv4(),
+      //       sender: "user",
+      //       text: otp,
+      //       timestamp: new Date(),
+      //     },
+      //   ]);
 
-        const resp = await apiClient.post("/validate_otp", {
-          sender_id: sender_id,
-          otp: otp + " BRPL",
-        });
+      //   const resp = await apiClient.post("/validate_otp", {
+      //     sender_id: sender_id,
+      //     otp: otp + " BRPL",
+      //   });
 
-        const isValid = resp?.valid === true;
-        // Use ID-based check to determine language (check if Hindi OTP prompt was sent)
-        const isHindi = hasMessageId(lastBotMessageIds, MESSAGE_IDS.OTP_PROMPT_HI) || languageToUse.includes("हिंदी");
-        const message = isValid
-          ? "OTP verified successfully."
-          : (isHindi
-            ? "कृपया एक मान्य 6 अंकों का OTP दर्ज करें। शेष प्रयास: "
-            : "Please enter a valid 6-digit OTP. Retries left: ") + otpResendCount;
+      //   const isValid = resp?.valid === true;
+      //   // Use ID-based check to determine language (check if Hindi OTP prompt was sent)
+      //   const isHindi = hasMessageId(lastBotMessageIds, MESSAGE_IDS.OTP_PROMPT_HI) || languageToUse.includes("हिंदी");
+      //   const message = isValid
+      //     ? "OTP verified successfully."
+      //     : (isHindi
+      //       ? "कृपया एक मान्य 6 अंकों का OTP दर्ज करें। शेष प्रयास: "
+      //       : "Please enter a valid 6-digit OTP. Retries left: ") + otpResendCount;
 
-        if (!isValid) {
-          // Invalid Otp: show error and stop flow
-          if (otpResendCount >= 1) setOtpResendCount((prev) => (prev > 0 ? prev - 1 : 0));
-          else setDisableAllInputs(true);
+      //   if (!isValid) {
+      //     // Invalid Otp: show error and stop flow
+      //     if (otpResendCount >= 1) setOtpResendCount((prev) => (prev > 0 ? prev - 1 : 0));
+      //     else setDisableAllInputs(true);
+      //     setMessages((prev) => [
+      //       ...prev,
+      //       {
+      //         id: uuidv4(),
+      //         sender: "bot",
+      //         text:
+      //           otpResendCount > 0
+      //             ? message
+      //             : isHindi
+      //               ? "बहुत अधिक प्रयास हो गए हैं। कृपया होम बटन पर क्लिक करके पुनः शुरू करें।"
+      //               : "Too many attempts. Let's start over. Click home button to start over",
+      //         timestamp: new Date(),
+      //       },
+      //     ]);
+      //     return; // stop sending further
+      //   }
+
+      //   msg = "otp verified";
+
+      //   setAwaitingOtp(false); // reset state
+      //   awaitingOtpRef.current = false;
+      //   setOtpResendCount(2); // reset otp resend count
+      //   // return; // stop further default webhook send
+      // } catch (err) {
+      //   // Ignore cancelled requests
+      //   if (err.name === 'AbortError' || err.name === 'CanceledError') {
+      //     console.log("OTP validation request cancelled");
+      //     return;
+      //   }
+      //   console.error("CA validation failed:", err);
+      //   return;
+      // }
+
+        try {
+          let otp = msg.trim();
+  
           setMessages((prev) => [
             ...prev,
             {
               id: uuidv4(),
-              sender: "bot",
-              text:
-                otpResendCount > 0
-                  ? message
-                  : isHindi
-                    ? "बहुत अधिक प्रयास हो गए हैं। कृपया होम बटन पर क्लिक करके पुनः शुरू करें।"
-                    : "Too many attempts. Let's start over. Click home button to start over",
+              sender: "user",
+              text: otp,
               timestamp: new Date(),
             },
           ]);
-          return; // stop sending further
-        }
+  
+          const resp = await apiClient.post("/validate_otp", {
+            sender_id: sender_id,
+            otp: otp + " BRPL",
+          });
+  
+          const isValid = resp?.valid === true;
+          // Use ID-based check to determine language (check if Hindi OTP prompt was sent)
+          const isHindi = hasMessageId(lastBotMessageIds, MESSAGE_IDS.OTP_PROMPT_HI) || languageToUse.includes("हिंदी");
+          const message = isValid
+            ? "OTP verified successfully."
+            : (isHindi
+              ? "कृपया एक मान्य 6 अंकों का OTP दर्ज करें। शेष प्रयास: "
+              : "Please enter a valid 6-digit OTP. Retries left: ") + otpResendCount;
+  
+          if (!isValid) {
+            // Invalid Otp: show error and stop flow
+            if (otpResendCount >= 1) setOtpResendCount((prev) => (prev > 0 ? prev - 1 : 0));
+            else setDisableAllInputs(true);
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: uuidv4(),
+                sender: "bot",
+                text:
+                  otpResendCount > 0
+                    ? message
+                    : isHindi
+                      ? "बहुत अधिक प्रयास हो गए हैं। कृपया होम बटन पर क्लिक करके पुनः शुरू करें।"
+                      : "Too many attempts. Let's start over. Click home button to start over",
+                timestamp: new Date(),
+              },
+            ]);
+            if (otpResendCount <= 0) triggerAutoMenuRedirect(isHindi);
+            return; // stop sending further
+          }
+  
+          msg = "otp verified";
 
-        msg = "otp verified";
-
-        setAwaitingOtp(false); // reset state
-        awaitingOtpRef.current = false;
-        setOtpResendCount(2); // reset otp resend count
-        // return; // stop further default webhook send
-      } catch (err) {
-        // Ignore cancelled requests
-        if (err.name === 'AbortError' || err.name === 'CanceledError') {
-          console.log("OTP validation request cancelled");
+          setAwaitingOtp(false); // reset state
+          awaitingOtpRef.current = false;
+          setOtpResendCount(2); // reset otp resend count
+          // Clear lastBotMessageIds to prevent re-triggering the OTP validation on next message
+          setLastBotMessageIds([]);
+          // return; // stop further default webhook send
+        } catch (err) {
+          // Ignore cancelled requests
+          if (err.name === 'AbortError' || err.name === 'CanceledError') {
+            console.log("OTP validation request cancelled");
+            return;
+          }
+          console.error("CA validation failed:", err);
           return;
         }
-        console.error("CA validation failed:", err);
-        return;
-      }
     }
 
 
@@ -1401,13 +1512,9 @@ export default function HomePage() {
         }, { signal: getAbortSignal() });
 
         const isValid = resp?.valid === true;
-        // Use ID-based check to determine error message language
-        const message = hasMessageId(lastBotMessageIds, MESSAGE_IDS.MOBILE_PROMPT_HI)
-          ? "कृपया एक मान्य 10 अंकों का मोबाइल नंबर दर्ज करें।"
-          : resp?.message;
+        const message = resp?.message;
 
         if (!isValid) {
-          // Invalid CA Number: show error and stop flow
           setMessages((prev) => [
             ...prev,
             {
@@ -1417,6 +1524,14 @@ export default function HomePage() {
               timestamp: new Date(),
             },
           ]);
+          if (
+            message?.includes("Too many attempts") ||
+            message?.includes("बहुत अधिक प्रयास")
+          ) {
+            setDisableAllInputs(true);
+            setAwaitingVisuall(false);
+            triggerAutoMenuRedirect(message.includes("बहुत अधिक प्रयास"));
+          }
           return;
         }
 
@@ -1458,9 +1573,62 @@ export default function HomePage() {
       lastBotMessage?.includes("कृपया नया ईमेल आईडी दर्ज करें।") ||
       (lastBotMessage?.includes("कृपया अपना ईमेल आईडी दर्ज करें।") && !input.trim().includes("@"))
     ) {
+      // try {
+      //   let email = msg.trim();
+
+      //   setMessages((prev) => [
+      //     ...prev,
+      //     {
+      //       id: uuidv4(),
+      //       sender: "user",
+      //       text: email,
+      //       timestamp: new Date(),
+      //     },
+      //   ]);
+
+      //   const resp = await apiClient.post("/validate_email", {
+      //     sender_id: sender_id,
+      //     email: email,
+      //   }, { signal: getAbortSignal() });
+
+      //   const isValid = resp?.valid === true;
+      //   const message = isValid
+      //     ? "Email verified successfully."
+      //     : (languageToUse.includes("हिंदी")
+      //       ? "कृपया एक मान्य ईमेल दर्ज करें। शेष प्रयास: "
+      //       : "Please Enter Valid Email. Retries left: ") + emailCountDown;
+
+      //   if (!isValid) {
+      //     // Invalid Email: show error and stop flow
+      //     if (emailCountDown >= 1) setEmailCountDown((prev) => (prev > 0 ? prev - 1 : 0));
+      //     else setDisableAllInputs(true);
+      //     setMessages((prev) => [
+      //       ...prev,
+      //       {
+      //         id: uuidv4(),
+      //         sender: "bot",
+      //         text:
+      //           emailCountDown > 0
+      //             ? message
+      //             : languageToUse.includes("हिंदी")
+      //               ? "बहुत अधिक प्रयास हो गए हैं। कृपया होम बटन पर क्लिक करके पुनः शुरू करें।"
+      //               : "Too many attempts. Let's start over. Click home button to start over",
+      //         timestamp: new Date(),
+      //       },
+      //     ]);
+      //     return; // stop sending further
+      //   }
+
+      //   msg = "email verified";
+
+      //   setEmailValidation(false); // reset state
+      //   setEmailCountDown(2); // reset otp resend count
+      //   // return; // stop further default webhook send
+      // } 
+      
       try {
         let email = msg.trim();
-
+ 
         setMessages((prev) => [
           ...prev,
           {
@@ -1470,23 +1638,24 @@ export default function HomePage() {
             timestamp: new Date(),
           },
         ]);
-
+ 
         const resp = await apiClient.post("/validate_email", {
           sender_id: sender_id,
           email: email,
         }, { signal: getAbortSignal() });
-
+ 
         const isValid = resp?.valid === true;
         const message = isValid
           ? "Email verified successfully."
           : (languageToUse.includes("हिंदी")
             ? "कृपया एक मान्य ईमेल दर्ज करें। शेष प्रयास: "
             : "Please Enter Valid Email. Retries left: ") + emailCountDown;
-
+ 
         if (!isValid) {
           // Invalid Email: show error and stop flow
           if (emailCountDown >= 1) setEmailCountDown((prev) => (prev > 0 ? prev - 1 : 0));
           else setDisableAllInputs(true);
+          const emailIsHindi = languageToUse.includes("हिंदी");
           setMessages((prev) => [
             ...prev,
             {
@@ -1495,21 +1664,22 @@ export default function HomePage() {
               text:
                 emailCountDown > 0
                   ? message
-                  : languageToUse.includes("हिंदी")
+                  : emailIsHindi
                     ? "बहुत अधिक प्रयास हो गए हैं। कृपया होम बटन पर क्लिक करके पुनः शुरू करें।"
                     : "Too many attempts. Let's start over. Click home button to start over",
               timestamp: new Date(),
             },
           ]);
+          if (emailCountDown <= 0) triggerAutoMenuRedirect(emailIsHindi);
           return; // stop sending further
         }
-
+ 
         msg = "email verified";
-
+ 
         setEmailValidation(false); // reset state
         setEmailCountDown(2); // reset otp resend count
         // return; // stop further default webhook send
-      } catch (err) {
+      }catch (err) {
         // Ignore cancelled requests
         if (err.name === 'AbortError' || err.name === 'CanceledError') {
           console.log("Email validation request cancelled");
@@ -3113,8 +3283,12 @@ export default function HomePage() {
 
     const endpoint = isRegistered ? "/register_menu_run_flow" : "/menu_run_flow";
     setIsBotLoading(true);
+    const resetSnapshot = resetCounterRef.current;
     try {
       const res = await apiClient.post(endpoint, payload, { signal: getAbortSignal() });
+
+      // Discard response if home was clicked while request was in-flight
+      if (resetCounterRef.current !== resetSnapshot) return;
 
       const originalButtons = res.response.buttons;
 
@@ -3153,7 +3327,7 @@ export default function HomePage() {
       setShowProviderButton(false);
     } catch (error) {
       // Ignore cancelled requests
-      if (error.name === 'AbortError' || error.name === 'CanceledError') {
+      if (error.name === 'AbortError' || error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
         console.log("Menu language request cancelled");
         return;
       }
@@ -3255,6 +3429,27 @@ export default function HomePage() {
     }
   };
 
+
+  const triggerAutoMenuRedirect = (isHindi = false) => {
+    if (!typeOfUser) return;
+    const redirectMsg = isHindi
+      ? "5 सेकंड में मेनू पर पुनः निर्देशित किया जाएगा..."
+      : "You will be redirected to menu in 5 seconds...";
+    setMessages((prev) => [
+      ...prev,
+      { 
+        id: uuidv4(),
+        sender: "bot",
+        text: redirectMsg,
+        timestamp: new Date(),
+      },
+    ]);
+    menuRedirectTimerRef.current = setTimeout(() => {
+      menuRedirectTimerRef.current = null;
+      handleMenuRequest();
+    }, 5000);
+  };
+
   const handleMenuRequest = async () => {
     if (!(selectedLanguage && selectedUserType && selectedProvider)) {
       // Show validation message if required selections are missing
@@ -3307,6 +3502,8 @@ export default function HomePage() {
     setEmailCountDown(2);
     awaitingOrderIdRef.current = false;
     awaitingLanguageValidationRef.current = false;
+    awaitingOtpRef.current = false;
+    awaitingCaNumberRef.current = false;
 
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -3360,8 +3557,12 @@ export default function HomePage() {
     const endpoint = isRegistered ? "/register_menu_run_flow" : "/menu_run_flow";
 
     setIsBotLoading(true);
+    const resetSnapshot = resetCounterRef.current;
     try {
       const res = await apiClient.post(endpoint, payload, { signal: getAbortSignal() });
+
+      // Discard response if home was clicked while request was in-flight
+      if (resetCounterRef.current !== resetSnapshot) return;
 
       setAwaitingOrderId(false);
 
@@ -3398,7 +3599,7 @@ export default function HomePage() {
       setShowProviderButton(false);
     } catch (error) {
       // Ignore cancelled requests
-      if (error.name === 'AbortError' || error.name === 'CanceledError') {
+      if (error.name === 'AbortError' || error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
         console.log("Menu request cancelled");
         return;
       }

@@ -140,6 +140,7 @@ def get_order_status():
             print("Order Number Received 1:", order_number)
             retries_left, exceeded = _increment_order_id_retry(sender_id)
             if exceeded:
+                _reset_order_id_retry(sender_id)
                 return jsonify({
                     "valid": False,
                     "status": False,
@@ -214,6 +215,7 @@ def get_order_status():
         if response.status_code != 200:
             retries_left, exceeded = _increment_order_id_retry(sender_id)
             if exceeded:
+                _reset_order_id_retry(sender_id)
                 return jsonify({
                     "valid": False,
                     "status": False,

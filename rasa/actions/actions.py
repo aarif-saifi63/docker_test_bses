@@ -12,6 +12,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logging.getLogger("db.pool").setLevel(logging.INFO)
+logger = logging.getLogger(__name__)
 
 from typing import Any, Text, Dict, List
 from rasa_sdk import Action, Tracker
@@ -20,6 +21,7 @@ from rasa_sdk.events import SlotSet, UserUtteranceReverted, EventType
 from rasa_sdk.events import Restarted, ConversationPaused
 import json
 import requests
+import aiohttp
 import asyncio
 import redis
 from concurrent.futures import ThreadPoolExecutor
@@ -36,6 +38,21 @@ async def _run_in_executor(func, *args):
     """Run a blocking function in the BSES thread pool without blocking the event loop."""
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(_bses_executor, func, *args)
+
+async def _http_post(url, *, json=None, timeout=10):
+    """Async POST using aiohttp."""
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=json, timeout=aiohttp.ClientTimeout(total=timeout)) as resp:
+            resp.raise_for_status()
+            return await resp.json()
+
+async def _http_get(url, *, timeout=10):
+    """Async GET using aiohttp."""
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, timeout=aiohttp.ClientTimeout(total=timeout)) as resp:
+            resp.raise_for_status()
+            return await resp.json()
+
 from Model.session_model import Session
 from utils.helper import API_GetMeterReadingSchedule, area_outage, complaint_status, get_bill_history, get_order_status, get_outlet_data, get_payment_history, get_pdf_bill, get_visible_languages, insert_mobapp_data, is_prepaid_ca_valid, register_ncc, registration_ebill, send_otp, update_email_in_db, update_missing_email, validate_ca, validate_mobile
 
@@ -49,12 +66,9 @@ redis_client = redis.Redis(
     decode_responses=True
 )
 
-# FLASK_BASE_URL = "http://192.168.20.47:3000"
 FLASK_BASE_URL = os.getenv("BACKEND_URL")  
-# FLASK_BASE_URL = f"{os.getenv('BASE_URL')}:{os.getenv('BACKEND_PORT')}"
 
-
-def send_dynamic_messages(dispatcher, action_name, message_type, lang="en"):
+async def send_dynamic_messages(dispatcher, action_name, message_type, lang="en"):
     """
     Fetches utter messages dynamically from backend using action_name and language.
     """
@@ -62,19 +76,18 @@ def send_dynamic_messages(dispatcher, action_name, message_type, lang="en"):
         CACHE_KEY = f"utter_messages_cache:{message_type}:{lang}"
         cached = redis_client.get(CACHE_KEY)
         if cached:
+            logger.info(f"[CACHE HIT] send_dynamic_messages | key={CACHE_KEY} | action={action_name}")
             data = json.loads(cached)
         else:
+            logger.info(f"[CACHE MISS] send_dynamic_messages | key={CACHE_KEY} | action={action_name} | fetching from backend")
             # Without cache:
             # api_url = f"{FLASK_BASE_URL}/get_utter_messages?message_type={message_type}&lang={lang}"
             # response = requests.get(api_url, timeout=5)
             # response.raise_for_status()
             # data = response.json()
-            response = requests.get(f"{FLASK_BASE_URL}/get_utter_messages?message_type={message_type}&lang={lang}", timeout=5)
-            response.raise_for_status()
-            data = response.json()
+            data = await _http_get(f"{FLASK_BASE_URL}/get_utter_messages?message_type={message_type}&lang={lang}", timeout=5)
             redis_client.set(CACHE_KEY, json.dumps(data))
-
-        print(data, "================ send")
+            logger.info(f"[CACHE SET] send_dynamic_messages | key={CACHE_KEY} | action={action_name} | response cached")
 
         # Extract data from the correct key
         messages_data = data.get("data", [])
@@ -91,16 +104,14 @@ def send_dynamic_messages(dispatcher, action_name, message_type, lang="en"):
         dispatcher.utter_message(text=f"Unable to fetch messages for {action_name}. Error: something went wrong")
 
 
-def send_dynamic_messages_without_dispatcher(action_name, message_type, lang="en"):
+async def send_dynamic_messages_without_dispatcher(action_name, message_type, lang="en"):
     """
     Fetches a single utter message dynamically from backend using action_name and language.
     Returns the message text or a default message if none found.
     """
     try:
         api_url = f"{FLASK_BASE_URL}/get_utter_messages?message_type={message_type}&lang={lang}"
-        response = requests.get(api_url, timeout=5)
-        response.raise_for_status()
-        data = response.json()
+        data = await _http_get(api_url, timeout=5)
 
         # Extract the first message from the 'data' key
         messages_data = data.get("data", [])
@@ -205,7 +216,7 @@ class Language_type(Action):
     def name(self) -> Text:
         return "action_language"
     
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         CACHE_KEY = "visible_languages_cache"
         try:
             # Check Redis cache first; populated on first call, invalidated by admin on language change
@@ -213,8 +224,7 @@ class Language_type(Action):
             if cached:
                 data = json.loads(cached)
             else:
-                response = requests.get(f"{FLASK_BASE_URL}/visible-languages", timeout=(3, 10))
-                data = response.json()
+                data = await _http_get(f"{FLASK_BASE_URL}/visible-languages", timeout=10)
                 redis_client.set(CACHE_KEY, json.dumps(data))
 
             # Send the initial message
@@ -335,13 +345,13 @@ class Register_consumer_options_english(Action):
     def name(self) -> Text:
         return "action_register_consumer_options_english"
 
-    def run(
+    async def run(
         self,
         dispatcher: CollectingDispatcher,
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
-        
+
         user_id = 2  # Later from tracker slot
         CACHE_KEY = f"user_menus_cache:{user_id}"
         # api_url = f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}"
@@ -351,9 +361,7 @@ class Register_consumer_options_english(Action):
             if cached:
                 data = json.loads(cached)
             else:
-                response = requests.get(f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}", timeout=5)
-                response.raise_for_status()
-                data = response.json()
+                data = await _http_get(f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}", timeout=5)
                 redis_client.set(CACHE_KEY, json.dumps(data))
             # Without cache:
             # response = requests.get(api_url, timeout=5)
@@ -372,7 +380,7 @@ class Register_consumer_options_english(Action):
             #     text="Please select an option to continue. (You can click the Home icon or type 'Menu' or 'Hi' anytime to return to the main menu)"
             # )
 
-            send_dynamic_messages(dispatcher, "", "intro", lang="en")
+            await send_dynamic_messages(dispatcher, "", "intro", lang="en")
 
             text_lines = []
 
@@ -424,7 +432,7 @@ class Register_consumer_options_hindi(Action):
     def name(self) -> Text:
         return "action_register_consumer_options_hindi"
 
-    def run(
+    async def run(
         self,
         dispatcher: CollectingDispatcher,
         tracker: Tracker,
@@ -440,9 +448,7 @@ class Register_consumer_options_hindi(Action):
             if cached:
                 data = json.loads(cached)
             else:
-                response = requests.get(f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}", timeout=5)
-                response.raise_for_status()
-                data = response.json()
+                data = await _http_get(f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}", timeout=5)
                 redis_client.set(CACHE_KEY, json.dumps(data))
             # Without cache:
             # response = requests.get(api_url, timeout=5)
@@ -461,7 +467,7 @@ class Register_consumer_options_hindi(Action):
             #     text="कृपया जारी रखने के लिए एक विकल्प चुनें। (मुख्य मेनू पर लौटने के लिए आप किसी भी समय होम आइकन पर क्लिक कर सकते हैं या 'मेनू' या 'हाय' टाइप कर सकते हैं)"
             # )
 
-            send_dynamic_messages(dispatcher, "", "intro", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "intro", lang="hi")
 
             text_lines = []
 
@@ -506,7 +512,7 @@ class New_consumer_options_english(Action):
     def name(self) -> Text:
         return "action_new_consumer_options_english"
 
-    def run(
+    async def run(
         self,
         dispatcher: CollectingDispatcher,
         tracker: Tracker,
@@ -522,9 +528,7 @@ class New_consumer_options_english(Action):
             if cached:
                 data = json.loads(cached)
             else:
-                response = requests.get(f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}", timeout=5)
-                response.raise_for_status()
-                data = response.json()
+                data = await _http_get(f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}", timeout=5)
                 redis_client.set(CACHE_KEY, json.dumps(data))
             # Without cache:
             # response = requests.get(api_url, timeout=5)
@@ -543,7 +547,7 @@ class New_consumer_options_english(Action):
             #     text="Please select an option to continue. (You can click the Home icon or type 'Menu' or 'Hi' anytime to return to the main menu)"
             # )
 
-            send_dynamic_messages(dispatcher, "", "intro", lang="en")
+            await send_dynamic_messages(dispatcher, "", "intro", lang="en")
 
             # --- Build dynamic text for menus and submenus ---
             text_lines = []
@@ -639,7 +643,7 @@ class New_consumer_options_hindi(Action):
     def name(self) -> Text:
         return "action_new_consumer_options_hindi"
 
-    def run(
+    async def run(
         self,
         dispatcher: CollectingDispatcher,
         tracker: Tracker,
@@ -655,9 +659,7 @@ class New_consumer_options_hindi(Action):
             if cached:
                 data = json.loads(cached)
             else:
-                response = requests.get(f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}", timeout=5)
-                response.raise_for_status()
-                data = response.json()
+                data = await _http_get(f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}", timeout=5)
                 redis_client.set(CACHE_KEY, json.dumps(data))
             # Without cache:
             # response = requests.get(api_url, timeout=5)
@@ -676,7 +678,7 @@ class New_consumer_options_hindi(Action):
             #     text="कृपया जारी रखने के लिए एक विकल्प चुनें। (मुख्य मेनू पर लौटने के लिए आप किसी भी समय होम आइकन पर क्लिक कर सकते हैं या 'मेनू' या 'हाय' टाइप कर सकते हैं)"
             # )
 
-            send_dynamic_messages(dispatcher, "", "intro", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "intro", lang="hi")
 
             # --- Build dynamic Hindi menu text and icons ---
             text_lines = []
@@ -723,14 +725,14 @@ class New_Connection_Application_BRPL_english(Action):
     def name(self):
         return "action_new_connection_application_brpl_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
 #         dispatcher.utter_message(text="""Please click below to apply online or request for an appointment:
 
 # https://ncbrpl.bsesdelhi.com/BRPL/Login
 # """)
-        send_dynamic_messages(dispatcher, "", "new_connection_application", lang="en")
+        await send_dynamic_messages(dispatcher, "", "new_connection_application", lang="en")
         #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
         dispatcher.utter_message(text="Yes menu b")
         dispatcher.utter_message(text="No menu b")
         return [Restarted()]
@@ -739,13 +741,13 @@ class New_Connection_Application_BYPL_english(Action):
     def name(self):
         return "action_new_connection_application_bypl_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         dispatcher.utter_message(text="""Please click below to apply online or request for an appointment:
 
 https://ncbypl.bsesdelhi.com/BYPL/Login
 """)
         #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
         dispatcher.utter_message(text="Yes menu b")
         dispatcher.utter_message(text="No menu b")
 
@@ -755,14 +757,14 @@ class New_Connection_Application_BRPL_hindi(Action):
     def name(self):
         return "action_new_connection_application_brpl_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
 #         dispatcher.utter_message(text="""नए कनेक्शन के ऑनलाइन आवेदन या अपॉइंटमेंट करने के लिए कृपया नीचे क्लिक करें:
 
 # https://ncbrpl.bsesdelhi.com/BRPL/Login
 # """)
-        send_dynamic_messages(dispatcher, "", "new_connection_application", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "new_connection_application", lang="hi")
         #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
         dispatcher.utter_message(text="हाँ menu b")
         dispatcher.utter_message(text="नहीं menu b")
 
@@ -772,13 +774,13 @@ class New_Connection_Application_BYPL_hindi(Action):
     def name(self):
         return "action_new_connection_application_bypl_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         dispatcher.utter_message(text="""नए कनेक्शन के ऑनलाइन आवेदन या अपॉइंटमेंट  करने के लिए कृपया नीचे क्लिक करें:
 
 https://ncbypl.bsesdelhi.com/BYPL/Login
 """)
         #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
         dispatcher.utter_message(text="हाँ menu b")
         dispatcher.utter_message(text="नहीं menu b")
 
@@ -789,14 +791,14 @@ class Virtual_Customer_Care_BYPL_english(Action):
     def name(self):
         return "action_virtual_customer_care_bypl_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         dispatcher.utter_message(text="""Please click the link below to connect virtually with our customer care representative:
 
 https://byplws1.bsesdelhi.com:7096/Home/Index
 """)
         
         #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
         dispatcher.utter_message(text="Yes menu b")
         dispatcher.utter_message(text="No menu b")
 
@@ -806,15 +808,15 @@ class Virtual_Customer_Care_BRPL_english(Action):
     def name(self):
         return "action_virtual_customer_care_brpl_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
 #         dispatcher.utter_message(text="""Please click the link below to connect virtually with our customer care representative:
 
 # https://bsesbrpl.co.in:7874/zoom/
 # """)
 
-        send_dynamic_messages(dispatcher, "", "virtually_connect", lang="en")  
+        await send_dynamic_messages(dispatcher, "", "virtually_connect", lang="en")  
         #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
         dispatcher.utter_message(text="Yes menu b")
         dispatcher.utter_message(text="No menu b")
 
@@ -825,13 +827,13 @@ class Virtual_Customer_Care_BYPL_hindi(Action):
     def name(self):
         return "action_virtual_customer_care_bypl_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         dispatcher.utter_message(text="""कृपया हमारे ग्राहक सेवा प्रतिनिधि से वर्चुअली जुड़ने के लिए नीचे दिए गए लिंक पर क्लिक करें:
                                  
 https://byplws1.bsesdelhi.com:7096/Home/Index
 """)
         #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
         dispatcher.utter_message(text="हाँ menu b")
         dispatcher.utter_message(text="नहीं menu b")
 
@@ -853,14 +855,14 @@ class Virtual_Customer_Care_BYPL_hindi(Action):
     def name(self):
         return "action_virtual_customer_care_brpl_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
 #         dispatcher.utter_message(text="""कृपया हमारे ग्राहक सेवा प्रतिनिधि से वर्चुअली जुड़ने के लिए नीचे दिए गए लिंक पर क्लिक करें:
                                  
 # https://bsesbrpl.co.in:7874/zoom/
 # """)
-        send_dynamic_messages(dispatcher, "", "virtually_connect", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "virtually_connect", lang="hi")
         #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
         dispatcher.utter_message(text="हाँ menu b")
         dispatcher.utter_message(text="नहीं menu b")
         return [Restarted()]
@@ -877,8 +879,7 @@ class Prepaid_Meter_Recharge_english(Action):
 # https://www.bsesdelhi.com/web/brpl/prepaid-meter-recharge
 # """)
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
 
@@ -886,7 +887,7 @@ class Prepaid_Meter_Recharge_english(Action):
 
         print(ca_number, "===================== ca number prepaid meter recharge")
 
-        data = await _run_in_executor(is_prepaid_ca_valid, ca_number)
+        data = await is_prepaid_ca_valid(ca_number)
 
         print(data, "===================== prepaid meter recharge data")
 
@@ -894,15 +895,15 @@ class Prepaid_Meter_Recharge_english(Action):
 
         if data.get("status") == False:
             dispatcher.utter_message(text="This is not a prepaid CA number.")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
-        
+
         else:
-            send_dynamic_messages(dispatcher, "", "prepaid_meter_recharge", lang="en")
+            await send_dynamic_messages(dispatcher, "", "prepaid_meter_recharge", lang="en")
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
@@ -917,26 +918,25 @@ class Prepaid_Meter_Recharge_hindi(Action):
 # https://www.bsesdelhi.com/web/brpl/prepaid-meter-recharge
 # """)
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
 
         ca_number = extract_ca_number(ca)
 
-        data = await _run_in_executor(is_prepaid_ca_valid, ca_number)
+        data = await is_prepaid_ca_valid(ca_number)
 
         if data.get("status") == False:
             dispatcher.utter_message(text="यह प्रीपेड CA नंबर नहीं है।")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
-        
+
         else:
-            send_dynamic_messages(dispatcher, "", "prepaid_meter_recharge", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "prepaid_meter_recharge", lang="hi")
             #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
@@ -1143,7 +1143,7 @@ class ActionSendOTP(Action):
             return [SlotSet("retry_count", 0)]
         # response = requests.post(f"{FLASK_BASE_URL}/send_otp", json={"sender_id": sender_id})
         # data = response.json()
-        data = await _run_in_executor(send_otp, sender_id)
+        data = await send_otp(sender_id)
 
         if data.get("status") == "sent":
             dispatcher.utter_message(text="A 6-digit One-Time Password (OTP) has been sent to the registered mobile number.")
@@ -1370,9 +1370,9 @@ class ActionNewConnectionStatusEnglish(Action):
     def name(self):
         return "action_new_connection_status_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # dispatcher.utter_message(text="Please enter your Order ID. The Order ID starts with ‘8’, ‘AN’, or ‘ON’")
-        send_dynamic_messages(dispatcher, "", "new_connection_status_step_1", lang="en")
+        await send_dynamic_messages(dispatcher, "", "new_connection_status_step_1", lang="en")
         return []
 
 
@@ -1388,14 +1388,14 @@ class ActionGetConnectionStatus(Action):
     def name(self):
         return "action_get_connection_status"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         ord_id = tracker.latest_message.get("text")
 
         print(ord_id, " =============================== action_get_connection_status")
 
         if ord_id == "order verified BRPL" or ord_id == "ORDER VERIFIED BRPL":
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
@@ -1478,15 +1478,14 @@ class ActionUploadDocument(Action):
     def name(self):
         return "action_upload_document"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # Simulated file upload (in real case, handle file upload from frontend)
         order_id = tracker.get_slot("order_id")
         print(order_id, " =============================== action_upload_document")
-        response = requests.post(f"{FLASK_BASE_URL}/application/upload-doc", json={"order_id": order_id})
-
-        if response.status_code == 200:
+        try:
+            await _http_post(f"{FLASK_BASE_URL}/application/upload-doc", json={"order_id": order_id})
             dispatcher.utter_message(text="Document uploaded successfully.")
-        else:
+        except Exception:
             dispatcher.utter_message(text="Failed to upload document. Please try again.")
 
         dispatcher.utter_message(text="Thank you! Your application will be processed further.")
@@ -1498,9 +1497,9 @@ class ActionNewConnectionStatusHindi(Action):
     def name(self):
         return "action_new_connection_status_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # dispatcher.utter_message(text="कृपया अपना ऑर्डर आईडी दर्ज करें। आपका ऑर्डर आईडी '8', 'AN' या 'ON' से शुरू होता है।")
-        send_dynamic_messages(dispatcher, "", "new_connection_status_step_1", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "new_connection_status_step_1", lang="hi")
         return []
 
 
@@ -1508,12 +1507,12 @@ class ActionGetConnectionStatusHindi(Action):
     def name(self):
         return "action_get_connection_status_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         ord_id = tracker.latest_message.get("text")
 
         if ord_id == "order verified BRPL" or ord_id == "ORDER VERIFIED BRPL":
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
@@ -1591,15 +1590,14 @@ class ActionUploadDocumentHindi(Action):
     def name(self):
         return "action_upload_document_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # Simulated file upload (in real case, handle file upload from frontend)
         order_id = tracker.get_slot("order_id")
         print(order_id, " =============================== action_upload_document_hindi")
-        response = requests.post(f"{FLASK_BASE_URL}/application/upload-doc", json={"order_id": order_id})
-
-        if response.status_code == 200:
+        try:
+            await _http_post(f"{FLASK_BASE_URL}/application/upload-doc", json={"order_id": order_id})
             dispatcher.utter_message(text="दस्तावेज़ सफलतापूर्वक अपलोड हो गया है।")
-        else:
+        except Exception:
             dispatcher.utter_message(text="दस्तावेज़ अपलोड करने में विफल रहा। कृपया पुनः प्रयास करें।")
 
         dispatcher.utter_message(text="धन्यवाद! आपका आवेदन आगे की प्रक्रिया के लिए भेज दिया गया है।")
@@ -1612,12 +1610,11 @@ class New_consumer_faqs_brpl_english(Action):
     def name(self):
         return "action_new_consumer_faqs_brpl_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
 
         # Fetch CA number from your database or API
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
 
@@ -1642,10 +1639,10 @@ class New_consumer_faqs_brpl_english(Action):
     #         dispatcher.utter_message(text="""4. To submit a request for changes to your existing connection—such as name change, load change, or category change—please click the link provided below:
     # https://ncbrpl.bsesdelhi.com/BRPL/ChangeRequestLogin""")
 
-            send_dynamic_messages(dispatcher, "", "faqs_new", lang="en")
+            await send_dynamic_messages(dispatcher, "", "faqs_new", lang="en")
             
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
 
@@ -1673,7 +1670,7 @@ class New_consumer_faqs_brpl_english(Action):
     https://ncbrpl.bsesdelhi.com/BRPL/ChangeRequestLogin""")
             
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
 
@@ -1684,12 +1681,11 @@ class New_consumer_faqs_brpl_hindi(Action):
     def name(self):
         return "action_new_consumer_faqs_brpl_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
 
         # Fetch CA number from your database or API
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
 
@@ -1712,10 +1708,10 @@ class New_consumer_faqs_brpl_hindi(Action):
     #         dispatcher.utter_message(text="""4. अपने मौजूदा कनेक्शन में परिवर्तन के लिए अनुरोध सबमिट करने के लिए - जैसे नाम परिवर्तन, लोड परिवर्तन, या श्रेणी परिवर्तन - कृपया नीचे दिए गए लिंक पर क्लिक करें:
     # https://ncbrpl.bsesdelhi.com/BRPL/ChangeRequestLogin""")
 
-            send_dynamic_messages(dispatcher, "", "faqs_new", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "faqs_new", lang="hi")
             
             #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
 
@@ -1743,7 +1739,7 @@ class New_consumer_faqs_brpl_hindi(Action):
     https://ncbrpl.bsesdelhi.com/BRPL/ChangeRequestLogin""")
             
             #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
 
@@ -1754,7 +1750,7 @@ class New_consumer_faqs_bypl_english(Action):
     def name(self):
         return "action_new_consumer_faqs_bypl_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         dispatcher.utter_message(text="""1. Mobile App (Android & iOS) b""")
         dispatcher.utter_message(text="""1. BSES Yamuna power Ltd offers a range of services through its official mobile app, “BYPL Connect,” available on both Google Play Store and Apple/iOS App Store. The app enables you to easily view and pay your electricity bills, monitor your consumption, manage your account , register complaint and much more.     
 Download on Google Play Store: https://play.google.com/store/apps/details?id=com.bses.bypl.prod 
@@ -1773,7 +1769,7 @@ https://ncbypl.bsesdelhi.com/BYPL/Login""")
 https://ncbypl.bsesdelhi.com/BYPL/ChangeRequestLogin""")
 
         #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
         dispatcher.utter_message(text="Yes menu b")
         dispatcher.utter_message(text="No menu b")
 
@@ -1784,7 +1780,7 @@ class New_consumer_faqs_bypl_hindi(Action):
     def name(self):
         return "action_new_consumer_faqs_bypl_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         dispatcher.utter_message(text="""1. मोबाइल ऐप (Android और iOS) b""")
         dispatcher.utter_message(text="""1. बीएसईएस यमुना पावर लिमिटेड अपने आधिकारिक मोबाइल ऐप “BYPL Connect” के माध्यम से विभिन्न सेवाएं प्रदान करता है, जो गूगल प्ले स्टोर और एप्पल/आईओएस ऐप स्टोर दोनों पर उपलब्ध है। इस ऐप के माध्यम से आप आसानी से अपनी बिजली बिल देख और भुगतान कर सकते हैं, अपनी खपत की निगरानी कर सकते हैं, अपने खाते का प्रबंधन कर सकते हैं, शिकायत दर्ज कर सकते हैं और बहुत कुछ कर सकते हैं।
 Google Play Store से डाउनलोड करें: https://play.google.com/store/apps/details?id=com.bses.bypl.prod 
@@ -1803,7 +1799,7 @@ https://ncbypl.bsesdelhi.com/BYPL/Login""")
 https://ncbypl.bsesdelhi.com/BYPL/ChangeRequestLogin""")
         
         #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
         dispatcher.utter_message(text="हाँ menu b")
         dispatcher.utter_message(text="नहीं menu b")
 
@@ -1828,7 +1824,7 @@ class Change_Language_module(Action):
     def name(self) -> Text:
         return "action_change_language"
     
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         CACHE_KEY = "visible_languages_cache"
         try:
             # Check Redis cache first; invalidated by admin on language change
@@ -1836,12 +1832,11 @@ class Change_Language_module(Action):
             if cached:
                 data = json.loads(cached)
             else:
-                response = requests.get(f"{FLASK_BASE_URL}/visible-languages", timeout=(3, 10))
-                data = response.json()
+                data = await _http_get(f"{FLASK_BASE_URL}/visible-languages", timeout=10)
                 redis_client.set(CACHE_KEY, json.dumps(data))
 
-            send_dynamic_messages(dispatcher, "", "change_language_en", lang="en")
-            send_dynamic_messages(dispatcher, "", "change_language_hi", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "change_language_en", lang="en")
+            await send_dynamic_messages(dispatcher, "", "change_language_hi", lang="hi")
 
             if data.get("status") and data.get("data"):
                 for lang in data["data"]:
@@ -1862,9 +1857,9 @@ class Visually_Impaired_module_english(Action):
     def name(self) -> Text:
         return "action_visually_impaired_english"
     
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # dispatcher.utter_message(text="Please enter your 10-digit valid mobile number to receive a call back for further assistance.")
-        send_dynamic_messages(dispatcher, "", "visually_impaired_step_1", lang="en")
+        await send_dynamic_messages(dispatcher, "", "visually_impaired_step_1", lang="en")
         return []
 
 
@@ -1879,13 +1874,13 @@ class ActionGetMobile_english(Action):
     def name(self) -> Text:
         return "action_validate_mobile_number_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         mo_number = tracker.latest_message.get('text')
         sender_id = tracker.sender_id
 
         if mo_number == "mobile verified BRPL" or mo_number == "MOBILE VERIFIED BRPL":
             # dispatcher.utter_message(text="A 6-digit One-Time Password (OTP) has been sent to the provided mobile number.")
-            send_dynamic_messages(dispatcher, "", "visually_impaired_step_2", lang="en")
+            await send_dynamic_messages(dispatcher, "", "visually_impaired_step_2", lang="en")
             return []
     
 # class ActionGetMobile_english(Action):
@@ -1933,15 +1928,14 @@ class Visually_Impaired_module_final_english(Action):
     def name(self) -> Text:
         return "action_visually_impaired_final_english"
     
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
 
-        response = requests.post(f"{FLASK_BASE_URL}/get_session_data", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_session_data", json={"sender_id": sender_id})
 
         tel_no = data.get("tel_no")
 
-        data2 = insert_mobapp_data(tel_no, language="English")
+        data2 = await insert_mobapp_data(tel_no, language="English")
 
         # response2 = requests.post(f"{FLASK_BASE_URL}/alert_mobapp_data", json={"MobileNo": tel_no})
         # data2 = response2.json()
@@ -1949,9 +1943,9 @@ class Visually_Impaired_module_final_english(Action):
         if(data2.get('status') == True):
             # dispatcher.utter_message(text="Your request number has been successfully registered. Our helpdesk team will contact you shortly.")
             dispatcher.utter_message(text=f"Request Number: {data2.get('request_number')}")
-            send_dynamic_messages(dispatcher, "", "visually_impaired_step_3", lang="en")
+            await send_dynamic_messages(dispatcher, "", "visually_impaired_step_3", lang="en")
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
@@ -1960,7 +1954,7 @@ class Visually_Impaired_module_final_english(Action):
             dispatcher.utter_message(text="Sorry, Having issues in visually impaired service. Try after sometime.")
         
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
@@ -1970,10 +1964,10 @@ class Visually_Impaired_module_hindi(Action):
     def name(self) -> Text:
         return "action_visually_impaired_hindi"
     
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         # dispatcher.utter_message(text="कॉलबैक प्राप्त करने और आगे की सहायता के लिए कृपया अपना वैध 10 अंकों वाला मोबाइल नंबर दर्ज करें।")
-        send_dynamic_messages(dispatcher, "", "visually_impaired_step_1", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "visually_impaired_step_1", lang="hi")
         return []
 
 
@@ -1981,13 +1975,13 @@ class ActionGetMobile_hindi(Action):
     def name(self) -> Text:
         return "action_validate_mobile_number_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         mo_number = tracker.latest_message.get('text')
         sender_id = tracker.sender_id
 
         if mo_number == "mobile verified BRPL" or mo_number == "MOBILE VERIFIED BRPL":
             # dispatcher.utter_message(text="आपके द्वारा दर्ज किए गए मोबाइल नंबर पर एक ओटीपी भेजा गया है।")
-            send_dynamic_messages(dispatcher, "", "visually_impaired_step_2", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "visually_impaired_step_2", lang="hi")
             return []
 
 
@@ -1996,15 +1990,14 @@ class Visually_Impaired_module_final_hindi(Action):
     def name(self) -> Text:
         return "action_visually_impaired_final_hindi"
     
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
 
-        response = requests.post(f"{FLASK_BASE_URL}/get_session_data", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_session_data", json={"sender_id": sender_id})
 
         tel_no = data.get("tel_no")
 
-        data2 = insert_mobapp_data(tel_no, language="Hindi")
+        data2 = await insert_mobapp_data(tel_no, language="Hindi")
 
         # response2 = requests.post(f"{FLASK_BASE_URL}/alert_mobapp_data", json={"MobileNo": tel_no})
         # data2 = response2.json()
@@ -2014,7 +2007,7 @@ class Visually_Impaired_module_final_hindi(Action):
             dispatcher.utter_message(text=f"{data2.get('message')}")
 
             #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
@@ -2023,7 +2016,7 @@ class Visually_Impaired_module_final_hindi(Action):
             dispatcher.utter_message(text="क्षमा करें, दृष्टिबाधित सेवा में समस्या आ रही है। कृपया कुछ समय बाद पुनः प्रयास करें।")
 
             #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
@@ -2037,14 +2030,13 @@ class Meter_Reading_Schedule_english(Action):
 
     async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
 
         ca_number = extract_ca_number(ca)
 
-        data2 = await _run_in_executor(API_GetMeterReadingSchedule, ca_number)
+        data2 = await API_GetMeterReadingSchedule(ca_number)
 
         # reading_data = requests.post(f"{FLASK_BASE_URL}/meter_reading", json={"ca_number": ca_number})
         # data2 = reading_data.json()
@@ -2053,14 +2045,14 @@ class Meter_Reading_Schedule_english(Action):
             # dispatcher.utter_message(text="Your meter reading schedule is as follows:")
             dispatcher.utter_message(text=f"{data2.get('message')}")
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
         else:
             dispatcher.utter_message(text="Sorry, Having issues in meter reading schedule service. Try after sometime.")
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
@@ -2073,14 +2065,13 @@ class Meter_Reading_Schedule_hindi(Action):
 
     async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
 
         ca_number = extract_ca_number(ca)
 
-        data2 = await _run_in_executor(API_GetMeterReadingSchedule, ca_number)
+        data2 = await API_GetMeterReadingSchedule(ca_number)
 
         # reading_data = requests.post(f"{FLASK_BASE_URL}/meter_reading", json={"ca_number": ca_number})
         # data2 = reading_data.json()
@@ -2089,14 +2080,14 @@ class Meter_Reading_Schedule_hindi(Action):
             # dispatcher.utter_message(text="आपका मीटर रीडिंग शेड्यूल निम्नलिखित है:")
             dispatcher.utter_message(text=f"{data2.get('message')}")
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
         else:
             dispatcher.utter_message(text="क्षमा करें, मीटर रीडिंग शेड्यूल सेवा में समस्या आ रही है। कृपया कुछ समय बाद पुनः प्रयास करें।")
             #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
@@ -2108,9 +2099,9 @@ class Check_for_ca_number_module_english(Action):
     def name(self) -> Text:
         return "action_check_for_ca_number_english"
     
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # dispatcher.utter_message(text="Please enter new CA number")
-        send_dynamic_messages(dispatcher, "", "select_another_ca_step_1", lang="en")
+        await send_dynamic_messages(dispatcher, "", "select_another_ca_step_1", lang="en")
         return []
     
 
@@ -2118,7 +2109,7 @@ class ActionValidateOTPCANumber(Action):
     def name(self):
         return "action_validate_ca_number_otp"
 
-    def run(self, dispatcher, tracker, domain) -> list[EventType]:    
+    async def run(self, dispatcher, tracker, domain) -> list[EventType]:    
         otp = tracker.latest_message.get('text')
 
         print(otp, "========================================== register otp")
@@ -2129,7 +2120,7 @@ class ActionValidateOTPCANumber(Action):
         
         if otp == "otp verified BRPL" or otp == "OTP VERIFIED BYPL":
             # dispatcher.utter_message(text="OTP validated for new CA number successfully")
-            send_dynamic_messages(dispatcher, "", "select_another_ca_step_2", lang="en")
+            await send_dynamic_messages(dispatcher, "", "select_another_ca_step_2", lang="en")
             return [Restarted()]
         
     
@@ -2180,9 +2171,9 @@ class Check_for_ca_number_module_hindi(Action):
     def name(self) -> Text:
         return "action_check_for_ca_number_hindi"
     
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # dispatcher.utter_message(text="कृपया नया CA नंबर दर्ज करें।")
-        send_dynamic_messages(dispatcher, "", "select_another_ca_step_1", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "select_another_ca_step_1", lang="hi")
         return []
 
 
@@ -2190,7 +2181,7 @@ class ActionValidateOTPCANumberHindi(Action):
     def name(self):
         return "action_validate_ca_number_otp_hindi"
 
-    def run(self, dispatcher, tracker, domain) -> list[EventType]:
+    async def run(self, dispatcher, tracker, domain) -> list[EventType]:
         otp = tracker.latest_message.get('text')
 
         print(otp, "========================================== register otp")
@@ -2200,7 +2191,7 @@ class ActionValidateOTPCANumberHindi(Action):
             # return [SlotSet("retry_count", 0)]
         
         if otp == "otp verified BRPL" or otp == "OTP VERIFIED BYPL":
-            send_dynamic_messages(dispatcher, "", "select_another_ca_step_2", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "select_another_ca_step_2", lang="hi")
             return [Restarted()]
 
         # otp = tracker.latest_message.get('text')
@@ -2252,14 +2243,13 @@ class payment_history_module_english(Action):
 
     async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
         # ca_number = "123456789"
 
-        data2 = await _run_in_executor(get_payment_history, ca_number)
+        data2 = await get_payment_history(ca_number)
 
         # reading_data = requests.post(f"{FLASK_BASE_URL}/get_payment_history", json={"ca_number": ca_number})
         # data2 = reading_data.json()
@@ -2269,7 +2259,7 @@ class payment_history_module_english(Action):
         if data2.get('status') == False:
             dispatcher.utter_message(text="Sorry, Having issues to fetch your payment history right now. Try after sometime.")
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
@@ -2285,7 +2275,7 @@ class payment_history_module_english(Action):
                         if isinstance(data2, dict) else "No payment history available at the moment."
                 dispatcher.utter_message(text="No Payment history found for the provided CA number. Please try again later.")
                 #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-                send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+                await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
                 dispatcher.utter_message(text="Yes menu b")
                 dispatcher.utter_message(text="No menu b")
                 return [Restarted()]
@@ -2315,7 +2305,7 @@ class payment_history_module_english(Action):
                 dispatcher.utter_message(text=message)
 
                 #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
 
@@ -2327,13 +2317,12 @@ class payment_history_module_hindi(Action):
 
     async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
 
-        data2 = await _run_in_executor(get_payment_history, ca_number)
+        data2 = await get_payment_history(ca_number)
 
         # reading_data = requests.post(f"{FLASK_BASE_URL}/get_payment_history", json={"ca_number": ca_number})
         # data2 = reading_data.json()
@@ -2341,7 +2330,7 @@ class payment_history_module_hindi(Action):
         if data2.get('status') == False:
             dispatcher.utter_message(text="क्षमा करें, अभी आपकी भुगतान हिस्ट्री प्राप्त करने में समस्या आ रही है। कृपया कुछ समय बाद पुनः प्रयास करें।")
             #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
@@ -2357,7 +2346,7 @@ class payment_history_module_hindi(Action):
                 dispatcher.utter_message(text="प्रदान किए गए CA नंबर के लिए कोई भुगतान इतिहास नहीं मिला। कृपया बाद में पुनः प्रयास करें।")
                 
                 #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-                send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+                await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
                 dispatcher.utter_message(text="हाँ menu b")
                 dispatcher.utter_message(text="नहीं menu b")
                 return [Restarted()]
@@ -2387,7 +2376,7 @@ class payment_history_module_hindi(Action):
                 dispatcher.utter_message(text=message)
 
                 #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
 
@@ -2402,14 +2391,13 @@ class bill_history_module_english(Action):
 
     async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
         # ca_number = "123456789"
 
-        data2 = await _run_in_executor(get_bill_history, ca_number)
+        data2 = await get_bill_history(ca_number)
 
         # reading_data = requests.post(f"{FLASK_BASE_URL}/get_bill_history", json={"ca_number": ca_number})
         # data2 = reading_data.json()
@@ -2417,7 +2405,7 @@ class bill_history_module_english(Action):
         if data2.get("status") == False:
             dispatcher.utter_message(text="Sorry, Having issues to fetch your bill history right now. Try after sometime.")
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
@@ -2433,7 +2421,7 @@ class bill_history_module_english(Action):
                         if isinstance(data2, dict) else "No payment history available at the moment."
                 dispatcher.utter_message(text="No Payment history found for the provided CA number. Please try again later.")
                 #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-                send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+                await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
                 dispatcher.utter_message(text="Yes menu b")
                 dispatcher.utter_message(text="No menu b")
                 return [Restarted()]
@@ -2473,7 +2461,7 @@ class bill_history_module_english(Action):
                 dispatcher.utter_message(text=message)
 
                 #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
 
@@ -2485,13 +2473,12 @@ class bill_history_module_hindi(Action):
 
     async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
 
-        data2 = await _run_in_executor(get_bill_history, ca_number)
+        data2 = await get_bill_history(ca_number)
 
         # reading_data = requests.post(f"{FLASK_BASE_URL}/get_bill_history", json={"ca_number": ca_number})
         # data2 = reading_data.json()
@@ -2499,7 +2486,7 @@ class bill_history_module_hindi(Action):
         if data2.get("status") == False:
             dispatcher.utter_message(text="क्षमा करें, अभी आपकी बिल हिस्ट्री प्राप्त करने में समस्या आ रही है। कृपया कुछ समय बाद पुनः प्रयास करें।")           
             #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
@@ -2516,7 +2503,7 @@ class bill_history_module_hindi(Action):
                 dispatcher.utter_message(text="प्रदान किए गए CA नंबर के लिए कोई भुगतान इतिहास नहीं मिला। कृपया बाद में पुनः प्रयास करें।")
                 
                 #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-                send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+                await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
                 dispatcher.utter_message(text="हाँ menu b")
                 dispatcher.utter_message(text="नहीं menu b")
                 return [Restarted()]
@@ -2556,7 +2543,7 @@ class bill_history_module_hindi(Action):
                 dispatcher.utter_message(text=message)
 
                 #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
 
@@ -2598,14 +2585,13 @@ class payment_status_module_english(Action):
 
     async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
         # ca_number = "123456789"
 
-        data2 = await _run_in_executor(get_payment_history, ca_number)
+        data2 = await get_payment_history(ca_number)
 
         # reading_data = requests.post(f"{FLASK_BASE_URL}/get_payment_history", json={"ca_number": ca_number})
         # data2 = reading_data.json()
@@ -2615,7 +2601,7 @@ class payment_status_module_english(Action):
         if data2.get('status') == False:
             dispatcher.utter_message(text="Sorry, Having issues to fetch your payment status right now. Try after sometime.")
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
@@ -2631,7 +2617,7 @@ class payment_status_module_english(Action):
                         if isinstance(data2, dict) else "No payment status available at the moment."
                 dispatcher.utter_message(text="No Payment status found for the provided CA number.")
                 #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-                send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+                await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
                 dispatcher.utter_message(text="Yes menu b")
                 dispatcher.utter_message(text="No menu b")
                 return [Restarted()]
@@ -2698,7 +2684,7 @@ class payment_status_module_english(Action):
                 break
 
                 #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
 
@@ -2733,13 +2719,12 @@ class payment_status_module_hindi(Action):
 
     async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
 
-        data2 = await _run_in_executor(get_payment_history, ca_number)
+        data2 = await get_payment_history(ca_number)
 
         # reading_data = requests.post(f"{FLASK_BASE_URL}/get_payment_history", json={"ca_number": ca_number})
         # data2 = reading_data.json()
@@ -2748,7 +2733,7 @@ class payment_status_module_hindi(Action):
 
         if data2.get('status') == False:
             dispatcher.utter_message(text="माफ़ कीजिए, इस समय आपके भुगतान की स्थिति प्राप्त करने में समस्या हो रही है। कृपया कुछ समय बाद पुनः प्रयास करें।")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
@@ -2760,7 +2745,7 @@ class payment_status_module_hindi(Action):
                 message = data2.get("message", "इस समय कोई भुगतान स्थिति उपलब्ध नहीं है।") \
                         if isinstance(data2, dict) else "इस समय कोई भुगतान स्थिति उपलब्ध नहीं है।"
                 dispatcher.utter_message(text="प्रदान किए गए CA नंबर के लिए कोई भुगतान स्थिति नहीं मिली।")
-                send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+                await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
                 dispatcher.utter_message(text="हाँ menu b")
                 dispatcher.utter_message(text="नहीं menu b")
                 return [Restarted()]
@@ -2824,7 +2809,7 @@ class payment_status_module_hindi(Action):
 
                 break
 
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
 
@@ -2840,14 +2825,13 @@ class consumption_history_module_english(Action):
 
     async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
         # ca_number = "123456789"
 
-        data2 = await _run_in_executor(get_pdf_bill, ca_number)
+        data2 = await get_pdf_bill(ca_number)
 
         # reading_data = requests.post(f"{FLASK_BASE_URL}/get_consumption_history_pdf", json={"ca_number": ca_number})
         # data2 = reading_data.json()
@@ -2859,12 +2843,12 @@ class consumption_history_module_english(Action):
                 dispatcher.utter_message(text=f'{data2.get("message")}')
             else:
                 # dispatcher.utter_message(text=f"Here is the link of your consumption history: {data2.get('message')}")
-                dispatcher.utter_message(text=f'{send_dynamic_messages_without_dispatcher("", "consumption_history", lang="en")} {data2.get("message")}')
+                dispatcher.utter_message(text=f'{await send_dynamic_messages_without_dispatcher("", "consumption_history", lang="en")} {data2.get("message")}')
         else:
             dispatcher.utter_message(text="Sorry, currently having trouble to fetch your consumption history. Please try after some time.")
 
         #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
         dispatcher.utter_message(text="Yes menu b")
         dispatcher.utter_message(text="No menu b")
 
@@ -2878,13 +2862,12 @@ class consumption_history_module_hindi(Action):
 
     async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
 
-        data2 = await _run_in_executor(get_pdf_bill, ca_number)
+        data2 = await get_pdf_bill(ca_number)
 
         # reading_data = requests.post(f"{FLASK_BASE_URL}/get_consumption_history_pdf", json={"ca_number": ca_number})
         # data2 = reading_data.json()
@@ -2894,12 +2877,12 @@ class consumption_history_module_hindi(Action):
                 dispatcher.utter_message(text=f'CA नंबर {ca_number} के लिए विवरण उपलब्ध नहीं है। कृपया हमें 19123 (टोल-फ्री) पर कॉल करें या brpl.customercare@relianceada.com पर हमें लिखें। धन्यवाद।')
             else:
                 # dispatcher.utter_message(text=f"यह रहा आपके उपभोग इतिहास का लिंक: {data2.get('message')}")
-                dispatcher.utter_message(text=f'{send_dynamic_messages_without_dispatcher("", "consumption_history", lang="hi")} {data2.get("message")}')
+                dispatcher.utter_message(text=f'{await send_dynamic_messages_without_dispatcher("", "consumption_history", lang="hi")} {data2.get("message")}')
         else:
             dispatcher.utter_message(text="क्षमा करें, अभी आपकी खपत का इतिहास प्राप्त करने में समस्या हो रही है। कृपया कुछ समय बाद पुनः प्रयास करें।" )
 
         #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
         dispatcher.utter_message(text="हाँ menu b")
         dispatcher.utter_message(text="नहीं menu b")
 
@@ -2913,11 +2896,11 @@ class streetlight_complaint_module_english(Action):
     def name(self) -> Text:
         return "action_streetlight_complaint_english"
     
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # dispatcher.utter_message(text="Register your complain here: https://www.bsesdelhi.com/web/brpl/street-light-complaint")
-        send_dynamic_messages(dispatcher, "", "streetlight_complaint", lang="en")
+        await send_dynamic_messages(dispatcher, "", "streetlight_complaint", lang="en")
         #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
         dispatcher.utter_message(text="Yes menu b")
         dispatcher.utter_message(text="No menu b")
         return [Restarted()]
@@ -2927,12 +2910,12 @@ class streetlight_complaint_module_hindi(Action):
     def name(self) -> Text:
         return "action_streetlight_complaint_hindi"
     
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # dispatcher.utter_message(text="अपनी स्ट्रीट लाइट की शिकायत यहां दर्ज करें: https://www.bsesdelhi.com/web/brpl/street-light-complaint")
-        send_dynamic_messages(dispatcher, "", "streetlight_complaint", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "streetlight_complaint", lang="hi")
         
         #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
         dispatcher.utter_message(text="हाँ menu b")
         dispatcher.utter_message(text="नहीं menu b")
         return [Restarted()]
@@ -2944,20 +2927,20 @@ class branches_nearby_module_english(Action):
     def name(self) -> Text:
         return "action_branches_nearby_english"
     
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # dispatcher.utter_message(text="What centres would you like me to locate?")
-        send_dynamic_messages(dispatcher, "", "branch_nearby_step_1", lang="en")
+        await send_dynamic_messages(dispatcher, "", "branch_nearby_step_1", lang="en")
         dispatcher.utter_message(text="Payment Centres b")
-        dispatcher.utter_message(text="Complaint Centres b")
+        dispatcher.utter_message(text="Bijli Vitran Sewa Kendra(Complaint Centres) b")
         return []
     
 class branches_module_english(Action):
     def name(self) -> Text:
         return "action_branches_payment_centres_english"
     
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # dispatcher.utter_message(text="Share your live location or type your address manually")
-        send_dynamic_messages(dispatcher, "", "branch_nearby_step_2", lang="en")
+        await send_dynamic_messages(dispatcher, "", "branch_nearby_step_2", lang="en")
         dispatcher.utter_message(text="Share Live Location b")
         # dispatcher.utter_message(text="Type address b")
         return []
@@ -3070,12 +3053,12 @@ class branches_lang_long_module(Action):
             #     json={"latitude": latitude, "longitude": longitude, "filter_code": filter_code}
             # )
             # data = response.json()
-            data = await _run_in_executor(get_outlet_data, latitude, longitude, filter_code)
+            data = await get_outlet_data(latitude, longitude, filter_code)
         except Exception as e:
             dispatcher.utter_message(text="Error locating nearby branches. Please share your location again.")
             print("Exception:", e)
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
@@ -3115,7 +3098,7 @@ class branches_lang_long_module(Action):
                 text="The location provided by you is not within the BRPL serviceable area."
                     # "You can try sharing a nearby landmark or pin location for better results."
             )
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
@@ -3148,7 +3131,7 @@ class branches_lang_long_module(Action):
         dispatcher.utter_message(text=final_message)
 
         #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
         dispatcher.utter_message(text="Yes menu b")
         dispatcher.utter_message(text="No menu b")
         return [Restarted()]
@@ -3159,11 +3142,11 @@ class branches_nearby_module_hindi(Action):
     def name(self) -> Text:
         return "action_branches_nearby_hindi"
     
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # dispatcher.utter_message(text="आप किस प्रकार के केंद्र का पता लगाना चाहेंगे?")
-        send_dynamic_messages(dispatcher, "", "branch_nearby_step_1", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "branch_nearby_step_1", lang="hi")
         dispatcher.utter_message(text="भुगतान केंद्र b")
-        dispatcher.utter_message(text="शिकायत केंद्र b")
+        dispatcher.utter_message(text="बिजली वितरण सेवा केंद्र(शिकायत केंद्र) b")
         return []
     
 
@@ -3171,9 +3154,9 @@ class branches_module_hindi(Action):
     def name(self) -> Text:
         return "action_branches_payment_centres_hindi"
     
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # dispatcher.utter_message(text="अपना लाइव लोकेशन साझा करें या अपना पता मैन्युअली टाइप करें")
-        send_dynamic_messages(dispatcher, "", "branch_nearby_step_2", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "branch_nearby_step_2", lang="hi")
         dispatcher.utter_message(text="लाइव लोकेशन साझा करें b")
         return []
 
@@ -3192,13 +3175,13 @@ class branches_lang_long_module_hindi(Action):
             #     json={"latitude": latitude, "longitude": longitude, "filter_code": filter_code}
             # )
             # data = response.json()
-            data = await _run_in_executor(get_outlet_data, latitude, longitude, filter_code)
+            data = await get_outlet_data(latitude, longitude, filter_code)
         except Exception as e:
             dispatcher.utter_message(text="निकटतम शाखाओं का पता लगाने में त्रुटि हुई। कृपया अपना लोकेशन फिर से साझा करें।")
             print("Exception:", e)
             
             #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
@@ -3224,7 +3207,7 @@ class branches_lang_long_module_hindi(Action):
                 text="आपके द्वारा साझा किया गया स्थान BRPL की सेवा क्षेत्र में नहीं आता है।"
                 # "आप पास के किसी लैंडमार्क या पिन लोकेशन को साझा करके दोबारा प्रयास कर सकते हैं।"
             )
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
@@ -3258,7 +3241,7 @@ class branches_lang_long_module_hindi(Action):
         dispatcher.utter_message(text=final_message)
 
         #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
         dispatcher.utter_message(text="हाँ menu b")
         dispatcher.utter_message(text="नहीं menu b")
         return [Restarted()]
@@ -3271,12 +3254,11 @@ class Opt_For_Ebill_english(Action):
     def name(self):
         return "action_opt_for_ebill_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
 
         print("action_opt_for_ebill_english ==================================== ")
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_session_data", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_session_data", json={"sender_id": sender_id})
 
         email = data.get("email")
 
@@ -3317,7 +3299,7 @@ class Opt_For_Ebill_Email_english(Action):
     def name(self):
         return "action_opt_for_ebill_email_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         email_text = tracker.latest_message.get('text')
         
@@ -3335,7 +3317,7 @@ class Opt_For_Ebill_Email_english(Action):
         else:
             dispatcher.utter_message(text="Opt for E-bill service is unavailable right now. Try after some time.")
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
@@ -3400,12 +3382,11 @@ class Opt_For_Ebill_Email_Registration_Yes_english(Action):
 
     async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca_number = data.get("ca_number")
 
-        data1 = await _run_in_executor(registration_ebill, ca_number)
+        data1 = await registration_ebill(ca_number)
  
         # response_data = requests.post(f"{FLASK_BASE_URL}/registration_ebill", json={"ca_number": ca_number})
         # data1 = response_data.json()
@@ -3415,7 +3396,7 @@ class Opt_For_Ebill_Email_Registration_Yes_english(Action):
             dispatcher.utter_message(text="You’ve successfully opted for E-Bill. Future bills will be emailed to you.")
             
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
@@ -3423,7 +3404,7 @@ class Opt_For_Ebill_Email_Registration_Yes_english(Action):
             dispatcher.utter_message(text="Opt for E-bill service is unavailable right now. Try after some time.")
 
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
@@ -3433,10 +3414,10 @@ class Opt_For_Ebill_Email_Registration_No_english(Action):
     def name(self):
         return "action_opt_for_ebill_registration_no_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         dispatcher.utter_message(text="Sure, no problem")
         #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
         dispatcher.utter_message(text="Yes menu b")
         dispatcher.utter_message(text="No menu b")
         return [Restarted()]
@@ -3467,12 +3448,11 @@ class Opt_For_Ebill_hindi(Action):
     def name(self):
         return "action_opt_for_ebill_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
 
         print("action_opt_for_ebill_hindi ==================================== ")
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_session_data", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_session_data", json={"sender_id": sender_id})
 
         email = data.get("email")
 
@@ -3492,7 +3472,7 @@ class Opt_For_Ebill_Email_hindi(Action):
     def name(self):
         return "action_opt_for_ebill_email_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
         email_text = tracker.latest_message.get('text')
 
@@ -3505,7 +3485,7 @@ class Opt_For_Ebill_Email_hindi(Action):
         else:
             dispatcher.utter_message(text="ई-बिल सेवा अभी उपलब्ध नहीं है। कृपया कुछ समय बाद पुनः प्रयास करें।")
             #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
@@ -3569,12 +3549,11 @@ class Opt_For_Ebill_Email_Registration_Yes_hindi(Action):
 
     async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca_number = data.get("ca_number")
 
-        data1 = await _run_in_executor(registration_ebill, ca_number)
+        data1 = await registration_ebill(ca_number)
  
         # response_data = requests.post(f"{FLASK_BASE_URL}/registration_ebill", json={"ca_number": ca_number})
         # data1 = response_data.json()
@@ -3583,7 +3562,7 @@ class Opt_For_Ebill_Email_Registration_Yes_hindi(Action):
             dispatcher.utter_message(text="आपने सफलतापूर्वक ई-बिल के लिए पंजीकरण कर लिया है। भविष्य के बिल आपके ईमेल पर भेजे जाएंगे।")
             
             #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
@@ -3591,7 +3570,7 @@ class Opt_For_Ebill_Email_Registration_Yes_hindi(Action):
             dispatcher.utter_message(text="ई-बिल सेवा अभी उपलब्ध नहीं है। कृपया कुछ समय बाद पुनः प्रयास करें।")
             
             #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
@@ -3601,10 +3580,10 @@ class Opt_For_Ebill_Email_Registration_No_hindi(Action):
     def name(self):
         return "action_opt_for_ebill_registration_no_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         dispatcher.utter_message(text="ठीक है, कोई समस्या नहीं")
         #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
         dispatcher.utter_message(text="हाँ menu b")
         dispatcher.utter_message(text="नहीं menu b")
         return [Restarted()]
@@ -3641,8 +3620,7 @@ class Complaint_Status_english(Action):
         sender_id = tracker.sender_id
         print("======================== action_complaint_status_english")
         # Fetch CA number from your database or API
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
@@ -3652,14 +3630,14 @@ class Complaint_Status_english(Action):
             return []
 
         # Call complaint_status API
-        data1 = await _run_in_executor(complaint_status, ca_number, sender_id)
+        data1 = await complaint_status(ca_number, sender_id)
         # response_data = requests.post(f"{FLASK_BASE_URL}/complaint_status", json={"ca_number": ca_number, "sender_id": sender_id})
         # data1 = response_data.json()
 
         if data1.get("status") == False:
             dispatcher.utter_message(text="Sorry, Having issues to fetch the status of your complain right now. Try after sometime.")
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
@@ -3672,7 +3650,7 @@ class Complaint_Status_english(Action):
             if "message" in data1 and data1["message"] == "No complaint found":
                 dispatcher.utter_message(text="There are no active complaints for your account.")
                 #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-                send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+                await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
                 dispatcher.utter_message(text="Yes menu b")
                 dispatcher.utter_message(text="No menu b")
                 return [Restarted()]
@@ -3682,14 +3660,14 @@ class Complaint_Status_english(Action):
             if not complaints:
                 dispatcher.utter_message(text="There are no active complaints for your account.")
                 #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-                send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+                await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
                 dispatcher.utter_message(text="Yes menu b")
                 dispatcher.utter_message(text="No menu b")
                 return [Restarted()]
 
             # Build a user-friendly message
             # message = "Here are your complaint details:\n"
-            message = f'{send_dynamic_messages_without_dispatcher("", "complaint_status", lang="en")}\n'
+            message = f'{await send_dynamic_messages_without_dispatcher("", "complaint_status", lang="en")}\n'
             for idx, comp in enumerate(complaints, start=1):
                 message += (
                     # f"\nComplaint {idx}:\n"
@@ -3704,7 +3682,7 @@ class Complaint_Status_english(Action):
 
             dispatcher.utter_message(text=message.strip())
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
@@ -3719,8 +3697,7 @@ class Complaint_Status_hindi(Action):
         sender_id = tracker.sender_id
         print("======================== action_complaint_status_hindi")
         # Fetch CA number from your database or API
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
@@ -3730,14 +3707,14 @@ class Complaint_Status_hindi(Action):
             return []
 
         # Call complaint_status API
-        data1 = await _run_in_executor(complaint_status, ca_number, sender_id)
+        data1 = await complaint_status(ca_number, sender_id)
         # response_data = requests.post(f"{FLASK_BASE_URL}/complaint_status", json={"ca_number": ca_number, "sender_id": sender_id})
         # data1 = response_data.json()
 
         if data1.get("status") == False:
             dispatcher.utter_message(text="क्षमा करें, अभी आपकी शिकायत की स्थिति प्राप्त करने में समस्या हो रही है। कृपया कुछ समय बाद पुनः प्रयास करें।")
             #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
@@ -3750,7 +3727,7 @@ class Complaint_Status_hindi(Action):
             if "message" in data1 and data1["message"] == "No complaint found":
                 dispatcher.utter_message(text="आपके खाते के लिए कोई सक्रिय शिकायत नहीं है।")
                 #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-                send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+                await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
                 dispatcher.utter_message(text="हाँ menu b")
                 dispatcher.utter_message(text="नहीं menu b")
                 return [Restarted()]
@@ -3760,14 +3737,14 @@ class Complaint_Status_hindi(Action):
             if not complaints:
                 dispatcher.utter_message(text="आपके खाते के लिए कोई सक्रिय शिकायत नहीं है।")
                 #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-                send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+                await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
                 dispatcher.utter_message(text="हाँ menu b")
                 dispatcher.utter_message(text="नहीं menu b")
                 return [Restarted()]
 
             # Build a user-friendly message
             # message = "आपकी शिकायत का विवरण यहां दिया गया है:\n"
-            message = f'{send_dynamic_messages_without_dispatcher("", "complaint_status", lang="hi")}\n'
+            message = f'{await send_dynamic_messages_without_dispatcher("", "complaint_status", lang="hi")}\n'
             for idx, comp in enumerate(complaints, start=1):
                 message += (
                     f"🔹 खुलने का समय: {comp.get('opening_time', 'N/A')}\n"
@@ -3776,7 +3753,7 @@ class Complaint_Status_hindi(Action):
 
             dispatcher.utter_message(text=message.strip())
             #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
@@ -3882,13 +3859,12 @@ class No_Current_Complaint_english(Action):
 
     async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
 
-        data1 = await _run_in_executor(area_outage, ca_number)
+        data1 = await area_outage(ca_number)
         
         # response_data = requests.post(f"{FLASK_BASE_URL}/area_outage", json={"ca_number": ca_number})
         # data1 = response_data.json()
@@ -3902,7 +3878,7 @@ class No_Current_Complaint_english(Action):
         else:
             dispatcher.utter_message(text="Sorry, Having issues to fetch the status of outage right now. Try after sometime.")
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
@@ -3916,18 +3892,16 @@ class No_Current_Complaint_Register_english(Action):
 
     async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
 
-        response_mobile = requests.post(f"{FLASK_BASE_URL}/get_session_data", json={"sender_id": sender_id})
-        data1 = response_mobile.json()
+        data1 = await _http_post(f"{FLASK_BASE_URL}/get_session_data", json={"sender_id": sender_id})
 
         tel_no = data1.get("tel_no")
 
-        data2 = await _run_in_executor(register_ncc, sender_id, ca_number, tel_no)
+        data2 = await register_ncc(sender_id, ca_number, tel_no)
         
         # response_data = requests.post(f"{FLASK_BASE_URL}/register_complaint", json={"sender_id": sender_id, "ca_number": ca_number, "mobile_no": tel_no})
         # data2 = response_data.json()
@@ -3938,7 +3912,7 @@ class No_Current_Complaint_Register_english(Action):
                 dispatcher.utter_message(text=f"{data2.get('comment')}")   
                 # dispatcher.utter_message(text="Thank you for registering your complaint. Our team will respond shortly.")    
                 #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-                send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+                await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
                 dispatcher.utter_message(text="Yes menu b")
                 dispatcher.utter_message(text="No menu b")
                 return [Restarted()]
@@ -3946,7 +3920,7 @@ class No_Current_Complaint_Register_english(Action):
                 dispatcher.utter_message(text=f"{data2.get('comment')}")   
                 dispatcher.utter_message(text="Thank you for registering your complaint. Our team will respond shortly.")    
                 #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-                send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+                await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
                 dispatcher.utter_message(text="Yes menu b")
                 dispatcher.utter_message(text="No menu b")
                 return [Restarted()]
@@ -3954,7 +3928,7 @@ class No_Current_Complaint_Register_english(Action):
         else:
             dispatcher.utter_message(text="Sorry, Having issues in registering your complaint right now. Try after sometime.")     
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
@@ -3964,11 +3938,11 @@ class Do_Not_Register_No_Current_Complaint_Register_english(Action):
     def name(self):
         return "action_do_not_register_no_current_complaint_register_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
 
         dispatcher.utter_message(text="Sure, no problem")
         #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
         dispatcher.utter_message(text="Yes menu b")
         dispatcher.utter_message(text="No menu b")
         return [Restarted()]
@@ -3997,13 +3971,12 @@ class No_Current_Complaint_hindi(Action):
 
     async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
 
-        data1 = await _run_in_executor(area_outage, ca_number)
+        data1 = await area_outage(ca_number)
 
         # response_data = requests.post(f"{FLASK_BASE_URL}/area_outage", json={"ca_number": ca_number})
         # data1 = response_data.json()
@@ -4017,7 +3990,7 @@ class No_Current_Complaint_hindi(Action):
         else:
             dispatcher.utter_message(text="क्षमा करें, अभी आउटेज की स्थिति प्राप्त करने में समस्या आ रही है। कृपया कुछ समय बाद पुनः प्रयास करें।")
             #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
@@ -4031,18 +4004,16 @@ class No_Current_Complaint_Register_hindi(Action):
 
     async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
 
-        response_mobile = requests.post(f"{FLASK_BASE_URL}/get_session_data", json={"sender_id": sender_id})
-        data1 = response_mobile.json()
+        data1 = await _http_post(f"{FLASK_BASE_URL}/get_session_data", json={"sender_id": sender_id})
 
         tel_no = data1.get("tel_no")
 
-        data2 = await _run_in_executor(register_ncc, sender_id, ca_number, tel_no)
+        data2 = await register_ncc(sender_id, ca_number, tel_no)
         
         # response_data = requests.post(f"{FLASK_BASE_URL}/register_complaint", json={"sender_id": sender_id, "ca_number": ca_number, "mobile_no": tel_no})
         # data2 = response_data.json()
@@ -4053,7 +4024,7 @@ class No_Current_Complaint_Register_hindi(Action):
                 dispatcher.utter_message(text=f"{data2.get('comment_hindi')}")   
                 # dispatcher.utter_message(text="Thank you for registering your complaint. Our team will respond shortly.")    
                 #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-                send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+                await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
                 dispatcher.utter_message(text="हाँ menu b")
                 dispatcher.utter_message(text="नहीं menu b")
                 return [Restarted()]
@@ -4062,7 +4033,7 @@ class No_Current_Complaint_Register_hindi(Action):
                 dispatcher.utter_message(text="आपकी शिकायत दर्ज करने के लिए धन्यवाद। हमारी टीम शीघ्र ही जवाब देगी।")    
 
                 #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-                send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+                await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
                 dispatcher.utter_message(text="हाँ menu b")
                 dispatcher.utter_message(text="नहीं menu b")
                 return [Restarted()]
@@ -4070,7 +4041,7 @@ class No_Current_Complaint_Register_hindi(Action):
         else: 
             dispatcher.utter_message(text="क्षमा करें, आपकी शिकायत दर्ज करने में समस्या आ रही है। कृपया कुछ समय बाद पुनः प्रयास करें।")      
             #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
@@ -4080,11 +4051,11 @@ class Do_Not_Register_No_Current_Complaint_Register_hindi(Action):
     def name(self):
         return "action_do_not_register_no_current_complaint_register_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
 
         dispatcher.utter_message(text="ठीक है, कोई समस्या नहीं")
         #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
         dispatcher.utter_message(text="हाँ menu b")
         dispatcher.utter_message(text="नहीं menu b")
         return [Restarted()]
@@ -4095,7 +4066,7 @@ class Fire_Complaint_Register_english(Action):
     def name(self):
         return "action_fire_complaint_register_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # sender_id = tracker.sender_id
         # response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         # data = response.json()
@@ -4122,7 +4093,7 @@ https://www.bsesdelhi.com/web/brpl/no-supply-complaint
 """)
 
         #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
         dispatcher.utter_message(text="Yes menu b")
         dispatcher.utter_message(text="No menu b")
         return [Restarted()]
@@ -4132,7 +4103,7 @@ class Fire_Complaint_Register_hindi(Action):
     def name(self):
         return "action_fire_complaint_register_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # sender_id = tracker.sender_id
         # response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         # data = response.json()
@@ -4162,7 +4133,7 @@ https://www.bsesdelhi.com/web/brpl/no-supply-complaint
 
 
         #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
         dispatcher.utter_message(text="हाँ menu b")
         dispatcher.utter_message(text="नहीं menu b")
         return [Restarted()]
@@ -4172,7 +4143,7 @@ class Current_Leakage_Complaint_Register_english(Action):
     def name(self):
         return "action_current_leakage_complaint_register_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # sender_id = tracker.sender_id
         # response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         # data = response.json()
@@ -4198,7 +4169,7 @@ https://www.bsesdelhi.com/web/brpl/no-supply-complaint
 """)
 
         #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
         dispatcher.utter_message(text="Yes menu b")
         dispatcher.utter_message(text="No menu b")
         return [Restarted()]
@@ -4208,7 +4179,7 @@ class Current_Leakage_Complaint_Register_hindi(Action):
     def name(self):
         return "action_current_leakage_complaint_register_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # sender_id = tracker.sender_id
         # response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         # data = response.json()
@@ -4238,7 +4209,7 @@ https://www.bsesdelhi.com/web/brpl/no-supply-complaint
 
 
         #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
         dispatcher.utter_message(text="हाँ menu b")
         dispatcher.utter_message(text="नहीं menu b")
         return [Restarted()]
@@ -4248,7 +4219,7 @@ class Low_Voltage_Complaint_Register_english(Action):
     def name(self):
         return "action_low_voltage_complaint_register_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # sender_id = tracker.sender_id
         # response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         # data = response.json()
@@ -4274,7 +4245,7 @@ https://www.bsesdelhi.com/web/brpl/no-supply-complaint
 """)
 
         #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
         dispatcher.utter_message(text="Yes menu b")
         dispatcher.utter_message(text="No menu b")
         return [Restarted()]
@@ -4284,7 +4255,7 @@ class Low_Voltage_Complaint_Register_hindi(Action):
     def name(self):
         return "action_low_voltage_complaint_register_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # sender_id = tracker.sender_id
         # response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         # data = response.json()
@@ -4314,7 +4285,7 @@ https://www.bsesdelhi.com/web/brpl/no-supply-complaint
 """)
 
         #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
         dispatcher.utter_message(text="हाँ menu b")
         dispatcher.utter_message(text="नहीं menu b")
         return [Restarted()]
@@ -4324,7 +4295,7 @@ class Voltage_Fluctuation_Complaint_Register_english(Action):
     def name(self):
         return "action_voltage_fluctuation_complaint_register_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # sender_id = tracker.sender_id
         # response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         # data = response.json()
@@ -4350,7 +4321,7 @@ https://www.bsesdelhi.com/web/brpl/no-supply-complaint
 """)
 
         #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
         dispatcher.utter_message(text="Yes menu b")
         dispatcher.utter_message(text="No menu b")
         return [Restarted()]
@@ -4360,7 +4331,7 @@ class Voltage_Fluctuation_Complaint_Register_hindi(Action):
     def name(self):
         return "action_voltage_fluctuation_complaint_register_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         # sender_id = tracker.sender_id
         # response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
         # data = response.json()
@@ -4389,7 +4360,7 @@ https://www.bsesdelhi.com/web/brpl/no-supply-complaint
 """)
 
         #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
         dispatcher.utter_message(text="हाँ menu b")
         dispatcher.utter_message(text="नहीं menu b")
         return [Restarted()]
@@ -4402,22 +4373,20 @@ class Duplicate_Bill_module_english(Action):
     def name(self) -> Text:
         return "action_duplicate_bill_english"
     
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
 
-        response2 = requests.post(f"{FLASK_BASE_URL}/generate_duplicate_bill_pdf", json={"ca_number": ca_number})
-        data2 = response2.json()
+        data2 = await _http_post(f"{FLASK_BASE_URL}/generate_duplicate_bill_pdf", json={"ca_number": ca_number})
 
         if data2.get('status') == True:
-            dispatcher.utter_message(text=f'{send_dynamic_messages_without_dispatcher("", "duplicate_bill", lang="en")} {data2.get("pdf_url")}')
+            dispatcher.utter_message(text=f'{await send_dynamic_messages_without_dispatcher("", "duplicate_bill", lang="en")} {data2.get("pdf_url")}')
 
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
@@ -4426,7 +4395,7 @@ class Duplicate_Bill_module_english(Action):
             dispatcher.utter_message(text="Sorry, Having issues to generate your duplicate bill. Try after sometime.")
 
             #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
             dispatcher.utter_message(text="Yes menu b")
             dispatcher.utter_message(text="No menu b")
             return [Restarted()]
@@ -4436,23 +4405,21 @@ class Duplicate_Bill_module_hindi(Action):
     def name(self) -> Text:
         return "action_duplicate_bill_hindi"
     
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         sender_id = tracker.sender_id
-        response = requests.post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
-        data = response.json()
+        data = await _http_post(f"{FLASK_BASE_URL}/get_ca", json={"sender_id": sender_id})
 
         ca = data.get("ca_number")
         ca_number = extract_ca_number(ca)
 
-        response2 = requests.post(f"{FLASK_BASE_URL}/generate_duplicate_bill_pdf", json={"ca_number": ca_number})
-        data2 = response2.json()
+        data2 = await _http_post(f"{FLASK_BASE_URL}/generate_duplicate_bill_pdf", json={"ca_number": ca_number})
 
         if data2.get('status') == True:
             # dispatcher.utter_message(text=f"यह रहा आपके डुप्लीकेट बिल का लिंक: {data2.get('pdf_url')}")
-            dispatcher.utter_message(text=f'{send_dynamic_messages_without_dispatcher("", "duplicate_bill", lang="hi")} {data2.get("pdf_url")}')
+            dispatcher.utter_message(text=f'{await send_dynamic_messages_without_dispatcher("", "duplicate_bill", lang="hi")} {data2.get("pdf_url")}')
 
             #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
@@ -4461,7 +4428,7 @@ class Duplicate_Bill_module_hindi(Action):
             dispatcher.utter_message(text="क्षमा करें, आपकी डुप्लिकेट बिल जनरेट करने में समस्या आ रही है। कृपया कुछ समय बाद पुनः प्रयास करें।")
 
             #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-            send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+            await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
             dispatcher.utter_message(text="हाँ menu b")
             dispatcher.utter_message(text="नहीं menu b")
             return [Restarted()]
@@ -4471,11 +4438,11 @@ class billing_english(Action):
     def name(self):
         return "action_sdfg"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         dispatcher.utter_message(text="""This is the balance:""")
         
         #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
         dispatcher.utter_message(text="Yes menu b")
         dispatcher.utter_message(text="No menu b")
 
@@ -4488,9 +4455,9 @@ class thank_you_message_English(Action):
     def name(self):
         return "action_thank_you_message_english"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         #dispatcher.utter_message(text="Thank you! Would you like to go back to main menu. (You can type 'menu' or 'hi' to come back to main options)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="en")
         dispatcher.utter_message(text="Yes menu b")
         dispatcher.utter_message(text="No menu b")
 
@@ -4501,9 +4468,9 @@ class thank_you_message_Hindi(Action):
     def name(self):
         return "action_thank_you_message_hindi"
 
-    def run(self, dispatcher, tracker, domain):
+    async def run(self, dispatcher, tracker, domain):
         #dispatcher.utter_message(text="धन्यवाद! क्या आप मुख्य मेनू पर वापस जाना चाहेंगे? (आप 'menu' या 'hi' लिखकर मुख्य विकल्पों पर वापस आ सकते हैं)")
-        send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
+        await send_dynamic_messages(dispatcher, "", "general_thankyou", lang="hi")
         dispatcher.utter_message(text="हाँ menu b")
         dispatcher.utter_message(text="नहीं menu b")
         return [Restarted()]
@@ -4522,8 +4489,7 @@ class ActionCustomFallback(Action):
         print("============================ action_custom_fallback")
         sender_id = tracker.sender_id
         try:
-            response = requests.post(f"{FLASK_BASE_URL}/fallback", json={"sender_id": sender_id}, timeout=(3, 10))
-            data = response.json()
+            data = await _http_post(f"{FLASK_BASE_URL}/fallback", json={"sender_id": sender_id}, timeout=10)
             dispatcher.utter_message(text=data.get('action'))
         except Exception as e:
             print(f"Fallback endpoint error: {e}")
