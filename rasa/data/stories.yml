@@ -2117,6 +2117,74 @@ stories:
   - action: action_register_consumer_options_hindi
   - intent: duplicate_bill_rajdhani_hindi
   - action: action_duplicate_bill_hindi
+- story: Story for Select Another CA number
+  steps:
+  - intent: subsidiary_rajdhani
+  - action: action_set_subsidiary
+  - slot_was_set:
+    - subsidiary: BSES Rajdhani
+  - action: action_subsidiary
+  - intent: new_consumer_english_rajdhani
+  - action: action_set_user
+  - slot_was_set:
+    - customer_type: new
+  - action: action_language
+  - intent: language_english_rajdhani
+  - action: action_set_language
+  - slot_was_set:
+    - language: en
+  - action: action_new_consumer_options_english
+- story: Story for Visually Impaired
+  steps:
+  - intent: subsidiary_rajdhani
+  - action: action_set_subsidiary
+  - slot_was_set:
+    - subsidiary: BSES Rajdhani
+  - action: action_subsidiary
+  - intent: new_consumer_english_rajdhani
+  - action: action_set_user
+  - slot_was_set:
+    - customer_type: new
+  - action: action_language
+  - intent: language_english_rajdhani
+  - action: action_set_language
+  - slot_was_set:
+    - language: en
+  - action: action_new_consumer_options_english
+- story: Story for Visually Impaired
+  steps:
+  - intent: subsidiary_rajdhani
+  - action: action_set_subsidiary
+  - slot_was_set:
+    - subsidiary: BSES Rajdhani
+  - action: action_subsidiary
+  - intent: new_consumer_english_rajdhani
+  - action: action_set_user
+  - slot_was_set:
+    - customer_type: new
+  - action: action_language
+  - intent: language_english_rajdhani
+  - action: action_set_language
+  - slot_was_set:
+    - language: en
+  - action: action_new_consumer_options_english
+- story: Story for Change Language
+  steps:
+  - intent: subsidiary_rajdhani
+  - action: action_set_subsidiary
+  - slot_was_set:
+    - subsidiary: BSES Rajdhani
+  - action: action_subsidiary
+  - intent: new_consumer_english_rajdhani
+  - action: action_set_user
+  - slot_was_set:
+    - customer_type: new
+  - action: action_language
+  - intent: language_english_rajdhani
+  - action: action_set_language
+  - slot_was_set:
+    - language: en
+  - action: action_new_consumer_options_english
 - story: Story for दृष्टिबाधित सहायता
   steps:
   - intent: subsidiary_rajdhani
@@ -2189,411 +2257,3 @@ stories:
   - slot_was_set:
     - language: hi
   - action: action_register_consumer_options_hindi
-- story: Story for New Connection Status
-  steps:
-  - intent: subsidiary_rajdhani
-  - action: action_set_subsidiary
-  - slot_was_set:
-    - subsidiary: BSES Rajdhani
-  - action: action_subsidiary
-  - intent: registered_consumer_english_rajdhani
-  - action: action_set_user
-  - slot_was_set:
-    - customer_type: registered
-  - action: utter_ask_ca_number
-  - intent: provide_ca_number_rajdhani
-  - action: action_validate_ca_number
-  - action: action_send_otp
-  - action: utter_ask_otp
-  - intent: provide_otp_rajdhani
-  - action: action_validate_otp
-  - action: action_language
-  - intent: language_english_rajdhani
-  - action: action_set_language
-  - slot_was_set:
-    - language: en
-  - action: action_register_consumer_options_english
-- story: Story for New Connection Status
-  steps:
-  - intent: subsidiary_rajdhani
-  - action: action_set_subsidiary
-  - slot_was_set:
-    - subsidiary: BSES Rajdhani
-  - action: action_subsidiary
-  - intent: registered_consumer_english_rajdhani
-  - action: action_set_user
-  - slot_was_set:
-    - customer_type: registered
-  - action: utter_ask_ca_number
-  - intent: provide_ca_number_rajdhani
-  - action: action_validate_ca_number
-  - action: action_send_otp
-  - action: utter_ask_otp
-  - intent: provide_otp_rajdhani
-  - action: action_validate_otp
-  - action: action_language
-  - intent: language_english_rajdhani
-  - action: action_set_language
-  - slot_was_set:
-    - language: en
-  - action: action_register_consumer_options_english
-- story: Story for Prepaid Meter - Check Balance / Recharge
-  steps:
-  - intent: subsidiary_rajdhani
-  - action: action_set_subsidiary
-  - slot_was_set:
-    - subsidiary: BSES Rajdhani
-  - action: action_subsidiary
-  - intent: registered_consumer_english_rajdhani
-  - action: action_set_user
-  - slot_was_set:
-    - customer_type: registered
-  - action: utter_ask_ca_number
-  - intent: provide_ca_number_rajdhani
-  - action: action_validate_ca_number
-  - action: action_send_otp
-  - action: utter_ask_otp
-  - intent: provide_otp_rajdhani
-  - action: action_validate_otp
-  - action: action_language
-  - intent: language_english_rajdhani
-  - action: action_set_language
-  - slot_was_set:
-    - language: en
-  - action: action_register_consumer_options_english
-- story: Story for New Connection Application
-  steps:
-  - intent: subsidiary_rajdhani
-  - action: action_set_subsidiary
-  - slot_was_set:
-    - subsidiary: BSES Rajdhani
-  - action: action_subsidiary
-  - intent: registered_consumer_english_rajdhani
-  - action: action_set_user
-  - slot_was_set:
-    - customer_type: registered
-  - action: utter_ask_ca_number
-  - intent: provide_ca_number_rajdhani
-  - action: action_validate_ca_number
-  - action: action_send_otp
-  - action: utter_ask_otp
-  - intent: provide_otp_rajdhani
-  - action: action_validate_otp
-  - action: action_language
-  - intent: language_english_rajdhani
-  - action: action_set_language
-  - slot_was_set:
-    - language: en
-  - action: action_register_consumer_options_english
-- story: Story for Consumption History
-  steps:
-  - intent: subsidiary_rajdhani
-  - action: action_set_subsidiary
-  - slot_was_set:
-    - subsidiary: BSES Rajdhani
-  - action: action_subsidiary
-  - intent: registered_consumer_english_rajdhani
-  - action: action_set_user
-  - slot_was_set:
-    - customer_type: registered
-  - action: utter_ask_ca_number
-  - intent: provide_ca_number_rajdhani
-  - action: action_validate_ca_number
-  - action: action_send_otp
-  - action: utter_ask_otp
-  - intent: provide_otp_rajdhani
-  - action: action_validate_otp
-  - action: action_language
-  - intent: language_english_rajdhani
-  - action: action_set_language
-  - slot_was_set:
-    - language: en
-  - action: action_register_consumer_options_english
-- story: Story for Meter Reading Schedule
-  steps:
-  - intent: subsidiary_rajdhani
-  - action: action_set_subsidiary
-  - slot_was_set:
-    - subsidiary: BSES Rajdhani
-  - action: action_subsidiary
-  - intent: registered_consumer_english_rajdhani
-  - action: action_set_user
-  - slot_was_set:
-    - customer_type: registered
-  - action: utter_ask_ca_number
-  - intent: provide_ca_number_rajdhani
-  - action: action_validate_ca_number
-  - action: action_send_otp
-  - action: utter_ask_otp
-  - intent: provide_otp_rajdhani
-  - action: action_validate_otp
-  - action: action_language
-  - intent: language_english_rajdhani
-  - action: action_set_language
-  - slot_was_set:
-    - language: en
-  - action: action_register_consumer_options_english
-- story: Story for New Connection Status
-  steps:
-  - intent: subsidiary_rajdhani
-  - action: action_set_subsidiary
-  - slot_was_set:
-    - subsidiary: BSES Rajdhani
-  - action: action_subsidiary
-  - intent: registered_consumer_english_rajdhani
-  - action: action_set_user
-  - slot_was_set:
-    - customer_type: registered
-  - action: utter_ask_ca_number
-  - intent: provide_ca_number_rajdhani
-  - action: action_validate_ca_number
-  - action: action_send_otp
-  - action: utter_ask_otp
-  - intent: provide_otp_rajdhani
-  - action: action_validate_otp
-  - action: action_language
-  - intent: language_english_rajdhani
-  - action: action_set_language
-  - slot_was_set:
-    - language: en
-  - action: action_register_consumer_options_english
-- story: Story for New Connection Status
-  steps:
-  - intent: subsidiary_rajdhani
-  - action: action_set_subsidiary
-  - slot_was_set:
-    - subsidiary: BSES Rajdhani
-  - action: action_subsidiary
-  - intent: registered_consumer_english_rajdhani
-  - action: action_set_user
-  - slot_was_set:
-    - customer_type: registered
-  - action: utter_ask_ca_number
-  - intent: provide_ca_number_rajdhani
-  - action: action_validate_ca_number
-  - action: action_send_otp
-  - action: utter_ask_otp
-  - intent: provide_otp_rajdhani
-  - action: action_validate_otp
-  - action: action_language
-  - intent: language_english_rajdhani
-  - action: action_set_language
-  - slot_was_set:
-    - language: en
-  - action: action_register_consumer_options_english
-- story: Story for Prepaid Meter - Check Balance / Recharge
-  steps:
-  - intent: subsidiary_rajdhani
-  - action: action_set_subsidiary
-  - slot_was_set:
-    - subsidiary: BSES Rajdhani
-  - action: action_subsidiary
-  - intent: registered_consumer_english_rajdhani
-  - action: action_set_user
-  - slot_was_set:
-    - customer_type: registered
-  - action: utter_ask_ca_number
-  - intent: provide_ca_number_rajdhani
-  - action: action_validate_ca_number
-  - action: action_send_otp
-  - action: utter_ask_otp
-  - intent: provide_otp_rajdhani
-  - action: action_validate_otp
-  - action: action_language
-  - intent: language_english_rajdhani
-  - action: action_set_language
-  - slot_was_set:
-    - language: en
-  - action: action_register_consumer_options_english
-- story: Story for New Connection Application
-  steps:
-  - intent: subsidiary_rajdhani
-  - action: action_set_subsidiary
-  - slot_was_set:
-    - subsidiary: BSES Rajdhani
-  - action: action_subsidiary
-  - intent: registered_consumer_english_rajdhani
-  - action: action_set_user
-  - slot_was_set:
-    - customer_type: registered
-  - action: utter_ask_ca_number
-  - intent: provide_ca_number_rajdhani
-  - action: action_validate_ca_number
-  - action: action_send_otp
-  - action: utter_ask_otp
-  - intent: provide_otp_rajdhani
-  - action: action_validate_otp
-  - action: action_language
-  - intent: language_english_rajdhani
-  - action: action_set_language
-  - slot_was_set:
-    - language: en
-  - action: action_register_consumer_options_english
-- story: Story for Consumption History
-  steps:
-  - intent: subsidiary_rajdhani
-  - action: action_set_subsidiary
-  - slot_was_set:
-    - subsidiary: BSES Rajdhani
-  - action: action_subsidiary
-  - intent: registered_consumer_english_rajdhani
-  - action: action_set_user
-  - slot_was_set:
-    - customer_type: registered
-  - action: utter_ask_ca_number
-  - intent: provide_ca_number_rajdhani
-  - action: action_validate_ca_number
-  - action: action_send_otp
-  - action: utter_ask_otp
-  - intent: provide_otp_rajdhani
-  - action: action_validate_otp
-  - action: action_language
-  - intent: language_english_rajdhani
-  - action: action_set_language
-  - slot_was_set:
-    - language: en
-  - action: action_register_consumer_options_english
-- story: Story for Meter Reading Schedule
-  steps:
-  - intent: subsidiary_rajdhani
-  - action: action_set_subsidiary
-  - slot_was_set:
-    - subsidiary: BSES Rajdhani
-  - action: action_subsidiary
-  - intent: registered_consumer_english_rajdhani
-  - action: action_set_user
-  - slot_was_set:
-    - customer_type: registered
-  - action: utter_ask_ca_number
-  - intent: provide_ca_number_rajdhani
-  - action: action_validate_ca_number
-  - action: action_send_otp
-  - action: utter_ask_otp
-  - intent: provide_otp_rajdhani
-  - action: action_validate_otp
-  - action: action_language
-  - intent: language_english_rajdhani
-  - action: action_set_language
-  - slot_was_set:
-    - language: en
-  - action: action_register_consumer_options_english
-- story: Story for FAQs
-  steps:
-  - intent: subsidiary_rajdhani
-  - action: action_set_subsidiary
-  - slot_was_set:
-    - subsidiary: BSES Rajdhani
-  - action: action_subsidiary
-  - intent: registered_consumer_english_rajdhani
-  - action: action_set_user
-  - slot_was_set:
-    - customer_type: registered
-  - action: utter_ask_ca_number
-  - intent: provide_ca_number_rajdhani
-  - action: action_validate_ca_number
-  - action: action_send_otp
-  - action: utter_ask_otp
-  - intent: provide_otp_rajdhani
-  - action: action_validate_otp
-  - action: action_language
-  - intent: language_english_rajdhani
-  - action: action_set_language
-  - slot_was_set:
-    - language: en
-  - action: action_register_consumer_options_english
-- story: Story for Branches Nearby
-  steps:
-  - intent: subsidiary_rajdhani
-  - action: action_set_subsidiary
-  - slot_was_set:
-    - subsidiary: BSES Rajdhani
-  - action: action_subsidiary
-  - intent: registered_consumer_english_rajdhani
-  - action: action_set_user
-  - slot_was_set:
-    - customer_type: registered
-  - action: utter_ask_ca_number
-  - intent: provide_ca_number_rajdhani
-  - action: action_validate_ca_number
-  - action: action_send_otp
-  - action: utter_ask_otp
-  - intent: provide_otp_rajdhani
-  - action: action_validate_otp
-  - action: action_language
-  - intent: language_english_rajdhani
-  - action: action_set_language
-  - slot_was_set:
-    - language: en
-  - action: action_register_consumer_options_english
-- story: Story for Branches Nearby
-  steps:
-  - intent: subsidiary_rajdhani
-  - action: action_set_subsidiary
-  - slot_was_set:
-    - subsidiary: BSES Rajdhani
-  - action: action_subsidiary
-  - intent: registered_consumer_english_rajdhani
-  - action: action_set_user
-  - slot_was_set:
-    - customer_type: registered
-  - action: utter_ask_ca_number
-  - intent: provide_ca_number_rajdhani
-  - action: action_validate_ca_number
-  - action: action_send_otp
-  - action: utter_ask_otp
-  - intent: provide_otp_rajdhani
-  - action: action_validate_otp
-  - action: action_language
-  - intent: language_english_rajdhani
-  - action: action_set_language
-  - slot_was_set:
-    - language: en
-  - action: action_register_consumer_options_english
-- story: Story for Branches Nearby
-  steps:
-  - intent: subsidiary_rajdhani
-  - action: action_set_subsidiary
-  - slot_was_set:
-    - subsidiary: BSES Rajdhani
-  - action: action_subsidiary
-  - intent: registered_consumer_english_rajdhani
-  - action: action_set_user
-  - slot_was_set:
-    - customer_type: registered
-  - action: utter_ask_ca_number
-  - intent: provide_ca_number_rajdhani
-  - action: action_validate_ca_number
-  - action: action_send_otp
-  - action: utter_ask_otp
-  - intent: provide_otp_rajdhani
-  - action: action_validate_otp
-  - action: action_language
-  - intent: language_english_rajdhani
-  - action: action_set_language
-  - slot_was_set:
-    - language: en
-  - action: action_register_consumer_options_english
-- story: Story for Branches Nearby
-  steps:
-  - intent: subsidiary_rajdhani
-  - action: action_set_subsidiary
-  - slot_was_set:
-    - subsidiary: BSES Rajdhani
-  - action: action_subsidiary
-  - intent: registered_consumer_english_rajdhani
-  - action: action_set_user
-  - slot_was_set:
-    - customer_type: registered
-  - action: utter_ask_ca_number
-  - intent: provide_ca_number_rajdhani
-  - action: action_validate_ca_number
-  - action: action_send_otp
-  - action: utter_ask_otp
-  - intent: provide_otp_rajdhani
-  - action: action_validate_otp
-  - action: action_language
-  - intent: language_english_rajdhani
-  - action: action_set_language
-  - slot_was_set:
-    - language: en
-  - action: action_register_consumer_options_english

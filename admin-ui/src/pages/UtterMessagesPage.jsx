@@ -71,16 +71,6 @@ export default function UtterMessagesPage() {
     return () => clearTimeout(debounceTimer);
   }, [search]);
 
-  // Debounce search to avoid too many API calls
-  useEffect(() => {
-    const debounceTimer = setTimeout(() => {
-      setPage(1);
-      fetchUtterMessages(1, search);
-    }, 500);
-
-    return () => clearTimeout(debounceTimer);
-  }, [search]);
-
   // ✅ Edit Logic
   const handleEdit = (msg) => {
     if (!has("utter-update")) {

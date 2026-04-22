@@ -18,7 +18,7 @@ from database import Base, SessionLocal
 from datetime import datetime, timedelta
 import pytz
 
-INACTIVITY_TIMEOUT_MINUTES = 15
+INACTIVITY_TIMEOUT_MINUTES = 1
 
 IST = pytz.timezone("Asia/Kolkata")
 

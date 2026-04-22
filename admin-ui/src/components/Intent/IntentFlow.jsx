@@ -91,16 +91,6 @@ const IntentFlow = () => {
     return () => clearTimeout(debounceTimer);
   }, [search]);
 
-  // Debounce search to avoid too many API calls
-  useEffect(() => {
-    const debounceTimer = setTimeout(() => {
-      setPage(1); // Reset to first page on new search
-      fetchIntents(1, search);
-    }, 500); // 500ms debounce
-
-    return () => clearTimeout(debounceTimer);
-  }, [search]);
-
 
 
   // ✅ Add new example chip

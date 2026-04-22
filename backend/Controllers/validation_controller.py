@@ -66,13 +66,14 @@ def validate_otp():
         # data = Session.find_one(user_id=sender_id)
         data = db.query(Session).filter_by(user_id=sender_id).first()
         valid_otp = data.otp if data else None
-        valid_otp_static = "123456"
+        # valid_otp_static = "123456"
 
         print(valid_otp, type(valid_otp), "============================== valid_otp")
         print(otp, "================================= otp")
 
         # Check OTP
-        if otp == (str(valid_otp) + " BRPL") or otp == (str(valid_otp_static) + " BRPL"):
+        # if otp == (str(valid_otp) + " BRPL") or otp == (str(valid_otp_static) + " BRPL"):
+        if otp == (str(valid_otp) + " BRPL"):
 
             chat_entry = {
                 "query": otp,

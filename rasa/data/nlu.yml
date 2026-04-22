@@ -195,8 +195,7 @@ nlu:
     - क्या आप हिंदी में बता सकते हैं? BRPL
     - हिंदी भाषा में रिप्लाई करें BRPL
     - पूरा संवाद हिंदी में हो BRPL
-    - Hindi version open krdo BRPL
-    - Hindi language set kr do BRPL
+    - Hndi hi best lagegi BRPL
     - Hindi me baat kar lo please BRPL
     - Mujhe Hindi me samajhna easy hai BRPL
     - Hindi mode on karo BRPL
@@ -290,7 +289,8 @@ nlu:
     - muje Hindi samajh me aata hai BRPL
     - Prfer Hindi over English BRPL
     - Mra chat Hindi me hi ho BRPL
-    - Hndi hi best lagegi BRPL
+    - Hindi version open krdo BRPL
+    - Hindi language set kr do BRPL
     - Hindi content plz BRPL
     - HinDi BRPL
 
@@ -819,6 +819,9 @@ nlu:
   examples: |
     - Connect Virtually (BRPL) BRPL
     - connect virtually (BRPL) BRPL
+    - aarif saifi connect virtually BRPL
+    - india connect virtually BRPL
+    - more connection connect virtually BRPL
 
 - intent: virtual_customer_care_brpl_hindi
   examples: |
@@ -953,14 +956,14 @@ nlu:
     - Prepaid meter me recharge kr do BRPL
     - plz show prepaid meter recharge BRPL
     - Recharge krna hai abhi BRPL
-    - My prepaid balance low—need check BRPL
-    - Where can I recharge BRPL prepaid meter BRPL
     - Check my BRPL prepaid balance. BRPL
     - What is my current prepaid meter balance BRPL
     - Please tell my prepaid electricity balance BRPL
     - Prepaid meter balance kitna bacha hai BRPL
     - Show my BRPL meter balance now BRPL
+    - My prepaid balance low—need check BRPL
     - BRPL prepaid meter recharge ka full process batao BRPL
+    - Where can I recharge BRPL prepaid meter BRPL
     - prepaid recharge kahan se karu BRPL
     - Help with prepaid meter recharge BRPL
 
@@ -1273,10 +1276,10 @@ nlu:
     - Has my BRPL connection request been processed BRPL
     - Need progress details for my connection application BRPL
     - Check the application status for my new BRPL connection BRPL
-    - Connection application ka update de do. BRPL
     - Where can I see my BRPL new connection update BRPL
     - BRPL ka naya connection status bata do. BRPL
     - Mera BRPL new connection approve hua ya nahi ? BRPL
+    - Connection application ka update de do. BRPL
     - new conection staus pls BRPL
     - conection staus check BRPL
     - new conction progres BRPL
@@ -1784,7 +1787,6 @@ nlu:
     - give me information on my Payment BRPL
     - Need bill Payment history BRPL
     - How can I check payment history BRPL
-    - Mera payment data dikhao BRPL
     - Please show my payment history BRPL
     - Mujhe apne bill payment history dekhni hai BRPL
     - What are my last payments BRPL
@@ -1819,6 +1821,7 @@ nlu:
     - Mujhe apne payment record verify karne hain BRPL
     - Payment history view karni hai BRPL
     - Please check last payment BRPL
+    - Mera payment data dikhao BRPL
     - Bill history check kar do BRPL
     - Mujhe payment ke records chahiye BRPL
     - Previous month ka payment check karna hai BRPL
@@ -2253,11 +2256,10 @@ nlu:
     - Consumption Record BRPL
     - usage record BRPL
     - Usage Record BRPL
-    - Provide my usage history BRPL
-    - Bijli ka istemal kitna hua BRPL
     - Show my consumption history BRPL
     - Show past consumption details BRPL
     - My previous electricity usage BRPL
+    - Provide my usage history BRPL
     - electricity history needed BRPL
     - How much power I used previously BRPL
     - View earlier consumption BRPL
@@ -2268,6 +2270,7 @@ nlu:
     - Mera consumption history dikhana BRPL
     - Electricity usage ka record chahiye BRPL
     - Mera electricity history de do BRPL
+    - Bijli ka istemal kitna hua BRPL
     - consuption data BRPL
     - elctricity usage BRPL
     - Monthly consumption record BRPL
@@ -2464,6 +2467,8 @@ nlu:
     - branch jana hai BRPL
     - center jana hai BRPL
     - centre jana h BRPL
+    - how many days are required for my near BRPL
+    - what is ithe purpose of india in branck BRPL
 
 - intent: branches_nearby_rajdhani_hindi
   examples: |
@@ -2498,30 +2503,30 @@ nlu:
     - ब्रांच कैसे पहुँचे? BRPL
     - ब्रांच कैसे पहुँचे BRPL
     - नज़दीकी ऑफिस का रास्ता बताओ BRPL
+    - नज़दीकी ऑफिस का रास्ता BRPL
     - सेंटर का पूरा पता भेजो BRPL
     - सेंटर का पूरा पता BRPL
     - सबसे पास BSES सेंटर बताओ BRPL
+    - सबसे पास सेंटर बताओ BRPL
     - मेरे पास कौन सा सेंटर है? BRPL
     - मेरे पास कौन सा सेंटर है BRPL
+    - ऑफलाइन सेंटर का पता BRPL
     - नज़दीकी बिजली ऑफिस BRPL
     - सबसे नज़दीक शाखा कितनी दूर है BRPL
+    - क्या मेरे एरिया में कोई सेंटर है BRPL
     - मुझे नज़दीकी ऑफिस का पता चाहिए BRPL
     - क्या मेरे इलाके में ब्रांच है? BRPL
+    - क्या मेरे इलाके में ब्रांच है BRPL
     - विज़िट सेंटर का पता चाहिए BRPL
     - आपका ऑफिस कहाँ मिलेगा? BRPL
     - आपका ऑफिस कहाँ मिलेगा BRPL
     - पास के ऑफिस का लगभग रास्ता BRPL
-    - सेंटर की जानकारी चाहिए BRPL
-    - पास की शाखा लोकेशन भेजो BRPL
-    - नज़दीकी ऑफिस का रास्ता BRPL
-    - सबसे पास सेंटर बताओ BRPL
-    - ऑफलाइन सेंटर का पता BRPL
-    - क्या मेरे एरिया में कोई सेंटर है BRPL
-    - क्या मेरे इलाके में ब्रांच है BRPL
     - आस-पास कौन सा सेंटर है? BRPL
+    - सेंटर की जानकारी चाहिए BRPL
     - मेरे क्षेत्र का ऑफिस पता BRPL
     - मेरे पिनकोड के पास सेंटर BRPL
     - मेरे पिनकोड के सेंटर BRPL
+    - पास की शाखा लोकेशन भेजो BRPL
     - नज़दीकी ऑफिस की जानकारी BRPL
     - नज़दीकी ऑफिस BRPL
     - बिजली विभाग का ऑफिस कहाँ है BRPL
@@ -2708,6 +2713,8 @@ nlu:
     - Complaint ke liye kahan jana h BRPL
     - Complaint centre ki exact location BRPL
     - Complaint office ka direction BRPL
+    - Bijli Vitran Sewa Kendra(Complaint Centres) BRPL
+    - Bijli Vitran Sewa Kendra(Complaint Centres) new one BRPL
 
 - intent: complaint_centres_rajdhani_hindi
   examples: |
@@ -2981,6 +2988,7 @@ nlu:
     - 20.2961,85.8245 BC BRPL
     - 22.7196,75.8577 BC BRPL
     - 8.5241,76.9366 CC BRPL
+    - 28.53906022,77.21043847 BC BRPL
     - 28.69344536,77.09991193 BC BRPL
     - 28.69597385,77.09918359 BC BRPL
     - 28.67997521,77.08154951 BC BRPL
@@ -3009,7 +3017,6 @@ nlu:
     - 28.69454608,77.07645314 BC BRPL
     - 28.68233219,77.0893255 BC BRPL
     - 28.6547157,77.10597722 BC BRPL
-    - 28.53906022,77.21043847 BC BRPL
     - 28.53697105,77.20900229 BC BRPL
     - 28.53213661,77.20156775 BC BRPL
     - 28.53362271,77.2224504 BC BRPL
@@ -5086,6 +5093,115 @@ nlu:
     - muje payment karna hai BRPL
     - plz process my bill BRPL
 
+- intent: bill_history_rajdhani_hindi
+  examples: |
+    - बिल इतिहास BRPL
+    - बिल हिस्ट्री BRPL
+    - बिल हिस्ट्री देखें BRPL
+    - बिल इतिहास देखें BRPL
+    - Mujhe apna bill pay karna hai BRPL
+    - Bill payment kar do BRPL
+    - Online bill pay karna hai BRPL
+    - Mera bill due hai BRPL
+    - Mujhe payment link chahiye BRPL
+    - Bill ka payment kar diya confirm karo BRPL
+    - Please bill ka online payment karna hai BRPL
+    - Mujhe bill clear karna hai BRPL
+    - Payment karne ka option dikhana BRPL
+    - Electricity bill ka payment kar do BRPL
+    - Mera bill ka paisa dena hai BRPL
+    - Mujhe payment karne me help chahiye BRPL
+    - Bill ke liye payment karna hai BRPL
+    - Pay kar diya check karo BRPL
+    - Payment link bhejna BRPL
+    - Mujhe pending bill pay karna hai BRPL
+    - Bill ka amount pay karna hai BRPL
+    - Mera bill payment pending hai BRPL
+    - Mujhe light bill pay karna hai BRPL
+    - Payment kar do BRPL
+    - Bill ka paisa bhejna hai BRPL
+    - Mujhe online payment karna hai BRPL
+    - Bill pay kar diya confirm karo BRPL
+    - Payment gateway open karo BRPL
+    - Mujhe apna current bill pay karna hai BRPL
+    - Mera payment success hua kya BRPL
+    - Bill ka payment ho gaya kya BRPL
+    - Payment kar diya BRPL
+    - Mujhe electricity ka bill dena hai BRPL
+    - Bill ka payment process chahiye BRPL
+    - Mujhe due bill pay karna hai BRPL
+    - Payment karne ka link bhejna BRPL
+    - Bill pay karne me problem ho rahi hai BRPL
+    - Bill ka online transaction karna hai BRPL
+    - Payment complete kar do BRPL
+    - Mera due bill pay karna hai BRPL
+    - Mujhe BRPL bill pay karna hai BRPL
+    - Payment kar diya please confirm BRPL
+    - Bill ke liye payment link bhejna BRPL
+    - Mera bill ka paisa bhejna hai BRPL
+    - Mujhe abhi bill payment karna hai BRPL
+    - Payment karne me help chahiye BRPL
+    - Bill clear karna hai BRPL
+    - Electricity bill pay karna hai BRPL
+    - Mujhe bill pay karne ka process chahiye BRPL
+    - Payment ka status batao BRPL
+    - Mera bill pay ho gaya kya BRPL
+    - Mujhe bill payment karwana hai BRPL
+    - Payment option dikhao BRPL
+    - Bill ka online payment kar do BRPL
+    - Mujhe bill ka payment karna hai BRPL
+    - muje apna bill pay karna hai BRPL
+    - Bill payment kr do BRPL
+    - Online bill pay krna hai BRPL
+    - Mera bil due hai BRPL
+    - muje payment link chahiye BRPL
+    - Bill ka payment kar diya confirm krdo BRPL
+    - Please bill ka online payment krna hai BRPL
+    - muje bill clear karna hai BRPL
+    - Payment krne ka option dikhana BRPL
+    - Electricity bill ka payment kr do BRPL
+    - Mera bil ka paisa dena hai BRPL
+    - muje payment karne me help chahiye BRPL
+    - Bill ke liye payment krna hai BRPL
+    - Pay kar diya check krdo BRPL
+    - paymnet link bhejna BRPL
+    - muje pending bill pay karna hai BRPL
+    - Bill ka amount pay krna hai BRPL
+    - Mera bill paymnet pending hai BRPL
+    - muje light bill pay karna hai BRPL
+    - Payment kr do BRPL
+    - bil ka paisa bhejna hai BRPL
+    - muje online payment karna hai BRPL
+    - Bill pay kar diya confirm krdo BRPL
+    - Payment gateway open krdo BRPL
+    - muje apna current bill pay karna hai BRPL
+    - Mera paymnet success hua kya BRPL
+    - Bill ka paymnet ho gaya kya BRPL
+    - Payment kr diya BRPL
+    - muje electricity ka bill dena hai BRPL
+    - Bill ka payment process chaiye BRPL
+    - muje due bill pay karna hai BRPL
+    - Payment krne ka link bhejna BRPL
+    - Bill pay krne me problem ho rahi hai BRPL
+    - Bill ka online transaction krna hai BRPL
+    - Payment complete kr do BRPL
+    - Mera due bill pay krna hai BRPL
+    - muje BRPL bill pay karna hai BRPL
+    - Payment kr diya please confirm BRPL
+    - Bill ke liye paymnet link bhejna BRPL
+    - Mera bil ka paisa bhejna hai BRPL
+    - muje abhi bill payment karna hai BRPL
+    - Payment krne me help chahiye BRPL
+    - Bill clear krna hai BRPL
+    - Electricity bill pay krna hai BRPL
+    - muje bill pay karne ka process chahiye BRPL
+    - paymnet ka status batao BRPL
+    - Mera bill py ho gaya kya BRPL
+    - muje bill payment karwana hai BRPL
+    - paymnet option dikhao BRPL
+    - Bill ka online payment kr do BRPL
+    - muje bill ka payment karna hai BRPL
+
 - intent: duplicate_bill_rajdhani
   examples: |
     - Duplicate Bill BRPL
@@ -5335,112 +5451,3 @@ nlu:
     - Duplicate copy issue krni hai BRPL
     - Bill ka PDF chaiye BRPL
     - plz generate copy of bill BRPL
-
-- intent: bill_history_rajdhani_hindi
-  examples: |
-    - बिल इतिहास BRPL
-    - बिल हिस्ट्री BRPL
-    - बिल हिस्ट्री देखें BRPL
-    - बिल इतिहास देखें BRPL
-    - Mujhe apna bill pay karna hai BRPL
-    - Bill payment kar do BRPL
-    - Online bill pay karna hai BRPL
-    - Mera bill due hai BRPL
-    - Mujhe payment link chahiye BRPL
-    - Bill ka payment kar diya confirm karo BRPL
-    - Please bill ka online payment karna hai BRPL
-    - Mujhe bill clear karna hai BRPL
-    - Payment karne ka option dikhana BRPL
-    - Electricity bill ka payment kar do BRPL
-    - Mera bill ka paisa dena hai BRPL
-    - Mujhe payment karne me help chahiye BRPL
-    - Bill ke liye payment karna hai BRPL
-    - Pay kar diya check karo BRPL
-    - Payment link bhejna BRPL
-    - Mujhe pending bill pay karna hai BRPL
-    - Bill ka amount pay karna hai BRPL
-    - Mera bill payment pending hai BRPL
-    - Mujhe light bill pay karna hai BRPL
-    - Payment kar do BRPL
-    - Bill ka paisa bhejna hai BRPL
-    - Mujhe online payment karna hai BRPL
-    - Bill pay kar diya confirm karo BRPL
-    - Payment gateway open karo BRPL
-    - Mujhe apna current bill pay karna hai BRPL
-    - Mera payment success hua kya BRPL
-    - Bill ka payment ho gaya kya BRPL
-    - Payment kar diya BRPL
-    - Mujhe electricity ka bill dena hai BRPL
-    - Bill ka payment process chahiye BRPL
-    - Mujhe due bill pay karna hai BRPL
-    - Payment karne ka link bhejna BRPL
-    - Bill pay karne me problem ho rahi hai BRPL
-    - Bill ka online transaction karna hai BRPL
-    - Payment complete kar do BRPL
-    - Mera due bill pay karna hai BRPL
-    - Mujhe BRPL bill pay karna hai BRPL
-    - Payment kar diya please confirm BRPL
-    - Bill ke liye payment link bhejna BRPL
-    - Mera bill ka paisa bhejna hai BRPL
-    - Mujhe abhi bill payment karna hai BRPL
-    - Payment karne me help chahiye BRPL
-    - Bill clear karna hai BRPL
-    - Electricity bill pay karna hai BRPL
-    - Mujhe bill pay karne ka process chahiye BRPL
-    - Payment ka status batao BRPL
-    - Mera bill pay ho gaya kya BRPL
-    - Mujhe bill payment karwana hai BRPL
-    - Payment option dikhao BRPL
-    - Bill ka online payment kar do BRPL
-    - Mujhe bill ka payment karna hai BRPL
-    - muje apna bill pay karna hai BRPL
-    - Bill payment kr do BRPL
-    - Online bill pay krna hai BRPL
-    - Mera bil due hai BRPL
-    - muje payment link chahiye BRPL
-    - Bill ka payment kar diya confirm krdo BRPL
-    - Please bill ka online payment krna hai BRPL
-    - muje bill clear karna hai BRPL
-    - Payment krne ka option dikhana BRPL
-    - Electricity bill ka payment kr do BRPL
-    - Mera bil ka paisa dena hai BRPL
-    - muje payment karne me help chahiye BRPL
-    - Bill ke liye payment krna hai BRPL
-    - Pay kar diya check krdo BRPL
-    - paymnet link bhejna BRPL
-    - muje pending bill pay karna hai BRPL
-    - Bill ka amount pay krna hai BRPL
-    - Mera bill paymnet pending hai BRPL
-    - muje light bill pay karna hai BRPL
-    - Payment kr do BRPL
-    - bil ka paisa bhejna hai BRPL
-    - muje online payment karna hai BRPL
-    - Bill pay kar diya confirm krdo BRPL
-    - Payment gateway open krdo BRPL
-    - muje apna current bill pay karna hai BRPL
-    - Mera paymnet success hua kya BRPL
-    - Bill ka paymnet ho gaya kya BRPL
-    - Payment kr diya BRPL
-    - muje electricity ka bill dena hai BRPL
-    - Bill ka payment process chaiye BRPL
-    - muje due bill pay karna hai BRPL
-    - Payment krne ka link bhejna BRPL
-    - Bill pay krne me problem ho rahi hai BRPL
-    - Bill ka online transaction krna hai BRPL
-    - Payment complete kr do BRPL
-    - Mera due bill pay krna hai BRPL
-    - muje BRPL bill pay karna hai BRPL
-    - Payment kr diya please confirm BRPL
-    - Bill ke liye paymnet link bhejna BRPL
-    - Mera bil ka paisa bhejna hai BRPL
-    - muje abhi bill payment karna hai BRPL
-    - Payment krne me help chahiye BRPL
-    - Bill clear krna hai BRPL
-    - Electricity bill pay krna hai BRPL
-    - muje bill pay karne ka process chahiye BRPL
-    - paymnet ka status batao BRPL
-    - Mera bill py ho gaya kya BRPL
-    - muje bill payment karwana hai BRPL
-    - paymnet option dikhao BRPL
-    - Bill ka online payment kr do BRPL
-    - muje bill ka payment karna hai BRPL

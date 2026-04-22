@@ -3704,6 +3704,14 @@ export default function HomePage() {
         if (type_of_user) {
           setTypeOfUser(type_of_user);
         }
+
+
+        // Extract utter_message_id so ChatInput validation works correctly
+        if (Array.isArray(data.utter_message_id)) {
+          setLastBotMessageIds(data.utter_message_id);
+        } else {
+          setLastBotMessageIds([]);
+        }
       }
 
       // Handle main_menu_heading and main_menu_buttons

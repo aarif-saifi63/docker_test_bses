@@ -139,6 +139,8 @@ services:
       REDIS_PORT: 6379
     volumes:
       - ./rasa/models:/app/models
+      - ./rasa/data:/app/data
+      - ./rasa/domain.yml:/app/domain.yml
     depends_on:
       - redis
     <<: *common-opts

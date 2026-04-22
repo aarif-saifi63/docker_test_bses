@@ -5,6 +5,7 @@ import json
 import os
 import requests
 import redis
+import threading
 from sqlalchemy import Integer, func, or_
 from Models.ad_model import Advertisement
 from Models.fallback_model import FallbackV
@@ -110,6 +111,32 @@ def get_ist_time():
     return datetime.now(IST)
 
 
+def _save_chat_entry(sender_id, source, chat_entry):
+    """Persist a chat entry in the background so the webhook response is not blocked."""
+    db = SessionLocal()
+    try:
+        existing_chat = db.query(Session).filter_by(user_id=sender_id).first()
+        if existing_chat:
+            if not existing_chat.chat:
+                existing_chat.chat = []
+            existing_chat.chat = existing_chat.chat + [chat_entry]
+            existing_chat.updated_at = get_ist_time()
+        else:
+            db.add(Session(
+                user_id=sender_id,
+                chat=[chat_entry],
+                source=source,
+                created_at=get_ist_time(),
+                updated_at=get_ist_time()
+            ))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"[_save_chat_entry] DB write failed for user {sender_id}: {e}")
+    finally:
+        db.close()
+
+
 def webhook():
     db = None  # define here so we can safely close it in finally
 
@@ -130,6 +157,17 @@ def webhook():
         rasa_response = requests.post(f"{RASA_API_URL}/webhooks/rest/webhook", json={'sender': sender_id, 'message': user_message}, timeout=(5, 60))
         rasa_response_json = rasa_response.json()
         print("Rasa Response:", rasa_response_json)
+
+        # response_intent = requests.post(
+        #     f"{RASA_API_URL}/model/parse",
+        #     json={"text": user_message},
+        #     timeout=(5, 30)
+        # )
+
+        # data = response_intent.json()
+        # intent =  data["intent"]["name"]
+
+        # print(intent, "================================ intent")
 
         # if rasa_response_json[0].get("text", "").strip() != "Sorry, I didn’t understand that. Can you rephrase?":
         #     fallback_counts[sender_id] = 0
@@ -178,47 +216,6 @@ def webhook():
             submenu_category = None
             submenu_language = None
             detected_intent = None
-
-            # if first_intent and first_intent["name"] != "nlu_fallback":
-            #     # First intent is not fallback, check if it's a submenu intent
-            #     detected_intent = first_intent["name"]
-            #     submenu_category, submenu_language = get_submenu_category(detected_intent)
-            #     print(f"First intent: {detected_intent}, Submenu: {submenu_category}, Language: {submenu_language}")
-            # elif second_intent and second_intent["name"] != "nlu_fallback":
-            #     # First intent is fallback, check second intent
-            #     detected_intent = second_intent["name"]
-            #     submenu_category, submenu_language = get_submenu_category(detected_intent)
-            #     print(f"Second intent: {detected_intent}, Submenu: {submenu_category}, Language: {submenu_language}")
-
-            # Check if first intent is fallback
-            # if first_intent["name"] == "nlu_fallback":
-            #     # Only check second intent
-            #     detected_intent = second_intent["name"]
-            #     submenu_category, submenu_language = get_submenu_category(detected_intent)
-            #     print(
-            #         f"Second intent: {detected_intent}, "
-            #         f"Submenu: {submenu_category}, "
-            #         f"Language: {submenu_language}"
-            #     )
-            # else:
-            #     # Check first intent
-            #     detected_intent = first_intent["name"]
-            #     submenu_category, submenu_language = get_submenu_category(detected_intent)
-            #     print(
-            #         f"First intent: {detected_intent}, "
-            #         f"Submenu: {submenu_category}, "
-            #         f"Language: {submenu_language}"
-            #     )
-
-            #     # Check second intent as well
-            #     if submenu_category is None and second_intent and second_intent["name"] != "nlu_fallback":
-            #         detected_intent = second_intent["name"]
-            #         submenu_category, submenu_language = get_submenu_category(detected_intent)
-            #         print(
-            #             f"Second intent: {detected_intent}, "
-            #             f"Submenu: {submenu_category}, "
-            #             f"Language: {submenu_language}"
-            #         )
 
             # If the top intent is nlu_fallback → global fallback (skip submenu check entirely)
             if first_intent["name"] == "nlu_fallback":
@@ -695,16 +692,11 @@ def webhook():
         if submenu_fallback_language:
             response['response']['fallback_language'] = submenu_fallback_language
 
-        existing_chat = db.query(Session).filter_by(user_id=sender_id).first()
-
         if user_message.lower() in ["ca verified brpl", "otp verified brpl", "order verified brpl", "mobile verified brpl", "email verified brpl"]:
             chat_entry = {
-                # "query": user_message,
                 "answer": response,
                 "timestamp": get_ist_time().isoformat(),
-                # "is_fallback": is_fallback
             }
-
         else:
             chat_entry = {
                 "query": user_message,
@@ -713,24 +705,12 @@ def webhook():
                 "is_fallback": is_fallback
             }
 
-        if existing_chat:
-            print(existing_chat, "====================================== existing chat")
-            if not existing_chat.chat:
-                existing_chat.chat = []
-            existing_chat.chat = existing_chat.chat + [chat_entry]
-            existing_chat.updated_at = get_ist_time()
-            db.commit()
-            print(existing_chat, "====================================== existing chat 2")
-        else:
-            chat_output = Session(
-                user_id=sender_id,
-                chat=[chat_entry],
-                source=source,
-                created_at=get_ist_time(),
-                updated_at=get_ist_time()
-            )
-            db.add(chat_output)
-            db.commit()
+        # Fire DB save in background — user gets response immediately without waiting for DB write
+        threading.Thread(
+            target=_save_chat_entry,
+            args=(sender_id, source, chat_entry),
+            daemon=True
+        ).start()
 
         return jsonify(response)
 

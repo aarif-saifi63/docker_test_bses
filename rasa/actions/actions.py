@@ -5,12 +5,25 @@
 # https://rasa.com/docs/rasa/custom-actions
 
 import logging
+import logging.handlers
+import queue
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+# --- Async logging setup ---
+# All log records are pushed onto a queue; a background QueueListener
+# drains it in a dedicated thread — keeping the Sanic event loop free.
+_log_queue: queue.Queue = queue.Queue(maxsize=10_000)
+_queue_handler = logging.handlers.QueueHandler(_log_queue)
+_stream_handler = logging.StreamHandler()
+_stream_handler.setFormatter(logging.Formatter(
+    "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
+))
+_queue_listener = logging.handlers.QueueListener(
+    _log_queue, _stream_handler, respect_handler_level=True
 )
+_queue_listener.start()
+
+logging.basicConfig(level=logging.INFO, handlers=[_queue_handler])
 logging.getLogger("db.pool").setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -23,7 +36,7 @@ import json
 import requests
 import aiohttp
 import asyncio
-import redis
+import redis.asyncio as aioredis
 from concurrent.futures import ThreadPoolExecutor
 from rasa_sdk.interfaces import Tracker
 from typing import Any, Text, Dict, List
@@ -39,7 +52,7 @@ async def _run_in_executor(func, *args):
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(_bses_executor, func, *args)
 
-async def _http_post(url, *, json=None, timeout=10):
+async def _http_post(url, *, json=None, timeout=15):
     """Async POST using aiohttp."""
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=json, timeout=aiohttp.ClientTimeout(total=timeout)) as resp:
@@ -59,11 +72,12 @@ from utils.helper import API_GetMeterReadingSchedule, area_outage, complaint_sta
 # Load .env file
 load_dotenv()
 
-redis_client = redis.Redis(
+redis_client = aioredis.Redis(
     host=os.getenv('REDIS_HOST', 'redis'),
     port=int(os.getenv('REDIS_PORT', 6379)),
     db=0,
-    decode_responses=True
+    decode_responses=True,
+    max_connections=50,
 )
 
 FLASK_BASE_URL = os.getenv("BACKEND_URL")  
@@ -74,20 +88,20 @@ async def send_dynamic_messages(dispatcher, action_name, message_type, lang="en"
     """
     try:
         CACHE_KEY = f"utter_messages_cache:{message_type}:{lang}"
-        cached = redis_client.get(CACHE_KEY)
+        cached = await redis_client.get(CACHE_KEY)
         if cached:
-            logger.info(f"[CACHE HIT] send_dynamic_messages | key={CACHE_KEY} | action={action_name}")
+            logger.info("[CACHE HIT] send_dynamic_messages | key=%s | action=%s", CACHE_KEY, action_name)
             data = json.loads(cached)
         else:
-            logger.info(f"[CACHE MISS] send_dynamic_messages | key={CACHE_KEY} | action={action_name} | fetching from backend")
+            logger.info("[CACHE MISS] send_dynamic_messages | key=%s | action=%s | fetching from backend", CACHE_KEY, action_name)
             # Without cache:
             # api_url = f"{FLASK_BASE_URL}/get_utter_messages?message_type={message_type}&lang={lang}"
             # response = requests.get(api_url, timeout=5)
             # response.raise_for_status()
             # data = response.json()
             data = await _http_get(f"{FLASK_BASE_URL}/get_utter_messages?message_type={message_type}&lang={lang}", timeout=5)
-            redis_client.set(CACHE_KEY, json.dumps(data))
-            logger.info(f"[CACHE SET] send_dynamic_messages | key={CACHE_KEY} | action={action_name} | response cached")
+            await redis_client.set(CACHE_KEY, json.dumps(data))
+            logger.info("[CACHE SET] send_dynamic_messages | key=%s | action=%s | response cached", CACHE_KEY, action_name)
 
         # Extract data from the correct key
         messages_data = data.get("data", [])
@@ -108,14 +122,24 @@ async def send_dynamic_messages_without_dispatcher(action_name, message_type, la
     """
     Fetches a single utter message dynamically from backend using action_name and language.
     Returns the message text or a default message if none found.
+    Shares the same Redis cache key as send_dynamic_messages so both functions
+    benefit from a single backend call.
     """
     try:
-        api_url = f"{FLASK_BASE_URL}/get_utter_messages?message_type={message_type}&lang={lang}"
-        data = await _http_get(api_url, timeout=5)
+        CACHE_KEY = f"utter_messages_cache:{message_type}:{lang}"
+        cached = await redis_client.get(CACHE_KEY)
+        if cached:
+            logger.info("[CACHE HIT] send_dynamic_messages_without_dispatcher | key=%s | action=%s", CACHE_KEY, action_name)
+            data = json.loads(cached)
+        else:
+            logger.info("[CACHE MISS] send_dynamic_messages_without_dispatcher | key=%s | action=%s | fetching from backend", CACHE_KEY, action_name)
+            data = await _http_get(f"{FLASK_BASE_URL}/get_utter_messages?message_type={message_type}&lang={lang}", timeout=5)
+            await redis_client.set(CACHE_KEY, json.dumps(data))
+            logger.info("[CACHE SET] send_dynamic_messages_without_dispatcher | key=%s | action=%s | response cached", CACHE_KEY, action_name)
 
         # Extract the first message from the 'data' key
         messages_data = data.get("data", [])
-        
+
         if not messages_data:
             return "No messages found for this action."
 
@@ -220,12 +244,15 @@ class Language_type(Action):
         CACHE_KEY = "visible_languages_cache"
         try:
             # Check Redis cache first; populated on first call, invalidated by admin on language change
-            cached = redis_client.get(CACHE_KEY)
+            cached = await redis_client.get(CACHE_KEY)
             if cached:
+                logger.info("[CACHE HIT] Language_type | key=%s", CACHE_KEY)
                 data = json.loads(cached)
             else:
+                logger.info("[CACHE MISS] Language_type | key=%s | fetching from backend", CACHE_KEY)
                 data = await _http_get(f"{FLASK_BASE_URL}/visible-languages", timeout=10)
-                redis_client.set(CACHE_KEY, json.dumps(data))
+                await redis_client.set(CACHE_KEY, json.dumps(data))
+                logger.info("[CACHE SET] Language_type | key=%s | response cached", CACHE_KEY)
 
             # Send the initial message
             dispatcher.utter_message(text='''Please select your language
@@ -357,12 +384,15 @@ class Register_consumer_options_english(Action):
         # api_url = f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}"
 
         try:
-            cached = redis_client.get(CACHE_KEY)
+            cached = await redis_client.get(CACHE_KEY)
             if cached:
+                logger.info("[CACHE HIT] Register_consumer_options_english | key=%s", CACHE_KEY)
                 data = json.loads(cached)
             else:
+                logger.info("[CACHE MISS] Register_consumer_options_english | key=%s | fetching from backend", CACHE_KEY)
                 data = await _http_get(f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}", timeout=5)
-                redis_client.set(CACHE_KEY, json.dumps(data))
+                await redis_client.set(CACHE_KEY, json.dumps(data))
+                logger.info("[CACHE SET] Register_consumer_options_english | key=%s | response cached", CACHE_KEY)
             # Without cache:
             # response = requests.get(api_url, timeout=5)
             # response.raise_for_status()
@@ -444,12 +474,15 @@ class Register_consumer_options_hindi(Action):
         # api_url = f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}"
 
         try:
-            cached = redis_client.get(CACHE_KEY)
+            cached = await redis_client.get(CACHE_KEY)
             if cached:
+                logger.info("[CACHE HIT] Register_consumer_options_hindi | key=%s", CACHE_KEY)
                 data = json.loads(cached)
             else:
+                logger.info("[CACHE MISS] Register_consumer_options_hindi | key=%s | fetching from backend", CACHE_KEY)
                 data = await _http_get(f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}", timeout=5)
-                redis_client.set(CACHE_KEY, json.dumps(data))
+                await redis_client.set(CACHE_KEY, json.dumps(data))
+                logger.info("[CACHE SET] Register_consumer_options_hindi | key=%s | response cached", CACHE_KEY)
             # Without cache:
             # response = requests.get(api_url, timeout=5)
             # response.raise_for_status()
@@ -524,12 +557,15 @@ class New_consumer_options_english(Action):
         # api_url = f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}"
 
         try:
-            cached = redis_client.get(CACHE_KEY)
+            cached = await redis_client.get(CACHE_KEY)
             if cached:
+                logger.info("[CACHE HIT] New_consumer_options_english | key=%s", CACHE_KEY)
                 data = json.loads(cached)
             else:
+                logger.info("[CACHE MISS] New_consumer_options_english | key=%s | fetching from backend", CACHE_KEY)
                 data = await _http_get(f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}", timeout=5)
-                redis_client.set(CACHE_KEY, json.dumps(data))
+                await redis_client.set(CACHE_KEY, json.dumps(data))
+                logger.info("[CACHE SET] New_consumer_options_english | key=%s | response cached", CACHE_KEY)
             # Without cache:
             # response = requests.get(api_url, timeout=5)
             # response.raise_for_status()
@@ -655,12 +691,15 @@ class New_consumer_options_hindi(Action):
         # api_url = f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}"
 
         try:
-            cached = redis_client.get(CACHE_KEY)
+            cached = await redis_client.get(CACHE_KEY)
             if cached:
+                logger.info("[CACHE HIT] New_consumer_options_hindi | key=%s", CACHE_KEY)
                 data = json.loads(cached)
             else:
+                logger.info("[CACHE MISS] New_consumer_options_hindi | key=%s | fetching from backend", CACHE_KEY)
                 data = await _http_get(f"{FLASK_BASE_URL}/get_user_menus?user_id={user_id}", timeout=5)
-                redis_client.set(CACHE_KEY, json.dumps(data))
+                await redis_client.set(CACHE_KEY, json.dumps(data))
+                logger.info("[CACHE SET] New_consumer_options_hindi | key=%s | response cached", CACHE_KEY)
             # Without cache:
             # response = requests.get(api_url, timeout=5)
             # response.raise_for_status()
@@ -1828,12 +1867,15 @@ class Change_Language_module(Action):
         CACHE_KEY = "visible_languages_cache"
         try:
             # Check Redis cache first; invalidated by admin on language change
-            cached = redis_client.get(CACHE_KEY)
+            cached = await redis_client.get(CACHE_KEY)
             if cached:
+                logger.info("[CACHE HIT] Change_Language_module | key=%s", CACHE_KEY)
                 data = json.loads(cached)
             else:
+                logger.info("[CACHE MISS] Change_Language_module | key=%s | fetching from backend", CACHE_KEY)
                 data = await _http_get(f"{FLASK_BASE_URL}/visible-languages", timeout=10)
-                redis_client.set(CACHE_KEY, json.dumps(data))
+                await redis_client.set(CACHE_KEY, json.dumps(data))
+                logger.info("[CACHE SET] Change_Language_module | key=%s | response cached", CACHE_KEY)
 
             await send_dynamic_messages(dispatcher, "", "change_language_en", lang="en")
             await send_dynamic_messages(dispatcher, "", "change_language_hi", lang="hi")
