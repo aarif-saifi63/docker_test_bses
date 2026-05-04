@@ -22,7 +22,7 @@
     "react-speech-recognition": "^4.0.1",
     "react-spinners": "^0.17.0",
     "tailwindcss": "^4.1.10",
-    "uuid": "^11.1.0"
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
