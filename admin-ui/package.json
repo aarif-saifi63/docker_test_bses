@@ -23,7 +23,7 @@
     "@mui/x-data-grid": "^8.14.0",
     "@tanstack/react-table": "^8.21.3",
     "annyang": "^2.6.1",
-    "axios": "^1.12.2",
+    "axios": "^1.15.2",
     "crypto-js": "^4.2.0",
     "express": "^5.1.0",
     "file-saver": "^2.0.5",
