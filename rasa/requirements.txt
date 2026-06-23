@@ -71,7 +71,7 @@ MarkupSafe==3.0.2
 matplotlib==3.5.3
 mattermostwrapper==2.2
 ml_dtypes==0.5.1
-msgpack==1.1.1
+msgpack==1.2.1
 multidict==5.2.0
 networkx==2.6.3
 numpy==1.23.5
